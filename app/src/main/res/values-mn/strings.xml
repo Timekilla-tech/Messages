@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_launcher_name">Мессеж</string>
+    <string name="type_a_message">Мессеж бичих…</string>
+    <string name="message_not_sent_short">Мессеж илгээгдсэнгүй</string>
+    <string name="message_not_sent_touch_retry">Илгээгдсэнгүй. Дахин оролдохын тулд дарна уу.</string>
+    <string name="message_sending_error">\'%s\' руу илгээх мессеж илгээгдсэнгүй</string>
+    <string name="add_person">Хүн нэмэх</string>
+    <string name="attachment">Хавсралт</string>
+    <string name="no_conversations_found">Хадгалсан харилцан яриа олдсонгүй</string>
+    <string name="start_conversation">Харилцан яриа эхлүүлэх</string>
+    <string name="reply">Хариулах</string>
+    <string name="show_character_counter">Мессеж бичих үед тэмдэгтийн тоолуур харуулах</string>
+    <string name="loading_messages">Мессежүүдийг ачаалж байна…</string>
+    <string name="no_reply_support">Илгээгч хариулахыг дэмжихгүй</string>
+    <string name="draft">Ноорог</string>
+    <string name="sending">Илгээж байна…</string>
+    <string name="pin_conversation">Дээд талд тогтоох</string>
+    <string name="unpin_conversation">Тогтоолтыг болиулах</string>
+    <string name="forward_message">Дамжуулах</string>
+    <string name="compress_error">Зургийг сонгосон хэмжээнд шахаж чадсангүй</string>
+
+    <string name="duplicate_item_warning">Давхардсан элементийг оруулаагүй</string>
+
+    <plurals name="and_other_contacts">
+        <item quantity="one">мөн өөр %d</item>
+        <item quantity="other">мөн өөр %d</item>
+    </plurals>
+
+    <string name="new_conversation">Шинэ харилцан яриа</string>
+    <string name="add_contact_or_number">Харилцах хүн эсвэл дугаар нэмэх…</string>
+    <string name="suggestions">Санал болголтууд</string>
+
+    <string name="members">Гишүүд</string>
+    <string name="conversation_name">Харилцан ярианы нэр</string>
+    <string name="conversation_details">Харилцан ярианы дэлгэрэнгүй</string>
+    <string name="rename_conversation">Харилцан ярианы нэр өөрчлөх</string>
+    <string name="rename_conversation_warning">Энэ нэрийг зөвхөн та харна</string>
+
+    <string name="scheduled_message">Товлосон мессеж</string>
+    <string name="schedule_message">Мессеж товлох</string>
+    <string name="schedule_send">Илгээхийг товлох</string>
+    <string name="cancel_schedule_send">Товлосон илгээхийг цуцлах</string>
+    <string name="must_pick_time_in_the_future">Ирээдүйн цаг сонгох шаардлагатай</string>
+    <string name="schedule_send_warning">Утсаа асаалттай байлгаж, background-д аппыг зогсоох зүйлгүй эсэхийг шалгана уу.</string>
+    <string name="update_message">Мессеж шинэчлэх</string>
+    <string name="send_now">Одоо илгээх</string>
+
+    <string name="message_details">Мессежийн дэлгэрэнгүй</string>
+    <string name="message_details_sender">Илгээгч</string>
+    <string name="message_details_receiver">Хүлээн авагч</string>
+    <string name="message_details_sent_at">Илгээсэн хугацаа</string>
+    <string name="message_details_received_at">Хүлээн авсан хугацаа</string>
+
+    <string name="channel_received_sms">Хүлээн авсан SMS</string>
+    <string name="new_message">Шинэ мессеж</string>
+    <string name="mark_as_read">Уншсан болгох</string>
+    <string name="mark_as_unread">Уншаагүй болгох</string>
+    <string name="me">Би</string>
+    <string name="enable_custom_notifications">Тусгай мэдэгдлийг идэвхжүүлэх</string>
+
+    <string name="unarchive">Архиваас гаргах</string>
+    <string name="empty_archive">Архивласан бүх харилцан яриаг устгах</string>
+    <string name="archived_conversations">Архив</string>
+    <string name="show_archived_conversations">Архивласан харилцан яриаг харуулах</string>
+    <string name="archive">Архивлах</string>
+    <string name="no_archived_conversations">Архивласан харилцан яриа олдсонгүй</string>
+    <string name="archive_emptied_successfully">Архив амжилттай цэвэрлэгдлээ</string>
+    <string name="empty_archive_confirmation">Та архивыг хоослохдоо итгэлтэй байна уу? Архивласан бүх харилцан яриа бүрмөсөн алга болно.</string>
+    <string name="keep_conversations_archived">Харилцан яриаг архивласан хэвээр байлгах</string>
+
+    <string name="restore">Сэргээх</string>
+    <string name="restore_all_messages">Бүх мессежийг сэргээх</string>
+    <string name="empty_recycle_bin_messages_confirmation">Та Хогийн савыг хоослохдоо итгэлтэй байна уу? Мессежүүд бүрмөсөн алга болно.</string>
+    <string name="skip_the_recycle_bin_messages">Хогийн сав алгасаж, мессежийг шууд устгах</string>
+
+    <string name="delete_whole_conversation_confirmation">Энэ харилцан ярианы бүх мессежийг устгахдаа итгэлтэй байна уу?</string>
+    <string name="archive_confirmation">%s-г архивлахдаа итгэлтэй байна уу?</string>
+    <string name="restore_whole_conversation_confirmation">Энэ харилцан ярианы бүх мессежийг сэргээхдээ итгэлтэй байна уу?</string>
+    <string name="restore_confirmation">%s-г сэргээхдээ итгэлтэй байна уу?</string>
+
+    <plurals name="delete_conversations">
+        <item quantity="one">%d харилцан яриа</item>
+        <item quantity="other">%d харилцан яриа</item>
+    </plurals>
+
+    <plurals name="delete_messages">
+        <item quantity="one">%d мессеж</item>
+        <item quantity="other">%d мессеж</item>
+    </plurals>
+
+    <string name="keyword">Түлхүүр үг</string>
+    <string name="blocked_keywords">Хориглосон түлхүүр үгс</string>
+    <string name="manage_blocked_keywords">Хориглосон түлхүүр үгсийг удирдах</string>
+    <string name="not_blocking_keywords">Та ямар ч түлхүүр үг хориглоогүй байна. Энд түлхүүр үг нэмснээр тэдгээрийг агуулсан бүх мессежийг хориглоно.</string>
+    <string name="add_a_blocked_keyword">Хориглосон түлхүүр үг нэмэх</string>
+    <string name="lock_screen_visibility">Түгжээтэй дэлгэц дээрх мэдэгдлийн харагдах байдал</string>
+    <string name="sender_and_message">Илгээгч ба мессеж</string>
+    <string name="sender_only">Зөвхөн илгээгч</string>
+    <string name="enable_delivery_reports">Хүргэлтийн тайланг идэвхжүүлэх</string>
+    <string name="use_simple_characters">Мессеж илгээхдээ өргөлт, диакритикийг арилгах</string>
+    <string name="send_on_enter">Enter дарахад мессеж илгээх</string>
+    <string name="mms_file_size_limit">Илгээх MMS зургийн хэмжээг өөрчлөх</string>
+    <string name="mms_file_size_limit_none">Хязгааргүй</string>
+    <string name="outgoing_messages">Гарах мессежүүд</string>
+    <string name="group_message_mms">Бүлгийн мессежийг MMS-ээр илгээх</string>
+    <string name="send_long_message_mms">Урт мессежийг MMS-ээр илгээх</string>
+
+    <string name="messages">Мессежүүд</string>
+    <string name="keywords">Түлхүүр үгс</string>
+    <string name="export_messages">Мессеж экспортлох</string>
+    <string name="export_sms">SMS экспортлох</string>
+    <string name="export_mms">MMS экспортлох</string>
+    <string name="import_messages">Мессеж импортлох</string>
+    <string name="import_sms">SMS импортлох</string>
+    <string name="import_mms">MMS импортлох</string>
+    <string name="no_option_selected">Та дор хаяж нэг элементийг сонгох ёстой</string>
+    <string name="export_blocked_keywords">Хориглосон түлхүүр үгсийг экспортлох</string>
+    <string name="import_blocked_keywords">Хориглосон түлхүүр үгсийг импортлох</string>
+
+    <string name="empty_destination_address">Хоосон дугаар руу мессеж илгээх боломжгүй</string>
+    <string name="unable_to_save_message">Мессежийг телефонийн өгөгдлийн санд хадгалж чадсангүй</string>
+    <string name="error_service_is_unavailable">Мессеж илгээж чадсангүй, үйлчилгээ боломжгүй</string>
+    <string name="error_radio_turned_off">Мессеж илгээж чадсангүй, сүлжээ унтарсан байна</string>
+    <string name="carrier_send_error">Мессеж илгээж чадсангүй, операторын алдаа</string>
+    <string name="unknown_error_occurred_sending_message">Мессеж илгээж чадсангүй, алдааны код: %d</string>
+    <string name="invalid_short_code">Ийм богино код руу хариулах боломжгүй</string>
+    <string name="invalid_short_code_desc">Та зөвхөн "503501" шиг тооноос бүрдэх богино код руу хариулах боломжтой, харин "AB-CD0" шиг үсэг, тоо хосолсон код руу биш.</string>
+    <string name="attachment_sized_exceeds_max_limit">Хавсралтын хэмжээ MMS-ийн дээд хязгаараас хэтэрсэн</string>
+    <string name="sim_card_not_available">SIM карт алга</string>
+    <string name="couldnt_download_mms">MMS татаж чадсангүй</string>
+
+    <string name="faq_1_title">Яагаад энэ апп интернетийн хандалт шаарддаг вэ?</string>
+    <string name="faq_1_text">Харамсалтай нь MMS хавсралт илгээхэд хэрэгтэй. MMS илгээж чадахгүй байх нь бусад апптай харьцуулахад маш том сул тал тул бид ийм шийдэл сонгосон.
+    Гэхдээ урьдын адил ямар ч зар сурталчилгаа, мөрдөлт, аналитик байхгүй, интернетийг зөвхөн MMS илгээхэд ашигладаг.</string>
+    <string name="faq_2_title">Нөгөө тал миний MMS-г хүлээж авахгүй байна, би юу хийж болох вэ?</string>
+    <string name="faq_2_text">MMS-ийн хэмжээг операторууд хязгаарладаг, аппын тохиргоонд илүү бага хязгаар сонгож үзээрэй.</string>
+    <string name="faq_3_title">Апп товлосон мессежийг дэмждэг үү?</string>
+    <string name="faq_3_text">Тийм, та Send товчийг удаан дарж хүссэн огноо, цагийг сонлон мессежийг ирээдүйд илгээгдэхээр товлож болно.</string>
+    <string name="faq_4_title">Яагаад миний бүлгийн мессежийн хариунууд хүлээн авагчдад тус тусын мессеж шиг харагддаг вэ?</string>
+    <string name="faq_4_text">Аппын тохиргоонд "Бүлгийн мессежийг MMS-ээр илгээх"-ийг идэвхжүүлэх хэрэгтэй. Ингэснээр бүлгийн мессежүүд зөв MMS хэлбэрээр илгээгдэж, оролцогчид бие биеийнхээ хариуг харна.</string>
+</resources>
