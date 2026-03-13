@@ -5,6 +5,9 @@ import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
+import android.graphics.Canvas
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
@@ -28,6 +31,7 @@ import org.fossify.commons.extensions.checkWhatsNew
 import org.fossify.commons.extensions.convertToBitmap
 import org.fossify.commons.extensions.fadeIn
 import org.fossify.commons.extensions.formatDateOrTime
+import org.fossify.commons.extensions.getContrastColor
 import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.getProperBackgroundColor
 import org.fossify.commons.extensions.getProperPrimaryColor
@@ -405,6 +409,11 @@ class MainActivity : SimpleActivity() {
             }
 
             if (inboxSwipeHelper == null) {
+                val archiveBackground = ColorDrawable()
+                val readBackground = ColorDrawable()
+                val archiveIcon = AppCompatResources.getDrawable(this, R.drawable.ic_archive_vector)
+                val readIcon = AppCompatResources.getDrawable(this, R.drawable.ic_check_double_vector)
+
                 inboxSwipeHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.START or ItemTouchHelper.END) {
                     override fun onMove(
                         recyclerView: RecyclerView,
@@ -421,6 +430,47 @@ class MainActivity : SimpleActivity() {
                         } else {
                             0
                         }
+                    }
+
+                    override fun onChildDraw(
+                        c: Canvas,
+                        recyclerView: RecyclerView,
+                        viewHolder: RecyclerView.ViewHolder,
+                        dX: Float,
+                        dY: Float,
+                        actionState: Int,
+                        isCurrentlyActive: Boolean,
+                    ) {
+                        if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX != 0f) {
+                            val itemView = viewHolder.itemView
+                            val top = itemView.top
+                            val bottom = itemView.bottom
+                            val iconTint = getProperBackgroundColor().getContrastColor()
+
+                            if (dX < 0) {
+                                archiveBackground.color = getProperPrimaryColor().adjustAlpha(0.9f)
+                                archiveBackground.setBounds(
+                                    itemView.right + dX.toInt(),
+                                    top,
+                                    itemView.right,
+                                    bottom,
+                                )
+                                archiveBackground.draw(c)
+                                drawSwipeIcon(c, archiveIcon, iconTint, itemView, alignEnd = true)
+                            } else {
+                                readBackground.color = getProperTextColor().adjustAlpha(0.8f)
+                                readBackground.setBounds(
+                                    itemView.left,
+                                    top,
+                                    itemView.left + dX.toInt(),
+                                    bottom,
+                                )
+                                readBackground.draw(c)
+                                drawSwipeIcon(c, readIcon, iconTint, itemView, alignEnd = false)
+                            }
+                        }
+
+                        super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
                     }
 
                     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
@@ -648,6 +698,35 @@ class MainActivity : SimpleActivity() {
                 (currAdapter as SearchResultsAdapter).updateItems(searchResults, searchedText)
             }
         }
+    }
+
+    private fun drawSwipeIcon(
+        canvas: Canvas,
+        icon: Drawable?,
+        tintColor: Int,
+        itemView: android.view.View,
+        alignEnd: Boolean,
+    ) {
+        icon ?: return
+        val iconHeight = icon.intrinsicHeight
+        val iconWidth = icon.intrinsicWidth
+        if (iconHeight <= 0 || iconWidth <= 0) return
+
+        val itemHeight = itemView.bottom - itemView.top
+        val iconTop = itemView.top + (itemHeight - iconHeight) / 2
+        val iconBottom = iconTop + iconHeight
+        val horizontalMargin = (itemHeight - iconHeight) / 2
+
+        val iconLeft = if (alignEnd) {
+            itemView.right - horizontalMargin - iconWidth
+        } else {
+            itemView.left + horizontalMargin
+        }
+        val iconRight = iconLeft + iconWidth
+
+        icon.mutate().setTint(tintColor)
+        icon.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+        icon.draw(canvas)
     }
 
     private fun launchRecycleBin() {
