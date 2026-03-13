@@ -63,6 +63,7 @@ import org.fossify.messages.extensions.getConversations
 import org.fossify.messages.extensions.getMessages
 import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.messagesDB
+import org.fossify.messages.helpers.ConversationAgeHeaderDecoration
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
@@ -76,13 +77,14 @@ import org.greenrobot.eventbus.ThreadMode
 
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
-    
+
     private val MAKE_DEFAULT_APP_REQUEST = 1
 
     private var storedTextColor = 0
     private var storedFontSize = 0
     private var lastSearchedText = ""
     private var bus: EventBus? = null
+    private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
@@ -384,17 +386,25 @@ class MainActivity : SimpleActivity() {
         var currAdapter = binding.conversationsList.adapter
         if (currAdapter == null) {
             hideKeyboard()
-            currAdapter = ConversationsAdapter(
+            val conversationsAdapter = ConversationsAdapter(
                 activity = this,
                 recyclerView = binding.conversationsList,
                 onRefresh = { notifyDatasetChanged() },
                 itemClick = { handleConversationClick(it) }
             )
 
-            binding.conversationsList.adapter = currAdapter
+            binding.conversationsList.adapter = conversationsAdapter
+            if (ageHeaderDecoration == null) {
+                ageHeaderDecoration = ConversationAgeHeaderDecoration(this) {
+                    conversationsAdapter.currentList
+                }
+                binding.conversationsList.addItemDecoration(ageHeaderDecoration!!)
+            }
+
             if (areSystemAnimationsEnabled) {
                 binding.conversationsList.scheduleLayoutAnimation()
             }
+            currAdapter = conversationsAdapter
         }
         return currAdapter as ConversationsAdapter
     }
