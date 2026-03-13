@@ -3,6 +3,7 @@ package org.fossify.messages.adapters
 import android.content.Intent
 import android.text.TextUtils
 import android.view.Menu
+import androidx.recyclerview.widget.ItemTouchHelper
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.dialogs.FeatureLockedDialog
 import org.fossify.commons.extensions.addBlockedNumber
@@ -83,6 +84,68 @@ class ConversationsAdapter(
             R.id.cab_pin_conversation -> pinConversation(true)
             R.id.cab_unpin_conversation -> pinConversation(false)
             R.id.cab_select_all -> selectAll()
+        }
+    }
+
+    fun canHandleSwipe() = selectedKeys.isEmpty()
+
+    fun onSwiped(position: Int, direction: Int): Boolean {
+        if (!canHandleSwipe()) {
+            notifyItemChanged(position)
+            return false
+        }
+
+        val conversation = currentList.getOrNull(position) ?: return false
+        return when (direction) {
+            ItemTouchHelper.START -> {
+                if (!activity.config.isArchiveAvailable) {
+                    notifyItemChanged(position)
+                    return false
+                }
+                archiveConversation(conversation)
+                true
+            }
+
+            ItemTouchHelper.END -> {
+                toggleConversationReadStatus(conversation, position)
+                true
+            }
+
+            else -> false
+        }
+    }
+
+    private fun archiveConversation(conversation: Conversation) {
+        ensureBackgroundThread {
+            activity.updateConversationArchivedStatus(conversation.threadId, true)
+            activity.notificationManager.cancel(conversation.threadId.hashCode())
+            val updatedList = currentList.toMutableList().apply { remove(conversation) }
+            activity.runOnUiThread {
+                submitList(updatedList)
+                if (updatedList.isEmpty()) {
+                    refreshConversations()
+                }
+            }
+        }
+    }
+
+    private fun toggleConversationReadStatus(conversation: Conversation, position: Int) {
+        ensureBackgroundThread {
+            if (conversation.read) {
+                activity.markThreadMessagesUnread(conversation.threadId)
+            } else {
+                activity.markThreadMessagesRead(conversation.threadId)
+            }
+
+            val updatedList = currentList.toMutableList()
+            val updatedConversation = conversation.copy(read = !conversation.read)
+            if (position in updatedList.indices) {
+                updatedList[position] = updatedConversation
+            }
+
+            activity.runOnUiThread {
+                submitList(updatedList)
+            }
         }
     }
 

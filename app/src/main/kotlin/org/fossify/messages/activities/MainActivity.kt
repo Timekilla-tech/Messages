@@ -11,6 +11,8 @@ import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.extensions.adjustAlpha
 import org.fossify.commons.extensions.appLaunched
@@ -85,6 +87,7 @@ class MainActivity : SimpleActivity() {
     private var lastSearchedText = ""
     private var bus: EventBus? = null
     private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
+    private var inboxSwipeHelper: ItemTouchHelper? = null
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
@@ -399,6 +402,32 @@ class MainActivity : SimpleActivity() {
                     conversationsAdapter.currentList
                 }
                 binding.conversationsList.addItemDecoration(ageHeaderDecoration!!)
+            }
+
+            if (inboxSwipeHelper == null) {
+                inboxSwipeHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.START or ItemTouchHelper.END) {
+                    override fun onMove(
+                        recyclerView: RecyclerView,
+                        viewHolder: RecyclerView.ViewHolder,
+                        target: RecyclerView.ViewHolder,
+                    ) = false
+
+                    override fun getSwipeDirs(
+                        recyclerView: RecyclerView,
+                        viewHolder: RecyclerView.ViewHolder,
+                    ): Int {
+                        return if (conversationsAdapter.canHandleSwipe()) {
+                            super.getSwipeDirs(recyclerView, viewHolder)
+                        } else {
+                            0
+                        }
+                    }
+
+                    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                        conversationsAdapter.onSwiped(viewHolder.bindingAdapterPosition, direction)
+                    }
+                })
+                inboxSwipeHelper?.attachToRecyclerView(binding.conversationsList)
             }
 
             if (areSystemAnimationsEnabled) {
