@@ -15,6 +15,7 @@ import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
 import org.fossify.messages.activities.SimpleActivity
+import org.fossify.messages.dialogs.DeleteConfirmationDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.deleteConversation
@@ -121,7 +122,7 @@ class ConversationsAdapter(
         when (action) {
             INBOX_SWIPE_ACTION_ARCHIVE -> archiveConversation(conversation)
             INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS -> toggleConversationReadStatus(conversation, position)
-            INBOX_SWIPE_ACTION_DELETE -> deleteConversationBySwipe(conversation)
+            INBOX_SWIPE_ACTION_DELETE -> deleteConversationBySwipe(conversation, position)
             INBOX_SWIPE_ACTION_BLOCK -> blockConversationBySwipe(conversation)
             else -> {
                 notifyItemChanged(position)
@@ -157,16 +158,24 @@ class ConversationsAdapter(
             }
         }
     }
-
-    private fun deleteConversationBySwipe(conversation: Conversation) {
-        ensureBackgroundThread {
-            activity.deleteConversation(conversation.threadId)
-            activity.notificationManager.cancel(conversation.threadId.hashCode())
-            val updatedList = currentList.toMutableList().apply { remove(conversation) }
-            activity.runOnUiThread {
-                submitList(updatedList)
-                if (updatedList.isEmpty()) {
-                    refreshConversations()
+//TODO: устгах, архивлах, блоклох үйлдлийг чирж гүйцэтгэхээс өмнө үйлдлийг баталгаажуулах цонх гаргах
+    private fun deleteConversationBySwipe(conversation: Conversation, position: Int) {
+        // Reset swipe state immediately, then delete only after explicit confirmation.
+        notifyItemChanged(position)
+        DeleteConfirmationDialog(
+            activity = activity,
+            message = activity.getString(R.string.delete_whole_conversation_confirmation),
+            showSkipRecycleBinOption = false,
+        ) {
+            ensureBackgroundThread {
+                activity.deleteConversation(conversation.threadId)
+                activity.notificationManager.cancel(conversation.threadId.hashCode())
+                val updatedList = currentList.toMutableList().apply { remove(conversation) }
+                activity.runOnUiThread {
+                    submitList(updatedList)
+                    if (updatedList.isEmpty()) {
+                        refreshConversations()
+                    }
                 }
             }
         }
