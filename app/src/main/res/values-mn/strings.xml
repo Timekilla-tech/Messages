@@ -97,8 +97,15 @@
     <string name="keyword">Түлхүүр үг</string>
     <string name="blocked_keywords">Хориглосон түлхүүр үгс</string>
     <string name="manage_blocked_keywords">Хориглосон түлхүүр үгсийг удирдах</string>
-    <string name="not_blocking_keywords">Та ямар ч түлхүүр үг хориглоогүй байна. Энд түлхүүр үг нэмснээр тэдгээрийг агуулсан бүх мессежийг хориглоно.</string>
-    <string name="add_a_blocked_keyword">Хориглосон түлхүүр үг нэмэх</string>
+    <string name="inbox_swipe_start_action">Эхлэл талаас гүйлгэх үйлдэл</string>
+    <string name="inbox_swipe_end_action">Төгсгөл талаас гүйлгэх үйлдэл</string>
+    <string name="swipe_action_none">Юу ч хийхгүй</string>
+    <string name="swipe_action_toggle_read_status">Уншсан төлөв солих</string>
+    <string name="swipe_action_block_number">Дугаар хориглох</string>
+    <string name="not_available">Боломжгүй</string>
+    <string name="not_available_on_group_conversations">Бүлгийн чат дээр боломжгүй</string>
+    <string name="not_available_on_this_device">Энэ төхөөрөмж дээр боломжгүй</string>
+    <string name="not_available_no_phone_number">Хүчинтэй утасны дугаар алга</string>
     <string name="lock_screen_visibility">Түгжээтэй дэлгэц дээрх мэдэгдлийн харагдах байдал</string>
     <string name="sender_and_message">Илгээгч ба мессеж</string>
     <string name="sender_only">Зөвхөн илгээгч</string>
