@@ -1250,6 +1250,14 @@ fun Context.insertOrUpdateConversation(
             usesCustomTitle = true
         )
     }
+    // Preserve the scheduled message date so it isn't overwritten by the
+    // telephony provider's last-real-SMS date when a scheduled conversation is updated.
+    if (cachedConv != null && cachedConv.isScheduled) {
+        updatedConv = updatedConv.copy(
+            date = cachedConv.date,
+            isScheduled = true
+        )
+    }
     conversationsDB.insertOrUpdate(updatedConv)
 }
 
