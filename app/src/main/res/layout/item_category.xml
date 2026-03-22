@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/category_holder"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/tiny_margin"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:minHeight="@dimen/two_line_list_item_min_height"
+    android:paddingStart="@dimen/activity_margin"
+    android:paddingTop="@dimen/medium_margin"
+    android:paddingEnd="@dimen/activity_margin"
+    android:paddingBottom="@dimen/medium_margin">
+
+    <View
+        android:id="@+id/categoryColor"
+        android:layout_width="@dimen/small_icon_size"
+        android:layout_height="@dimen/small_icon_size"
+        android:background="@drawable/circle_background"
+        app:layout_constraintBottom_toBottomOf="@id/categoryIcon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@id/categoryIcon" />
+
+    <org.fossify.commons.views.MyTextView
+        android:id="@+id/categoryIcon"
+        android:layout_width="@dimen/list_icon_size_medium"
+        android:layout_height="@dimen/list_icon_size_medium"
+        android:gravity="center"
+        android:textSize="@dimen/list_secondary_text_size"
+        app:layout_constraintStart_toEndOf="@id/categoryColor"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="A" />
+
+    <org.fossify.commons.views.MyTextView
+        android:id="@+id/categoryName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/activity_margin"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/list_primary_text_size"
+        app:layout_constraintEnd_toStartOf="@id/defaultBadge"
+        app:layout_constraintStart_toEndOf="@id/categoryIcon"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Blocked" />
+
+    <org.fossify.commons.views.MyTextView
+        android:id="@+id/defaultBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/small_margin"
+        android:background="@drawable/circle_background"
+        android:paddingStart="@dimen/tiny_margin"
+        android:paddingTop="2dp"
+        android:paddingEnd="@dimen/tiny_margin"
+        android:paddingBottom="2dp"
+        android:text="Default"
+        android:textSize="@dimen/list_tertiary_text_size"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/categoryName"
+        app:layout_constraintEnd_toStartOf="@id/btnDelete"
+        app:layout_constraintTop_toTopOf="@id/categoryName"
+        tools:visibility="visible" />
+
+    <ImageView
+        android:id="@+id/btnDelete"
+        android:layout_width="@dimen/list_icon_size_medium"
+        android:layout_height="@dimen/list_icon_size_medium"
+        android:contentDescription="@string/delete"
+        android:padding="@dimen/small_margin"
+        android:src="@drawable/ic_delete_vector"
+        app:layout_constraintBottom_toBottomOf="@id/categoryName"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/categoryName" />
+
+    <org.fossify.commons.views.MyTextView
+        android:id="@+id/categoryDescription"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/tiny_margin"
+        android:alpha="0.8"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/list_secondary_text_size"
+        app:layout_constraintEnd_toStartOf="@id/btnDelete"
+        app:layout_constraintStart_toStartOf="@id/categoryName"
+        app:layout_constraintTop_toBottomOf="@id/categoryName"
+        tools:text="Messages filtered by spam keywords" />
+
+    <org.fossify.commons.views.MyTextView
+        android:id="@+id/categoryKeywordCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/tiny_margin"
+        android:alpha="0.7"
+        android:textSize="@dimen/list_tertiary_text_size"
+        app:layout_constraintStart_toStartOf="@id/categoryName"
+        app:layout_constraintTop_toBottomOf="@id/categoryDescription"
+        tools:text="3" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
