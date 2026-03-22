@@ -6,7 +6,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import org.fossify.commons.activities.ManageBlockedNumbersActivity
 import org.fossify.commons.dialogs.ChangeDateTimeFormatDialog
 import org.fossify.commons.dialogs.ConfirmationDialog
-import org.fossify.commons.dialogs.FeatureLockedDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.dialogs.SecurityDialog
 import org.fossify.commons.extensions.addLockedLabelIfNeeded
@@ -103,8 +102,7 @@ class SettingsActivity : SimpleActivity() {
         setupCustomizeNotifications()
         setupUseEnglish()
         setupLanguage()
-        setupManageBlockedNumbers()
-        setupManageBlockedKeywords()
+        setupManageCategories()
         setupChangeDateTimeFormat()
         setupFontSize()
         setupShowCharacterCounter()
@@ -199,23 +197,11 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupManageBlockedNumbers() = binding.apply {
-        settingsManageBlockedNumbers.text =
-            addLockedLabelIfNeeded(org.fossify.commons.R.string.manage_blocked_numbers)
-        settingsManageBlockedNumbersHolder.beVisible()
-        settingsManageBlockedNumbersHolder.setOnClickListener {
-            Intent(this@SettingsActivity, ManageBlockedNumbersActivity::class.java).apply {
-                startActivity(this)
-            }
-        }
-    }
 
-    private fun setupManageBlockedKeywords() = binding.apply {
-        settingsManageBlockedKeywords.text =
-            addLockedLabelIfNeeded(R.string.manage_blocked_keywords)
-
-        settingsManageBlockedKeywordsHolder.setOnClickListener {
-            Intent(this@SettingsActivity, ManageBlockedKeywordsActivity::class.java).apply {
+    private fun setupManageCategories() = binding.apply {
+        settingsManageCategories.text = addLockedLabelIfNeeded(R.string.manage_categories)
+        settingsManageCategoriesHolder.setOnClickListener {
+            Intent(this@SettingsActivity, ManageCategoriesActivity::class.java).apply {
                 startActivity(this)
             }
         }

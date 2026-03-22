@@ -129,34 +129,20 @@
             </RelativeLayout>
 
             <RelativeLayout
-                android:id="@+id/settings_manage_blocked_numbers_holder"
+                android:id="@+id/settings_manage_categories_holder"
                 style="@style/SettingsHolderTextViewOneLinerStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
                 <org.fossify.commons.views.MyTextView
-                    android:id="@+id/settings_manage_blocked_numbers"
+                    android:id="@+id/settings_manage_categories"
                     style="@style/SettingsTextLabelStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/manage_blocked_numbers" />
+                    android:text="@string/manage_categories" />
 
             </RelativeLayout>
 
-            <RelativeLayout
-                android:id="@+id/settings_manage_blocked_keywords_holder"
-                style="@style/SettingsHolderTextViewOneLinerStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <org.fossify.commons.views.MyTextView
-                    android:id="@+id/settings_manage_blocked_keywords"
-                    style="@style/SettingsTextLabelStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/manage_blocked_keywords" />
-
-            </RelativeLayout>
 
             <RelativeLayout
                 android:id="@+id/settings_font_size_holder"
