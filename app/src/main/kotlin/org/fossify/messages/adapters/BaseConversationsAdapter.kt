@@ -26,7 +26,9 @@ import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.databinding.ItemConversationBinding
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.getAllDrafts
+import org.fossify.messages.extensions.getAllCategories
 import org.fossify.messages.models.Conversation
+import java.util.Locale
 
 @Suppress("LeakingThis")
 abstract class BaseConversationsAdapter(
@@ -44,6 +46,7 @@ abstract class BaseConversationsAdapter(
     RecyclerViewFastScroller.OnPopupTextUpdate {
     private var fontSize = activity.getTextSize()
     private var drafts = HashMap<Long, String>()
+    private var categoryColors = HashMap<String, Int>()
 
     private var recyclerViewState: Parcelable? = null
 
@@ -51,6 +54,7 @@ abstract class BaseConversationsAdapter(
         setupDragListener(true)
         setHasStableIds(true)
         updateDrafts()
+        updateCategoryColors()
 
         registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onChanged() = restoreRecyclerViewState()
@@ -72,6 +76,7 @@ abstract class BaseConversationsAdapter(
         newConversations: ArrayList<Conversation>,
         commitCallback: (() -> Unit)? = null,
     ) {
+        updateCategoryColors()
         saveRecyclerViewState()
         submitList(newConversations.toList(), commitCallback)
     }
@@ -84,6 +89,25 @@ abstract class BaseConversationsAdapter(
             activity.runOnUiThread {
                 if (drafts.hashCode() != newDrafts.hashCode()) {
                     drafts = newDrafts
+                    notifyDataSetChanged()
+                }
+            }
+        }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun updateCategoryColors() {
+        ensureBackgroundThread {
+            val newColors = HashMap<String, Int>()
+            activity.getAllCategories().forEach {
+                if (it.name.isNotBlank()) {
+                    newColors[normalizeCategoryKey(it.name)] = it.color
+                }
+            }
+
+            activity.runOnUiThread {
+                if (categoryColors.hashCode() != newColors.hashCode()) {
+                    categoryColors = newColors
                     notifyDataSetChanged()
                 }
             }
@@ -159,6 +183,24 @@ abstract class BaseConversationsAdapter(
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 1.2f)
             }
 
+            val categoryName = conversation.category.trim()
+            if (categoryName.isNotEmpty()) {
+                categoryLabel.text = categoryName
+                val bgDrawable = categoryLabel.background
+                // Apply tint by setting background color programmatically if possible
+                try {
+                    val color = categoryColors[normalizeCategoryKey(categoryName)] ?: properPrimaryColor
+                    bgDrawable?.mutate()?.setTint(color)
+                    categoryLabel.setTextColor(color.getContrastColor())
+                } catch (_: Exception) {
+                    // Fallback: set text color only
+                    categoryLabel.setTextColor(properPrimaryColor)
+                }
+                categoryLabel.visibility = View.VISIBLE
+            } else {
+                categoryLabel.visibility = View.GONE
+            }
+
             conversationBodyShort.apply {
                 text = smsDraft ?: conversation.snippet
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 0.9f)
@@ -206,6 +248,10 @@ abstract class BaseConversationsAdapter(
                 placeholderImage = placeholder
             )
         }
+    }
+
+    private fun normalizeCategoryKey(name: String): String {
+        return name.trim().lowercase(Locale.ROOT)
     }
 
     private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
