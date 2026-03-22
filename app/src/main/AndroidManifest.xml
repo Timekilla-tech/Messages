@@ -147,6 +147,13 @@
             android:parentActivityName=".activities.SettingsActivity" />
 
         <activity
+            android:name=".activities.ManageCategoriesActivity"
+            android:configChanges="orientation"
+            android:exported="false"
+            android:label="@string/manage_categories"
+            android:parentActivityName=".activities.SettingsActivity" />
+
+        <activity
             android:name=".activities.VCardViewerActivity"
             android:configChanges="orientation"
             android:exported="false"
