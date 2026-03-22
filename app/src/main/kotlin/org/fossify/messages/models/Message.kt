@@ -3,13 +3,17 @@ package org.fossify.messages.models
 import android.provider.Telephony
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import org.fossify.commons.models.SimpleContact
 import org.fossify.messages.helpers.THREAD_RECEIVED_MESSAGE
 import org.fossify.messages.helpers.THREAD_SENT_MESSAGE
 import org.fossify.messages.helpers.generateStableId
 
-@Entity(tableName = "messages")
+@Entity(
+    tableName = "messages",
+    indices = [Index(value = ["category_id"])]
+)
 data class Message(
     @PrimaryKey val id: Long,
     @ColumnInfo(name = "body") val body: String,
@@ -25,7 +29,9 @@ data class Message(
     @ColumnInfo(name = "sender_name") var senderName: String,
     @ColumnInfo(name = "sender_photo_uri") val senderPhotoUri: String,
     @ColumnInfo(name = "subscription_id") var subscriptionId: Int,
-    @ColumnInfo(name = "is_scheduled") var isScheduled: Boolean = false
+    @ColumnInfo(name = "is_scheduled") var isScheduled: Boolean = false,
+    @ColumnInfo(name = "category_name") var categoryName: String = "",
+    @ColumnInfo(name = "category_id") var categoryId: Long = 0
 ) : ThreadItem() {
 
     fun isReceivedMessage() = type == Telephony.Sms.MESSAGE_TYPE_INBOX
@@ -62,7 +68,8 @@ data class Message(
                 old.senderPhoneNumber == new.senderPhoneNumber &&
                 old.senderName == new.senderName &&
                 old.senderPhotoUri == new.senderPhotoUri &&
-                old.isScheduled == new.isScheduled
+                old.isScheduled == new.isScheduled &&
+                old.categoryId == new.categoryId
         }
     }
 }
