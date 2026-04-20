@@ -121,6 +121,12 @@ fun Context.getMessages(
     includeScheduledMessages: Boolean = true,
     limit: Int = MESSAGES_LIMIT,
 ): ArrayList<Message> {
+    val localMessagesById = try {
+        messagesDB.getNonRecycledThreadMessages(threadId).associateBy { it.id }
+    } catch (_: Exception) {
+        emptyMap()
+    }
+
     val uri = Sms.CONTENT_URI
     val projection = arrayOf(
         Sms._ID,
@@ -178,6 +184,7 @@ fun Context.getMessages(
             )
         }
         val isMMS = false
+        val localMessage = localMessagesById[id]?.takeIf { !it.isMMS }
         val message =
             Message(
                 id = id,
@@ -195,13 +202,13 @@ fun Context.getMessages(
                 senderPhotoUri = photoUri,
                 subscriptionId = subscriptionId,
                 isScheduled = false,
-                categoryName = "",
-                categoryId = 0
+                categoryName = localMessage?.categoryName ?: "",
+                categoryId = localMessage?.categoryId ?: 0
             )
         messages.add(message)
     }
 
-    messages.addAll(getMMS(threadId, sortOrder, dateFrom))
+    messages.addAll(getMMS(threadId, sortOrder, dateFrom, localMessagesById))
 
     if (includeScheduledMessages) {
         try {
@@ -227,7 +234,18 @@ fun Context.getMMS(
     threadId: Long? = null,
     sortOrder: String? = null,
     dateFrom: Int = -1,
+    localMessagesById: Map<Long, Message>? = null,
 ): ArrayList<Message> {
+    val resolvedLocalMessagesById = localMessagesById ?: if (threadId != null) {
+        try {
+            messagesDB.getNonRecycledThreadMessages(threadId).associateBy { it.id }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    } else {
+        emptyMap()
+    }
+
     val uri = Mms.CONTENT_URI
     val projection = arrayOf(
         Mms._ID,
@@ -279,6 +297,7 @@ fun Context.getMMS(
             senderPhotoUri = namePhoto.photoUri ?: ""
         }
 
+        val localMessage = resolvedLocalMessagesById[mmsId]?.takeIf { it.isMMS }
         val message =
             Message(
                 id = mmsId,
@@ -296,8 +315,8 @@ fun Context.getMMS(
                 senderPhotoUri = senderPhotoUri,
                 subscriptionId = subscriptionId,
                 isScheduled = false,
-                categoryName = "",
-                categoryId = 0
+                categoryName = localMessage?.categoryName ?: "",
+                categoryId = localMessage?.categoryId ?: 0
             )
         messages.add(message)
 
