@@ -36,6 +36,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams
 import android.widget.RelativeLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.appcompat.content.res.AppCompatResources
@@ -1033,80 +1034,71 @@ class ThreadActivity : SimpleActivity() {
     }
 
     private fun updateCategoryLabel() {
-        val categoryName = (conversation?.category ?: cachedCategoryName).trim()
-        
-        // If we already have a cached category and it's not empty, keep showing it
-        if (categoryName.isEmpty() && cachedCategoryName.isNotEmpty()) {
-            // Use cached value instead
-            val cachedCategory = cachedCategoryName
-            binding.threadCategoryLabel.apply {
-                if (text != cachedCategory) {
-                    text = cachedCategory
-                }
-                if (visibility != View.VISIBLE) {
-                    visibility = View.VISIBLE
-                }
-            }
-            applyCategoryColor(cachedCategory)
-            return
-        }
-        
-        // Update cache if we have a new non-empty category
-        if (categoryName.isNotEmpty()) {
-            cachedCategoryName = categoryName
-        }
-        
-        if (categoryName.isEmpty()) {
-            // Only hide if we don't have a cached value either
+        val categoryNames = parseCategoryNames(conversation?.category ?: cachedCategoryName)
+        if (categoryNames.isEmpty()) {
             if (cachedCategoryName.isEmpty()) {
-                binding.threadCategoryLabel.visibility = View.GONE
+                binding.threadCategoryLabels.removeAllViews()
+                binding.threadCategoryScroll.visibility = View.GONE
             }
             return
         }
-        
-        // Update label text and visibility
-        binding.threadCategoryLabel.apply {
-            if (text != categoryName) {
-                text = categoryName
-            }
-            if (visibility != View.VISIBLE) {
-                visibility = View.VISIBLE
-            }
-        }
-        
-        // Load category color asynchronously
-        applyCategoryColor(categoryName)
-    }
-    
-    private fun applyCategoryColor(categoryName: String) {
+
+        cachedCategoryName = categoryNames.joinToString(", ")
         ensureBackgroundThread {
-            try {
-                val categories = getAllCategories()
-                val category = categories.find { it.name == categoryName }
-                
-                runOnUiThread {
-                    // Only update if still visible and not destroyed
-                    if (!isFinishing && !isDestroyed && binding.threadCategoryLabel.visibility == View.VISIBLE) {
-                        binding.threadCategoryLabel.apply {
-                            if (category != null) {
-                                try {
-                                    val bgDrawable = background
-                                    bgDrawable?.mutate()?.setTint(category.color)
-                                    setTextColor(category.color.getContrastColor())
-                                } catch (_: Exception) {
-                                    setTextColor(getProperPrimaryColor())
-                                }
-                            } else {
-                                setTextColor(getProperPrimaryColor())
-                            }
-                        }
-                    }
+            val colorMap = getAllCategories().associate { normalizeCategoryKey(it.name) to it.color }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) {
+                    return@runOnUiThread
                 }
-            } catch (_: Exception) {
-                // Silently ignore exceptions
+
+                binding.threadCategoryLabels.removeAllViews()
+                categoryNames.forEach { name ->
+                    val color = colorMap[normalizeCategoryKey(name)] ?: getProperPrimaryColor()
+                    binding.threadCategoryLabels.addView(createThreadCategoryChip(name, color))
+                }
+                binding.threadCategoryScroll.visibility = View.VISIBLE
             }
         }
     }
+
+    private fun parseCategoryNames(raw: String): List<String> {
+        return raw
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { normalizeCategoryKey(it) }
+    }
+
+    private fun normalizeCategoryKey(name: String): String {
+        return name.trim().lowercase()
+    }
+
+    private fun createThreadCategoryChip(name: String, color: Int): TextView {
+        val horizontalPadding = 8.dp
+        val verticalPadding = 2.dp
+        val marginEnd = 6.dp
+
+        return TextView(this).apply {
+            text = name
+            background = AppCompatResources.getDrawable(this@ThreadActivity, R.drawable.chip_rounded)
+            backgroundTintList = ColorStateList.valueOf(color)
+            setTextColor(color.getContrastColor())
+            setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
+            maxWidth = 180.dp
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                rightMargin = marginEnd
+            }
+        }
+    }
+
+    private val Int.dp: Int
+        get() = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            toFloat(),
+            resources.displayMetrics
+        ).toInt()
 
     @SuppressLint("MissingPermission")
     private fun setupSIMSelector() {
@@ -1361,11 +1353,12 @@ class ThreadActivity : SimpleActivity() {
     }
 
     private fun setCategory() {
-        SetCategoryDialog(this, conversation?.category ?: "") { selectedCategory ->
+        SetCategoryDialog(this, conversation?.category ?: cachedCategoryName) { selectedCategory ->
             if (conversation != null) {
                 ensureBackgroundThread {
-                    conversation!!.category = selectedCategory
-                    cachedCategoryName = selectedCategory // Update cache
+                    val normalized = parseCategoryNames(selectedCategory).joinToString(", ")
+                    conversation!!.category = normalized
+                    cachedCategoryName = normalized
                     conversationsDB.insertOrUpdate(conversation!!)
                     runOnUiThread {
                         updateCategoryLabel()
