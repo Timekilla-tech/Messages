@@ -64,6 +64,7 @@ import org.fossify.messages.dialogs.MessageDetailsDialog
 import org.fossify.messages.dialogs.SelectTextDialog
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.getContactFromAddress
+import org.fossify.messages.extensions.getAllCategories
 import org.fossify.messages.extensions.isImageMimeType
 import org.fossify.messages.extensions.isVCardMimeType
 import org.fossify.messages.extensions.isVideoMimeType
@@ -88,6 +89,7 @@ import org.fossify.messages.models.ThreadItem.ThreadError
 import org.fossify.messages.models.ThreadItem.ThreadSending
 import org.fossify.messages.models.ThreadItem.ThreadSent
 import org.joda.time.DateTime
+import java.util.Locale
 
 class ThreadAdapter(
     activity: SimpleActivity,
@@ -97,6 +99,7 @@ class ThreadAdapter(
     val deleteMessages: (messages: List<Message>, toRecycleBin: Boolean, fromRecycleBin: Boolean) -> Unit
 ) : MyRecyclerViewListAdapter<ThreadItem>(activity, recyclerView, ThreadItemDiffCallback(), itemClick) {
     private var fontSize = activity.getTextSize()
+    private var categoryColors = HashMap<String, Int>()
 
     @SuppressLint("MissingPermission")
     private val hasMultipleSIMCards = (activity.subscriptionManagerCompat().activeSubscriptionInfoList?.size ?: 0) > 1
@@ -112,6 +115,7 @@ class ThreadAdapter(
         setupDragListener(true)
         setHasStableIds(true)
         (recyclerView.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+        updateCategoryColors()
     }
 
     override fun getActionMenuId() = R.menu.cab_thread
@@ -386,6 +390,8 @@ class ThreadAdapter(
                 setupSentMessageView(messageBinding = this, message = message)
             }
 
+            setupMessageCategoryChip(this, message, isSentMessage = !message.isReceivedMessage())
+
             if (message.attachment?.attachments?.isNotEmpty() == true) {
                 threadMessageAttachmentsHolder.beVisible()
                 threadMessageAttachmentsHolder.removeAllViews()
@@ -404,6 +410,64 @@ class ThreadAdapter(
                 threadMessagePlayOutline.beGone()
             }
         }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun updateCategoryColors() {
+        ensureBackgroundThread {
+            val newColors = HashMap<String, Int>()
+            activity.getAllCategories().forEach {
+                if (it.name.isNotBlank()) {
+                    newColors[normalizeCategoryKey(it.name)] = it.color
+                }
+            }
+
+            activity.runOnUiThread {
+                if (categoryColors.hashCode() != newColors.hashCode()) {
+                    categoryColors = newColors
+                    notifyDataSetChanged()
+                }
+            }
+        }
+    }
+
+    private fun setupMessageCategoryChip(
+        messageBinding: ItemMessageBinding,
+        message: Message,
+        isSentMessage: Boolean
+    ) {
+        val categoryName = message.categoryName.trim()
+        messageBinding.threadMessageCategoryChip.apply {
+            if (categoryName.isEmpty()) {
+                beGone()
+                return
+            }
+
+            text = categoryName
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 0.75f)
+
+            val categoryColor = categoryColors[normalizeCategoryKey(categoryName)] ?: activity.getProperPrimaryColor()
+            background = AppCompatResources.getDrawable(activity, R.drawable.chip_rounded)
+            background.applyColorFilter(categoryColor)
+            setTextColor(categoryColor.getContrastColor())
+
+            updateLayoutParams<RelativeLayout.LayoutParams> {
+                if (isSentMessage) {
+                    removeRule(RelativeLayout.ALIGN_START)
+                    removeRule(RelativeLayout.END_OF)
+                    addRule(RelativeLayout.ALIGN_PARENT_END)
+                } else {
+                    removeRule(RelativeLayout.ALIGN_PARENT_END)
+                    addRule(RelativeLayout.END_OF, messageBinding.threadMessageSenderPhoto.id)
+                    addRule(RelativeLayout.ALIGN_START, messageBinding.threadMessageBody.id)
+                }
+            }
+            beVisible()
+        }
+    }
+
+    private fun normalizeCategoryKey(name: String): String {
+        return name.trim().lowercase(Locale.ROOT)
     }
 
     private fun setupReceivedMessageView(messageBinding: ItemMessageBinding, message: Message) {
