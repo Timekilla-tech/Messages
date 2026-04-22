@@ -88,7 +88,7 @@ class MainActivity : SimpleActivity() {
     private var storedTextColor = 0
     private var storedFontSize = 0
     private var lastSearchedText = ""
-    private var activeTagFilter: String? = null
+    private val activeTagFilters = linkedSetOf<String>()
     private var bus: EventBus? = null
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
@@ -462,18 +462,27 @@ class MainActivity : SimpleActivity() {
                 .sortedBy { it.lowercase(Locale.ROOT) }
 
             runOnUiThread {
-                val options = arrayListOf(getString(R.string.all_tags)).apply {
-                    addAll(tags)
+                val selectedKeys = activeTagFilters.map { it.trim().lowercase(Locale.ROOT) }.toSet()
+                val checkedItems = BooleanArray(tags.size) { index ->
+                    tags[index].trim().lowercase(Locale.ROOT) in selectedKeys
                 }
-
-                val selectedIndex = activeTagFilter?.let { activeTag ->
-                    options.indexOfFirst { it.equals(activeTag, ignoreCase = true) }
-                }?.takeIf { it >= 0 } ?: 0
 
                 AlertDialog.Builder(this@MainActivity)
                     .setTitle(R.string.filter_by_tag)
-                    .setSingleChoiceItems(options.toTypedArray(), selectedIndex) { dialog, which ->
-                        activeTagFilter = if (which == 0) null else options[which]
+                    .setMultiChoiceItems(tags.toTypedArray(), checkedItems) { _, which, isChecked ->
+                        val tag = tags[which]
+                        if (isChecked) {
+                            activeTagFilters.add(tag)
+                        } else {
+                            activeTagFilters.removeAll { it.equals(tag, ignoreCase = true) }
+                        }
+                    }
+                    .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                        dialog.dismiss()
+                        reloadConversationsForCurrentFilter()
+                    }
+                    .setNeutralButton(R.string.clear) { dialog, _ ->
+                        activeTagFilters.clear()
                         dialog.dismiss()
                         reloadConversationsForCurrentFilter()
                     }
@@ -498,15 +507,23 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun conversationMatchesActiveTag(conversation: Conversation): Boolean {
-        val tagFilter = activeTagFilter?.trim()?.lowercase(Locale.ROOT) ?: return true
-        if (tagFilter.isEmpty()) {
+        if (activeTagFilters.isEmpty()) {
+            return true
+        }
+
+        val selected = activeTagFilters
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        if (selected.isEmpty()) {
             return true
         }
 
         return conversation.category
             .split(",")
             .map { it.trim().lowercase(Locale.ROOT) }
-            .any { it == tagFilter }
+            .any { it in selected }
     }
 
     private fun showOrHideProgress(show: Boolean) {

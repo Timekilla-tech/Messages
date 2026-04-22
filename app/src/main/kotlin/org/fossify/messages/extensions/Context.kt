@@ -1456,7 +1456,11 @@ fun Context.updateCategory(
 ) {
     ensureBackgroundThread {
         try {
+            val previousCategory = categoryDB.getCategoryById(category.id)
             categoryDB.update(category)
+            if (previousCategory != null) {
+                replaceCategoryNameInConversations(previousCategory.name, category.name)
+            }
             applyCategoryToExistingMessages(category)
             callback?.invoke()
         } catch (e: Exception) {
@@ -1572,6 +1576,33 @@ private fun Context.applyCategoryToExistingMessages(category: org.fossify.messag
     }
 
     affectedThreadIds.forEach { refreshConversationCategoryLabel(it) }
+}
+
+private fun Context.replaceCategoryNameInConversations(oldName: String, newName: String) {
+    val normalizedOld = oldName.trim()
+    val normalizedNew = newName.trim()
+    if (normalizedOld.isEmpty() || normalizedNew.isEmpty() || normalizedOld == normalizedNew) {
+        return
+    }
+
+    val allConversations = (conversationsDB.getNonArchived() + conversationsDB.getAllArchived())
+        .distinctBy { it.threadId }
+
+    allConversations.forEach { conversation ->
+        val updatedCategories = conversation.category
+            .split(",")
+            .map { label ->
+                val trimmed = label.trim()
+                if (trimmed.equals(normalizedOld, ignoreCase = true)) normalizedNew else trimmed
+            }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .joinToString(", ")
+
+        if (updatedCategories != conversation.category) {
+            conversationsDB.insertOrUpdate(conversation.copy(category = updatedCategories))
+        }
+    }
 }
 
 fun Context.refreshConversationCategoryLabel(threadId: Long) {
