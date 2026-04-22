@@ -10,6 +10,7 @@ import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.extensions.adjustAlpha
@@ -60,10 +61,12 @@ import org.fossify.messages.extensions.clearAllMessagesIfNeeded
 import org.fossify.messages.extensions.clearExpiredScheduledMessages
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.conversationsDB
+import org.fossify.messages.extensions.getAllCategories
 import org.fossify.messages.extensions.getConversations
 import org.fossify.messages.extensions.getMessages
 import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.messagesDB
+import org.fossify.messages.extensions.refreshConversationCategoryLabel
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
@@ -75,6 +78,7 @@ import org.fossify.messages.models.SearchResult
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.util.Locale
 
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
@@ -84,6 +88,7 @@ class MainActivity : SimpleActivity() {
     private var storedTextColor = 0
     private var storedFontSize = 0
     private var lastSearchedText = ""
+    private var activeTagFilter: String? = null
     private var bus: EventBus? = null
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
@@ -179,6 +184,7 @@ class MainActivity : SimpleActivity() {
 
         binding.mainMenu.requireToolbar().setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.filter_by_tag -> showTagFilterDialog()
                 R.id.show_recycle_bin -> launchRecycleBin()
                 R.id.show_archived -> launchArchivedConversations()
                 R.id.settings -> launchSettings()
@@ -290,7 +296,17 @@ class MainActivity : SimpleActivity() {
 
     private fun getCachedConversations() {
         ensureBackgroundThread {
-            val conversations = try {
+            var conversations = try {
+                conversationsDB.getNonArchived().toMutableList() as ArrayList<Conversation>
+            } catch (_: Exception) {
+                ArrayList()
+            }
+
+            conversations.forEach { conversation ->
+                refreshConversationCategoryLabel(conversation.threadId)
+            }
+
+            conversations = try {
                 conversationsDB.getNonArchived().toMutableList() as ArrayList<Conversation>
             } catch (_: Exception) {
                 ArrayList()
@@ -405,7 +421,11 @@ class MainActivity : SimpleActivity() {
         conversations: ArrayList<Conversation>,
         cached: Boolean = false,
     ) {
-        val sortedConversations = conversations
+        val filteredConversations = conversations
+            .filter { conversationMatchesActiveTag(it) }
+            .toMutableList() as ArrayList<Conversation>
+
+        val sortedConversations = filteredConversations
             .sortedWith(
                 compareByDescending<Conversation> {
                     config.pinnedConversations.contains(it.threadId.toString())
@@ -418,7 +438,7 @@ class MainActivity : SimpleActivity() {
             showOrHideProgress(conversations.isEmpty())
         } else {
             showOrHideProgress(false)
-            showOrHidePlaceholder(conversations.isEmpty())
+            showOrHidePlaceholder(sortedConversations.isEmpty())
         }
 
         try {
@@ -431,6 +451,62 @@ class MainActivity : SimpleActivity() {
             }
         } catch (_: Exception) {
         }
+    }
+
+    private fun showTagFilterDialog() {
+        ensureBackgroundThread {
+            val tags = getAllCategories()
+                .map { it.name.trim() }
+                .filter { it.isNotEmpty() }
+                .distinctBy { it.lowercase(Locale.ROOT) }
+                .sortedBy { it.lowercase(Locale.ROOT) }
+
+            runOnUiThread {
+                val options = arrayListOf(getString(R.string.all_tags)).apply {
+                    addAll(tags)
+                }
+
+                val selectedIndex = activeTagFilter?.let { activeTag ->
+                    options.indexOfFirst { it.equals(activeTag, ignoreCase = true) }
+                }?.takeIf { it >= 0 } ?: 0
+
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle(R.string.filter_by_tag)
+                    .setSingleChoiceItems(options.toTypedArray(), selectedIndex) { dialog, which ->
+                        activeTagFilter = if (which == 0) null else options[which]
+                        dialog.dismiss()
+                        reloadConversationsForCurrentFilter()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+        }
+    }
+
+    private fun reloadConversationsForCurrentFilter() {
+        ensureBackgroundThread {
+            val conversations = try {
+                conversationsDB.getNonArchived().toMutableList() as ArrayList<Conversation>
+            } catch (_: Exception) {
+                ArrayList()
+            }
+
+            runOnUiThread {
+                setupConversations(conversations)
+            }
+        }
+    }
+
+    private fun conversationMatchesActiveTag(conversation: Conversation): Boolean {
+        val tagFilter = activeTagFilter?.trim()?.lowercase(Locale.ROOT) ?: return true
+        if (tagFilter.isEmpty()) {
+            return true
+        }
+
+        return conversation.category
+            .split(",")
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .any { it == tagFilter }
     }
 
     private fun showOrHideProgress(show: Boolean) {

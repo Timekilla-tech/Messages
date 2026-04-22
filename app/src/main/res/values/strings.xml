@@ -107,6 +107,8 @@
     <string name="send_long_message_mms">Send long messages as MMS</string>
     <!-- Categories -->
     <string name="manage_categories">Manage Categories</string>
+    <string name="filter_by_tag">Filter by tag</string>
+    <string name="all_tags">All tags</string>
     <string name="set_category">Set category</string>
     <string name="clear">Clear</string>
     <string name="add_category">Add Category</string>
