@@ -1553,6 +1553,24 @@ fun Context.isMessageMatchingCategory(
     }
 }
 
+fun Context.withAutoCategory(message: Message): Message {
+    val matchingCategory = getAllCategories()
+        .sortedBy { it.id }
+        .firstOrNull { isMessageMatchingCategory(message, it) }
+
+    if (matchingCategory == null) {
+        return message
+    }
+
+    val alreadyAssigned = message.categoryId == matchingCategory.id &&
+        message.categoryName.equals(matchingCategory.name, ignoreCase = true)
+    if (alreadyAssigned) {
+        return message
+    }
+
+    return message.copy(categoryId = matchingCategory.id, categoryName = matchingCategory.name)
+}
+
 private fun Context.applyCategoryToExistingMessages(category: org.fossify.messages.models.Category) {
     val affectedThreadIds = HashSet<Long>()
     val allMessages = messagesDB.getAll()

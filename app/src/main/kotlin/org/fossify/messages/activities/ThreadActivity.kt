@@ -52,7 +52,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.fossify.commons.dialogs.ConfirmationDialog
-import org.fossify.commons.dialogs.FeatureLockedDialog
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.extensions.addBlockedNumber
@@ -148,6 +147,7 @@ import org.fossify.messages.extensions.moveMessageToRecycleBin
 import org.fossify.messages.extensions.onScroll
 import org.fossify.messages.extensions.removeDiacriticsIfNeeded
 import org.fossify.messages.extensions.renameConversation
+import org.fossify.messages.extensions.refreshConversationCategoryLabel
 import org.fossify.messages.extensions.restoreAllMessagesFromRecycleBinForConversation
 import org.fossify.messages.extensions.restoreMessageFromRecycleBin
 import org.fossify.messages.extensions.saveSmsDraft
@@ -158,6 +158,7 @@ import org.fossify.messages.extensions.toArrayList
 import org.fossify.messages.extensions.updateConversationArchivedStatus
 import org.fossify.messages.extensions.updateLastConversationMessage
 import org.fossify.messages.extensions.updateScheduledMessagesThreadId
+import org.fossify.messages.extensions.withAutoCategory
 import org.fossify.messages.helpers.CAPTURE_AUDIO_INTENT
 import org.fossify.messages.helpers.CAPTURE_PHOTO_INTENT
 import org.fossify.messages.helpers.CAPTURE_VIDEO_INTENT
@@ -1717,11 +1718,13 @@ class ThreadActivity : SimpleActivity() {
     }
 
     private fun insertOrUpdateMessage(message: Message) {
-        if (messages.map { it.id }.contains(message.id)) {
-            val messageToReplace = messages.find { it.id == message.id }
-            messages[messages.indexOf(messageToReplace)] = message
+        val categorizedMessage = withAutoCategory(message)
+
+        if (messages.map { it.id }.contains(categorizedMessage.id)) {
+            val messageToReplace = messages.find { it.id == categorizedMessage.id }
+            messages[messages.indexOf(messageToReplace)] = categorizedMessage
         } else {
-            messages.add(message)
+            messages.add(categorizedMessage)
         }
 
         val newItems = getThreadItems()
@@ -1731,9 +1734,10 @@ class ThreadActivity : SimpleActivity() {
                 refreshMessages()
             }
         }
-        messagesDB.insertOrUpdate(message)
+        messagesDB.insertOrUpdate(categorizedMessage)
+        refreshConversationCategoryLabel(categorizedMessage.threadId)
         if (shouldUnarchive()) {
-            updateConversationArchivedStatus(message.threadId, false)
+            updateConversationArchivedStatus(categorizedMessage.threadId, false)
             refreshConversations()
         }
     }
