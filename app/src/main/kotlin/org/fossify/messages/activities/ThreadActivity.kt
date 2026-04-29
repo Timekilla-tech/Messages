@@ -113,6 +113,7 @@ import org.fossify.messages.databinding.ItemSelectedContactBinding
 import org.fossify.messages.dialogs.InvalidNumberDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.dialogs.ScheduleMessageDialog
+import org.fossify.messages.dialogs.SetCategoryDialog
 import org.fossify.messages.extensions.clearExpiredScheduledMessages
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.conversationsDB
@@ -125,6 +126,7 @@ import org.fossify.messages.extensions.deleteSmsDraft
 import org.fossify.messages.extensions.dialNumber
 import org.fossify.messages.extensions.emptyMessagesRecycleBinForConversation
 import org.fossify.messages.extensions.filterNotInByKey
+import org.fossify.messages.extensions.getAllCategories
 import org.fossify.messages.extensions.getAddresses
 import org.fossify.messages.extensions.getDefaultKeyboardHeight
 import org.fossify.messages.extensions.getFileSizeFromUri
@@ -206,6 +208,7 @@ class ThreadActivity : SimpleActivity() {
     private var currentSIMCardIndex = 0
     private var isActivityVisible = false
     private var refreshedSinceSent = false
+    private var cachedCategoryName = "" // Cache category to prevent flashing
     private var threadItems = ArrayList<ThreadItem>()
     private var bus: EventBus? = null
     private var conversation: Conversation? = null
@@ -288,7 +291,11 @@ class ThreadActivity : SimpleActivity() {
         ensureBackgroundThread {
             val newConv = conversationsDB.getConversationWithThreadId(threadId)
             if (newConv != null) {
-                conversation = newConv
+                conversation = if (newConv.category.isBlank() && cachedCategoryName.isNotBlank()) {
+                    newConv.copy(category = cachedCategoryName)
+                } else {
+                    newConv
+                }
                 runOnUiThread {
                     setupThreadTitle()
                 }
@@ -392,6 +399,7 @@ class ThreadActivity : SimpleActivity() {
             R.id.archive -> archiveConversation()
             R.id.unarchive -> unarchiveConversation()
             R.id.rename_conversation -> renameConversation()
+            R.id.set_category -> setCategory()
             R.id.conversation_details -> launchConversationDetails(threadId)
             R.id.add_number_to_contact -> addNumberToContact()
             R.id.copy_number -> copyNumberToClipboard()
@@ -817,7 +825,16 @@ class ThreadActivity : SimpleActivity() {
 
     private fun setupConversation() {
         ensureBackgroundThread {
-            conversation = conversationsDB.getConversationWithThreadId(threadId)
+            val loadedConversation = conversationsDB.getConversationWithThreadId(threadId)
+            conversation = if (
+                loadedConversation != null &&
+                loadedConversation.category.isBlank() &&
+                cachedCategoryName.isNotBlank()
+            ) {
+                loadedConversation.copy(category = cachedCategoryName)
+            } else {
+                loadedConversation
+            }
         }
     }
 
@@ -1009,6 +1026,85 @@ class ThreadActivity : SimpleActivity() {
             title
         } else {
             participants.getThreadTitle()
+        }
+        
+        // Setup category label immediately
+        updateCategoryLabel()
+    }
+
+    private fun updateCategoryLabel() {
+        val categoryName = (conversation?.category ?: cachedCategoryName).trim()
+        
+        // If we already have a cached category and it's not empty, keep showing it
+        if (categoryName.isEmpty() && cachedCategoryName.isNotEmpty()) {
+            // Use cached value instead
+            val cachedCategory = cachedCategoryName
+            binding.threadCategoryLabel.apply {
+                if (text != cachedCategory) {
+                    text = cachedCategory
+                }
+                if (visibility != View.VISIBLE) {
+                    visibility = View.VISIBLE
+                }
+            }
+            applyCategoryColor(cachedCategory)
+            return
+        }
+        
+        // Update cache if we have a new non-empty category
+        if (categoryName.isNotEmpty()) {
+            cachedCategoryName = categoryName
+        }
+        
+        if (categoryName.isEmpty()) {
+            // Only hide if we don't have a cached value either
+            if (cachedCategoryName.isEmpty()) {
+                binding.threadCategoryLabel.visibility = View.GONE
+            }
+            return
+        }
+        
+        // Update label text and visibility
+        binding.threadCategoryLabel.apply {
+            if (text != categoryName) {
+                text = categoryName
+            }
+            if (visibility != View.VISIBLE) {
+                visibility = View.VISIBLE
+            }
+        }
+        
+        // Load category color asynchronously
+        applyCategoryColor(categoryName)
+    }
+    
+    private fun applyCategoryColor(categoryName: String) {
+        ensureBackgroundThread {
+            try {
+                val categories = getAllCategories()
+                val category = categories.find { it.name == categoryName }
+                
+                runOnUiThread {
+                    // Only update if still visible and not destroyed
+                    if (!isFinishing && !isDestroyed && binding.threadCategoryLabel.visibility == View.VISIBLE) {
+                        binding.threadCategoryLabel.apply {
+                            if (category != null) {
+                                try {
+                                    val bgDrawable = background
+                                    bgDrawable?.mutate()?.setTint(category.color)
+                                    setTextColor(category.color.getContrastColor())
+                                } catch (_: Exception) {
+                                    setTextColor(getProperPrimaryColor())
+                                }
+                            } else {
+                                setTextColor(getProperPrimaryColor())
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                // Silently ignore exceptions
+            }
         }
     }
 
@@ -1259,6 +1355,21 @@ class ThreadActivity : SimpleActivity() {
                 conversation = renameConversation(conversation!!, newTitle = title)
                 runOnUiThread {
                     setupThreadTitle()
+                }
+            }
+        }
+    }
+
+    private fun setCategory() {
+        SetCategoryDialog(this, conversation?.category ?: "") { selectedCategory ->
+            if (conversation != null) {
+                ensureBackgroundThread {
+                    conversation!!.category = selectedCategory
+                    cachedCategoryName = selectedCategory // Update cache
+                    conversationsDB.insertOrUpdate(conversation!!)
+                    runOnUiThread {
+                        updateCategoryLabel()
+                    }
                 }
             }
         }

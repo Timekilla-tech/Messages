@@ -11,13 +11,38 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/thread_toolbar"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/color_primary"
-            app:menu="@menu/menu_thread"
-            app:titleTextAppearance="@style/AppTheme.ActionBar.TitleTextStyle" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/thread_toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@color/color_primary"
+                app:menu="@menu/menu_thread"
+                app:titleTextAppearance="@style/AppTheme.ActionBar.TitleTextStyle" />
+
+            <org.fossify.commons.views.MyTextView
+                android:id="@+id/thread_category_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/activity_margin"
+                android:layout_marginEnd="@dimen/activity_margin"
+                android:layout_marginBottom="@dimen/small_margin"
+                android:background="@drawable/chip_rounded"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingStart="8dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="2dp"
+                android:visibility="gone"
+                tools:text="Blocked"
+                tools:visibility="visible" />
+
+        </LinearLayout>
 
     </org.fossify.commons.views.MyAppBarLayout>
 

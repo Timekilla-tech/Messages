@@ -24,17 +24,42 @@
         tools:src="@mipmap/ic_launcher" />
 
     <org.fossify.commons.views.MyTextView
+        android:id="@+id/category_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/small_margin"
+        android:background="@drawable/chip_rounded"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:maxWidth="140dp"
+        android:paddingStart="8dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:textDirection="locale"
+        android:textSize="@dimen/list_tertiary_text_size"
+        android:visibility="gone"
+        app:layout_constrainedWidth="true"
+        app:layout_constraintBottom_toBottomOf="@id/conversation_address"
+        app:layout_constraintEnd_toStartOf="@+id/conversation_date"
+        app:layout_constraintStart_toEndOf="@id/conversation_address"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0"
+        tools:text="Blocked"
+        tools:visibility="visible" />
+
+    <org.fossify.commons.views.MyTextView
         android:id="@+id/conversation_address"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/activity_margin"
+        android:layout_height="21dp"
+        android:layout_marginEnd="@dimen/activity_margin"
         android:ellipsize="end"
         android:maxLines="1"
         android:textAlignment="viewStart"
         android:textDirection="locale"
         android:textSize="@dimen/list_primary_text_size"
         app:layout_constraintBottom_toTopOf="@id/conversation_body_short"
-        app:layout_constraintEnd_toStartOf="@id/conversation_date"
+        app:layout_constraintEnd_toStartOf="@id/category_label"
         app:layout_constraintStart_toEndOf="@id/conversation_image"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="John" />
@@ -112,4 +137,5 @@
         app:layout_constraintTop_toTopOf="@id/conversation_body_short"
         tools:text="42"
         tools:visibility="visible" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

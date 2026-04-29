@@ -60,6 +60,7 @@ import org.fossify.messages.R
 import org.fossify.messages.adapters.ConversationsAdapter
 import org.fossify.messages.adapters.SearchResultsAdapter
 import org.fossify.messages.databinding.ActivityMainBinding
+import org.fossify.messages.extensions.categoryDB
 import org.fossify.messages.extensions.checkAndDeleteOldRecycleBinMessages
 import org.fossify.messages.extensions.clearAllMessagesIfNeeded
 import org.fossify.messages.extensions.clearExpiredScheduledMessages
@@ -78,6 +79,7 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.THREAD_ID
 import org.fossify.messages.helpers.THREAD_TITLE
+import org.fossify.messages.models.Category
 import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
 import org.fossify.messages.models.Message
@@ -639,8 +641,9 @@ class MainActivity : SimpleActivity() {
                 val searchQuery = "%$text%"
                 val messages = messagesDB.getMessagesWithText(searchQuery)
                 val conversations = conversationsDB.getConversationsWithText(searchQuery)
+                val categories = categoryDB.getCategoryWithText(searchQuery)
                 if (text == lastSearchedText) {
-                    showSearchResults(messages, conversations, text)
+                    showSearchResults(messages, conversations, categories, text)
                 }
             }
         } else {
@@ -652,6 +655,7 @@ class MainActivity : SimpleActivity() {
     private fun showSearchResults(
         messages: List<Message>,
         conversations: List<Conversation>,
+        categories: List<Category>,
         searchedText: String,
     ) {
         val searchResults = ArrayList<SearchResult>()
@@ -668,7 +672,8 @@ class MainActivity : SimpleActivity() {
                 snippet = conversation.phoneNumber,
                 date = date,
                 threadId = conversation.threadId,
-                photoUri = conversation.photoUri
+                photoUri = conversation.photoUri,
+                category = conversation.category
             )
             searchResults.add(searchResult)
         }
@@ -692,7 +697,8 @@ class MainActivity : SimpleActivity() {
                 snippet = message.body,
                 date = date,
                 threadId = message.threadId,
-                photoUri = message.senderPhotoUri
+                photoUri = message.senderPhotoUri,
+                category = categories.find { it.id == message.categoryId }?.name ?: ""
             )
             searchResults.add(searchResult)
         }
