@@ -28,6 +28,11 @@
     </plurals>
 
     <string name="new_conversation">Шинэ харилцан яриа</string>
+    <string name="inbox_group_today">Өнөөдөр</string>
+    <string name="inbox_group_yesterday">Өчигдөр</string>
+    <string name="inbox_group_this_week">Энэ долоо хоног</string>
+    <string name="inbox_group_this_month">Энэ сар</string>
+    <string name="inbox_group_older">Хуучин</string>
     <string name="add_contact_or_number">Харилцах хүн эсвэл дугаар нэмэх…</string>
     <string name="suggestions">Санал болголтууд</string>
 
