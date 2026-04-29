@@ -44,8 +44,10 @@ class DirectReplyReceiver : BroadcastReceiver() {
                         threadId = threadId, includeScheduledMessages = false, limit = 1
                     ).lastOrNull()
                     if (message != null) {
-                        context.messagesDB.insertOrUpdate(message)
-                        messageId = message.id
+                        val categorizedMessage = context.withAutoCategory(message)
+                        context.messagesDB.insertOrUpdate(categorizedMessage)
+                        context.refreshConversationCategoryLabel(categorizedMessage.threadId)
+                        messageId = categorizedMessage.id
 
                         context.updateLastConversationMessage(threadId)
                     }

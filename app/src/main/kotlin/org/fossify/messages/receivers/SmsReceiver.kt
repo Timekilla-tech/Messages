@@ -21,7 +21,9 @@ import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.messagesDB
 import org.fossify.messages.extensions.shouldUnarchive
 import org.fossify.messages.extensions.showReceivedMessageNotification
+import org.fossify.messages.extensions.refreshConversationCategoryLabel
 import org.fossify.messages.extensions.updateConversationArchivedStatus
+import org.fossify.messages.extensions.withAutoCategory
 import org.fossify.messages.helpers.ReceiverUtils.isMessageFilteredOut
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.helpers.refreshMessages
@@ -135,7 +137,9 @@ class SmsReceiver : BroadcastReceiver() {
             subscriptionId = subscriptionId
         )
 
-        context.messagesDB.insertOrUpdate(message)
+        val categorizedMessage = context.withAutoCategory(message)
+        context.messagesDB.insertOrUpdate(categorizedMessage)
+        context.refreshConversationCategoryLabel(threadId)
 
         if (context.shouldUnarchive()) {
             context.updateConversationArchivedStatus(threadId, false)

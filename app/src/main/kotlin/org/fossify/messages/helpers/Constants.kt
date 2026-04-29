@@ -49,6 +49,8 @@ const val IS_ARCHIVE_AVAILABLE = "is_archive_available"
 const val CUSTOM_NOTIFICATIONS = "custom_notifications"
 const val IS_LAUNCHED_FROM_SHORTCUT = "is_launched_from_shortcut"
 const val KEEP_CONVERSATIONS_ARCHIVED = "keep_conversations_archived"
+const val SAVED_VIEWS_JSON = "saved_views_json"
+const val LAST_SAVED_VIEW_ID = "last_saved_view_id"
 
 private const val PATH = "org.fossify.org.fossify.messages.action."
 const val MARK_AS_READ = PATH + "mark_as_read"

@@ -13,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.DiffUtil
@@ -64,6 +65,7 @@ import org.fossify.messages.dialogs.MessageDetailsDialog
 import org.fossify.messages.dialogs.SelectTextDialog
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.getContactFromAddress
+import org.fossify.messages.extensions.getAllCategories
 import org.fossify.messages.extensions.isImageMimeType
 import org.fossify.messages.extensions.isVCardMimeType
 import org.fossify.messages.extensions.isVideoMimeType
@@ -88,6 +90,7 @@ import org.fossify.messages.models.ThreadItem.ThreadError
 import org.fossify.messages.models.ThreadItem.ThreadSending
 import org.fossify.messages.models.ThreadItem.ThreadSent
 import org.joda.time.DateTime
+import java.util.Locale
 
 class ThreadAdapter(
     activity: SimpleActivity,
@@ -97,6 +100,7 @@ class ThreadAdapter(
     val deleteMessages: (messages: List<Message>, toRecycleBin: Boolean, fromRecycleBin: Boolean) -> Unit
 ) : MyRecyclerViewListAdapter<ThreadItem>(activity, recyclerView, ThreadItemDiffCallback(), itemClick) {
     private var fontSize = activity.getTextSize()
+    private var categoryColors = HashMap<String, Int>()
 
     @SuppressLint("MissingPermission")
     private val hasMultipleSIMCards = (activity.subscriptionManagerCompat().activeSubscriptionInfoList?.size ?: 0) > 1
@@ -106,12 +110,16 @@ class ThreadAdapter(
         private const val MAX_MEDIA_HEIGHT_RATIO = 3
         private const val SIM_BITS = 21
         private const val SIM_MASK = (1L shl SIM_BITS) - 1
+        private const val MIN_TEXT_CONTRAST_RATIO = 4.5
+        private const val CONTRAST_BLEND_STEP = 0.12f
+        private const val MAX_CONTRAST_ADJUSTMENT_STEPS = 6
     }
 
     init {
         setupDragListener(true)
         setHasStableIds(true)
         (recyclerView.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+        updateCategoryColors()
     }
 
     override fun getActionMenuId() = R.menu.cab_thread
@@ -386,6 +394,8 @@ class ThreadAdapter(
                 setupSentMessageView(messageBinding = this, message = message)
             }
 
+            setupMessageCategoryChip(this, message, isSentMessage = !message.isReceivedMessage())
+
             if (message.attachment?.attachments?.isNotEmpty() == true) {
                 threadMessageAttachmentsHolder.beVisible()
                 threadMessageAttachmentsHolder.removeAllViews()
@@ -404,6 +414,65 @@ class ThreadAdapter(
                 threadMessagePlayOutline.beGone()
             }
         }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun updateCategoryColors() {
+        ensureBackgroundThread {
+            val newColors = HashMap<String, Int>()
+            activity.getAllCategories().forEach {
+                if (it.name.isNotBlank()) {
+                    newColors[normalizeCategoryKey(it.name)] = it.color
+                }
+            }
+
+            activity.runOnUiThread {
+                if (categoryColors.hashCode() != newColors.hashCode()) {
+                    categoryColors = newColors
+                    notifyDataSetChanged()
+                }
+            }
+        }
+    }
+
+    private fun setupMessageCategoryChip(
+        messageBinding: ItemMessageBinding,
+        message: Message,
+        isSentMessage: Boolean
+    ) {
+        val categoryName = message.categoryName.trim()
+        messageBinding.threadMessageCategoryChip.apply {
+            if (categoryName.isEmpty()) {
+                beGone()
+                return
+            }
+
+            text = categoryName
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 0.75f)
+
+            val categoryColor = categoryColors[normalizeCategoryKey(categoryName)] ?: activity.getProperPrimaryColor()
+            val (chipColor, chipTextColor) = getAccessibleBubbleColors(categoryColor)
+            background = AppCompatResources.getDrawable(activity, R.drawable.chip_rounded)
+            background.applyColorFilter(chipColor)
+            setTextColor(chipTextColor)
+
+            updateLayoutParams<RelativeLayout.LayoutParams> {
+                if (isSentMessage) {
+                    removeRule(RelativeLayout.ALIGN_START)
+                    removeRule(RelativeLayout.END_OF)
+                    addRule(RelativeLayout.ALIGN_PARENT_END)
+                } else {
+                    removeRule(RelativeLayout.ALIGN_PARENT_END)
+                    addRule(RelativeLayout.END_OF, messageBinding.threadMessageSenderPhoto.id)
+                    addRule(RelativeLayout.ALIGN_START, messageBinding.threadMessageBody.id)
+                }
+            }
+            beVisible()
+        }
+    }
+
+    private fun normalizeCategoryKey(name: String): String {
+        return name.trim().lowercase(Locale.ROOT)
     }
 
     private fun setupReceivedMessageView(messageBinding: ItemMessageBinding, message: Message) {
@@ -427,8 +496,16 @@ class ThreadAdapter(
 
             threadMessageBody.apply {
                 background = AppCompatResources.getDrawable(activity, R.drawable.item_received_background)
-                setTextColor(textColor)
-                setLinkTextColor(activity.getProperPrimaryColor())
+                val categoryColor = resolveCategoryColor(message)
+                if (categoryColor != null) {
+                    val (bubbleColor, contrastColor) = getAccessibleBubbleColors(categoryColor)
+                    background.applyColorFilter(bubbleColor)
+                    setTextColor(contrastColor)
+                    setLinkTextColor(contrastColor)
+                } else {
+                    setTextColor(textColor)
+                    setLinkTextColor(activity.getProperPrimaryColor())
+                }
             }
 
             if (!activity.isFinishing && !activity.isDestroyed) {
@@ -459,8 +536,8 @@ class ThreadAdapter(
                 applyTo(threadMessageHolder)
             }
 
-            val primaryColor = activity.getProperPrimaryColor()
-            val contrastColor = primaryColor.getContrastColor()
+            val baseBubbleColor = resolveCategoryColor(message) ?: activity.getProperPrimaryColor()
+            val (bubbleColor, contrastColor) = getAccessibleBubbleColors(baseBubbleColor)
 
             threadMessageBody.apply {
                 updateLayoutParams<RelativeLayout.LayoutParams> {
@@ -469,7 +546,7 @@ class ThreadAdapter(
                 }
 
                 background = AppCompatResources.getDrawable(activity, R.drawable.item_sent_background)
-                background.applyColorFilter(primaryColor)
+                background.applyColorFilter(bubbleColor)
                 setTextColor(contrastColor)
                 setLinkTextColor(contrastColor)
 
@@ -488,6 +565,39 @@ class ThreadAdapter(
                 }
             }
         }
+    }
+
+    private fun resolveCategoryColor(message: Message): Int? {
+        val categoryName = message.categoryName.trim()
+        if (categoryName.isEmpty()) {
+            return null
+        }
+
+        return categoryColors[normalizeCategoryKey(categoryName)]
+    }
+
+    private fun getAccessibleBubbleColors(baseColor: Int): Pair<Int, Int> {
+        var bubbleColor = baseColor
+        repeat(MAX_CONTRAST_ADJUSTMENT_STEPS) {
+            val textColor = getReadableTextColor(bubbleColor)
+            if (ColorUtils.calculateContrast(textColor, bubbleColor) >= MIN_TEXT_CONTRAST_RATIO) {
+                return bubbleColor to textColor
+            }
+
+            bubbleColor = if (textColor == Color.WHITE) {
+                ColorUtils.blendARGB(bubbleColor, Color.BLACK, CONTRAST_BLEND_STEP)
+            } else {
+                ColorUtils.blendARGB(bubbleColor, Color.WHITE, CONTRAST_BLEND_STEP)
+            }
+        }
+
+        return bubbleColor to getReadableTextColor(bubbleColor)
+    }
+
+    private fun getReadableTextColor(backgroundColor: Int): Int {
+        val whiteContrast = ColorUtils.calculateContrast(Color.WHITE, backgroundColor)
+        val blackContrast = ColorUtils.calculateContrast(Color.BLACK, backgroundColor)
+        return if (whiteContrast >= blackContrast) Color.WHITE else Color.BLACK
     }
 
     private fun setupImageView(holder: ViewHolder, binding: ItemMessageBinding, message: Message, attachment: Attachment) = binding.apply {

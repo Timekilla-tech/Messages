@@ -7,32 +7,40 @@ import org.fossify.messages.extensions.getAllCategories
 
 class SetCategoryDialog(
     activity: SimpleActivity,
-    private val currentCategory: String = "",
+    currentCategory: String = "",
     val callback: (category: String) -> Unit
 ) {
 
     init {
         val categories = activity.getAllCategories()
-        val categoryNames = mutableListOf<String>()
-        categoryNames.add("") // Add empty option to clear category
-        categoryNames.addAll(categories.map { it.name })
+        val categoryNames = categories.map { it.name }
+        val selected = currentCategory
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+            .toMutableSet()
+        val checkedItems = categoryNames.map { it in selected }.toBooleanArray()
 
-        val checkedItem = categoryNames.indexOfFirst { it == currentCategory }
-
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.set_category)
-            .setSingleChoiceItems(
-                categoryNames.toTypedArray(),
-                checkedItem
-            ) { dialog, which ->
-                val selectedCategory = categoryNames.getOrNull(which) ?: ""
-                callback(selectedCategory)
-                dialog.dismiss()
+        val builder = AlertDialog.Builder(activity)
+        builder.setTitle(R.string.set_category)
+        builder.setMultiChoiceItems(categoryNames.toTypedArray(), checkedItems) { _, which, isChecked ->
+            val name = categoryNames.getOrNull(which) ?: return@setMultiChoiceItems
+            if (isChecked) {
+                selected.add(name)
+            } else {
+                selected.remove(name)
             }
-            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
+        }
+        builder.setPositiveButton(android.R.string.ok) { _, _ ->
+            val normalized = categoryNames.filter { it in selected }.joinToString(", ")
+            callback(normalized)
+        }
+        builder.setNeutralButton(R.string.clear) { _, _ ->
+            callback("")
+        }
+        builder.setNegativeButton(android.R.string.cancel, null)
+        builder.show()
     }
 }
 

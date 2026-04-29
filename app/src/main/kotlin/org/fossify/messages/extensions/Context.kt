@@ -79,6 +79,7 @@ import org.fossify.messages.models.NamePhoto
 import org.fossify.messages.models.RecycleBinMessage
 import org.xmlpull.v1.XmlPullParserException
 import java.io.FileNotFoundException
+import java.util.Locale
 import kotlin.time.Duration.Companion.minutes
 
 val Context.config: Config
@@ -121,6 +122,12 @@ fun Context.getMessages(
     includeScheduledMessages: Boolean = true,
     limit: Int = MESSAGES_LIMIT,
 ): ArrayList<Message> {
+    val localMessagesById = try {
+        messagesDB.getNonRecycledThreadMessages(threadId).associateBy { it.id }
+    } catch (_: Exception) {
+        emptyMap()
+    }
+
     val uri = Sms.CONTENT_URI
     val projection = arrayOf(
         Sms._ID,
@@ -178,6 +185,7 @@ fun Context.getMessages(
             )
         }
         val isMMS = false
+        val localMessage = localMessagesById[id]?.takeIf { !it.isMMS }
         val message =
             Message(
                 id = id,
@@ -195,13 +203,13 @@ fun Context.getMessages(
                 senderPhotoUri = photoUri,
                 subscriptionId = subscriptionId,
                 isScheduled = false,
-                categoryName = "",
-                categoryId = 0
+                categoryName = localMessage?.categoryName ?: "",
+                categoryId = localMessage?.categoryId ?: 0
             )
         messages.add(message)
     }
 
-    messages.addAll(getMMS(threadId, sortOrder, dateFrom))
+    messages.addAll(getMMS(threadId, sortOrder, dateFrom, localMessagesById))
 
     if (includeScheduledMessages) {
         try {
@@ -227,7 +235,18 @@ fun Context.getMMS(
     threadId: Long? = null,
     sortOrder: String? = null,
     dateFrom: Int = -1,
+    localMessagesById: Map<Long, Message>? = null,
 ): ArrayList<Message> {
+    val resolvedLocalMessagesById = localMessagesById ?: if (threadId != null) {
+        try {
+            messagesDB.getNonRecycledThreadMessages(threadId).associateBy { it.id }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    } else {
+        emptyMap()
+    }
+
     val uri = Mms.CONTENT_URI
     val projection = arrayOf(
         Mms._ID,
@@ -279,6 +298,7 @@ fun Context.getMMS(
             senderPhotoUri = namePhoto.photoUri ?: ""
         }
 
+        val localMessage = resolvedLocalMessagesById[mmsId]?.takeIf { it.isMMS }
         val message =
             Message(
                 id = mmsId,
@@ -296,8 +316,8 @@ fun Context.getMMS(
                 senderPhotoUri = senderPhotoUri,
                 subscriptionId = subscriptionId,
                 isScheduled = false,
-                categoryName = "",
-                categoryId = 0
+                categoryName = localMessage?.categoryName ?: "",
+                categoryId = localMessage?.categoryId ?: 0
             )
         messages.add(message)
 
@@ -439,6 +459,8 @@ fun Context.getConversations(
             val archived =
                 if (archiveAvailable) cursor.getIntValue(Threads.ARCHIVED) == 1 else false
             val unreadCount = if (!read) unreadMap[id] ?: 0 else 0
+            
+            val cachedConv = conversationsDB.getConversationWithThreadId(id)
             val conversation = Conversation(
                 threadId = id,
                 snippet = snippet,
@@ -450,6 +472,7 @@ fun Context.getConversations(
                 phoneNumber = phoneNumbers.first(),
                 isArchived = archived,
                 unreadCount = unreadCount,
+                category = cachedConv?.category ?: ""
             )
             conversations.add(conversation)
         }
@@ -612,8 +635,8 @@ fun Context.getMessageRecipientAddress(messageId: Long): String {
     try {
         val cursor = contentResolver.query(uri, projection, selection, selectionArgs, null)
         cursor?.use {
-            if (cursor.moveToFirst()) {
-                return cursor.getStringValue(Sms.ADDRESS)
+            if (it.moveToFirst()) {
+                return it.getStringValue(Sms.ADDRESS)
             }
         }
     } catch (_: Exception) {
@@ -721,8 +744,8 @@ fun Context.getPhoneNumberFromAddressId(canonicalAddressId: Int): String {
     try {
         val cursor = contentResolver.query(uri, projection, selection, selectionArgs, null)
         cursor?.use {
-            if (cursor.moveToFirst()) {
-                return cursor.getStringValue(Mms.Addr.ADDRESS)
+            if (it.moveToFirst()) {
+                return it.getStringValue(Mms.Addr.ADDRESS)
             }
         }
     } catch (e: Exception) {
@@ -732,7 +755,7 @@ fun Context.getPhoneNumberFromAddressId(canonicalAddressId: Int): String {
 }
 
 fun Context.getSuggestedContacts(
-    privateContacts: ArrayList<SimpleContact>,
+    privateContacts: ArrayList<SimpleContact> = ArrayList(),
 ): ArrayList<SimpleContact> {
     val contacts = ArrayList<SimpleContact>()
     val uri = Sms.CONTENT_URI
@@ -1433,7 +1456,11 @@ fun Context.updateCategory(
 ) {
     ensureBackgroundThread {
         try {
+            val previousCategory = categoryDB.getCategoryById(category.id)
             categoryDB.update(category)
+            if (previousCategory != null) {
+                replaceCategoryNameInConversations(previousCategory.name, category.name)
+            }
             applyCategoryToExistingMessages(category)
             callback?.invoke()
         } catch (e: Exception) {
@@ -1526,6 +1553,24 @@ fun Context.isMessageMatchingCategory(
     }
 }
 
+fun Context.withAutoCategory(message: Message): Message {
+    val matchingCategory = getAllCategories()
+        .sortedBy { it.id }
+        .firstOrNull { isMessageMatchingCategory(message, it) }
+
+    if (matchingCategory == null) {
+        return message
+    }
+
+    val alreadyAssigned = message.categoryId == matchingCategory.id &&
+        message.categoryName.equals(matchingCategory.name, ignoreCase = true)
+    if (alreadyAssigned) {
+        return message
+    }
+
+    return message.copy(categoryId = matchingCategory.id, categoryName = matchingCategory.name)
+}
+
 private fun Context.applyCategoryToExistingMessages(category: org.fossify.messages.models.Category) {
     val affectedThreadIds = HashSet<Long>()
     val allMessages = messagesDB.getAll()
@@ -1551,15 +1596,52 @@ private fun Context.applyCategoryToExistingMessages(category: org.fossify.messag
     affectedThreadIds.forEach { refreshConversationCategoryLabel(it) }
 }
 
-private fun Context.refreshConversationCategoryLabel(threadId: Long) {
-    val conversation = conversationsDB.getConversationWithThreadId(threadId) ?: return
-    val newestCategorizedMessage = messagesDB.getThreadMessages(threadId)
-        .filter { it.categoryName.isNotBlank() }
-        .maxWithOrNull(compareBy<Message> { it.date }.thenBy { it.id })
+private fun Context.replaceCategoryNameInConversations(oldName: String, newName: String) {
+    val normalizedOld = oldName.trim()
+    val normalizedNew = newName.trim()
+    if (normalizedOld.isEmpty() || normalizedNew.isEmpty() || normalizedOld == normalizedNew) {
+        return
+    }
 
-    val conversationCategory = newestCategorizedMessage?.categoryName.orEmpty()
-    if (conversation.category != conversationCategory) {
-        conversationsDB.insertOrUpdate(conversation.copy(category = conversationCategory))
+    val allConversations = (conversationsDB.getNonArchived() + conversationsDB.getAllArchived())
+        .distinctBy { it.threadId }
+
+    allConversations.forEach { conversation ->
+        val updatedCategories = conversation.category
+            .split(",")
+            .map { label ->
+                val trimmed = label.trim()
+                if (trimmed.equals(normalizedOld, ignoreCase = true)) normalizedNew else trimmed
+            }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .joinToString(", ")
+
+        if (updatedCategories != conversation.category) {
+            conversationsDB.insertOrUpdate(conversation.copy(category = updatedCategories))
+        }
     }
 }
 
+fun Context.refreshConversationCategoryLabel(threadId: Long) {
+    val conversation = conversationsDB.getConversationWithThreadId(threadId) ?: return
+    val categorizedMessages = messagesDB.getThreadMessages(threadId)
+        .filter { it.categoryName.isNotBlank() }
+
+    val existingCategories = conversation.category
+        .split(",")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+
+    val messageCategories = categorizedMessages
+        .map { it.categoryName.trim() }
+        .filter { it.isNotEmpty() }
+
+    val conversationCategories = (existingCategories + messageCategories)
+        .distinctBy { it.lowercase(Locale.ROOT) }
+        .joinToString(", ")
+
+    if (conversation.category != conversationCategories) {
+        conversationsDB.insertOrUpdate(conversation.copy(category = conversationCategories))
+    }
+}
