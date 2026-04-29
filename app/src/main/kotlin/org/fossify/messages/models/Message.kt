@@ -69,6 +69,7 @@ data class Message(
                 old.senderName == new.senderName &&
                 old.senderPhotoUri == new.senderPhotoUri &&
                 old.isScheduled == new.isScheduled &&
+                old.categoryName == new.categoryName &&
                 old.categoryId == new.categoryId
         }
     }

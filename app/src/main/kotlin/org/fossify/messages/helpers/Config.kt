@@ -149,6 +149,14 @@ class Config(context: Context) : BaseConfig(context) {
         set(keepConversationsArchived) = prefs.edit()
             .putBoolean(KEEP_CONVERSATIONS_ARCHIVED, keepConversationsArchived).apply()
 
+    var savedViewsJson: String
+        get() = prefs.getString(SAVED_VIEWS_JSON, "")!!
+        set(savedViewsJson) = prefs.edit().putString(SAVED_VIEWS_JSON, savedViewsJson).apply()
+
+    var lastSavedViewId: String
+        get() = prefs.getString(LAST_SAVED_VIEW_ID, "main")!!
+        set(lastSavedViewId) = prefs.edit().putString(LAST_SAVED_VIEW_ID, lastSavedViewId).apply()
+
     var inboxSwipeStartAction: Int
         get() = sanitizeInboxSwipeAction(
             prefs.getInt(INBOX_SWIPE_START_ACTION, INBOX_SWIPE_ACTION_ARCHIVE)

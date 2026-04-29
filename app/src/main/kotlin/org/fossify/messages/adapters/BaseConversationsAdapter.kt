@@ -1,12 +1,16 @@
 package org.fossify.messages.adapters
 
 import android.annotation.SuppressLint
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.os.Parcelable
+import android.text.TextUtils
 import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -22,6 +26,7 @@ import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.SimpleContactsHelper
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
+import org.fossify.messages.R
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.databinding.ItemConversationBinding
 import org.fossify.messages.extensions.config
@@ -183,22 +188,13 @@ abstract class BaseConversationsAdapter(
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 1.2f)
             }
 
-            val categoryName = conversation.category.trim()
-            if (categoryName.isNotEmpty()) {
-                categoryLabel.text = categoryName
-                val bgDrawable = categoryLabel.background
-                // Apply tint by setting background color programmatically if possible
-                try {
-                    val color = categoryColors[normalizeCategoryKey(categoryName)] ?: properPrimaryColor
-                    bgDrawable?.mutate()?.setTint(color)
-                    categoryLabel.setTextColor(color.getContrastColor())
-                } catch (_: Exception) {
-                    // Fallback: set text color only
-                    categoryLabel.setTextColor(properPrimaryColor)
-                }
-                categoryLabel.visibility = View.VISIBLE
+            val categoryNames = parseCategoryNames(conversation.category)
+            if (categoryNames.isNotEmpty()) {
+                renderCategoryChips(categoryLabels, categoryNames)
+                categoryLabels.visibility = View.VISIBLE
             } else {
-                categoryLabel.visibility = View.GONE
+                categoryLabels.removeAllViews()
+                categoryLabels.visibility = View.GONE
             }
 
             conversationBodyShort.apply {
@@ -254,6 +250,59 @@ abstract class BaseConversationsAdapter(
         return name.trim().lowercase(Locale.ROOT)
     }
 
+    private fun parseCategoryNames(raw: String): List<String> {
+        return raw
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { normalizeCategoryKey(it) }
+    }
+
+    private fun renderCategoryChips(container: LinearLayout, names: List<String>) {
+        container.removeAllViews()
+        val visibleNames = names.take(MAX_VISIBLE_CATEGORY_CHIPS)
+        visibleNames.forEach { name ->
+            val color = categoryColors[normalizeCategoryKey(name)] ?: properPrimaryColor
+            container.addView(createCategoryChip(name, color))
+        }
+
+        val hiddenCount = names.size - visibleNames.size
+        if (hiddenCount > 0) {
+            container.addView(createCategoryChip("+$hiddenCount", properPrimaryColor))
+        }
+    }
+
+    private fun createCategoryChip(textValue: String, color: Int): TextView {
+        val horizontalPadding = 8.dp
+        val verticalPadding = 2.dp
+        val marginEnd = 4.dp
+
+        return TextView(activity).apply {
+            text = textValue
+            maxWidth = 140.dp
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
+            setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+            setTextColor(color.getContrastColor())
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 0.7f)
+            background = AppCompatResources.getDrawable(activity, R.drawable.chip_rounded)
+            backgroundTintList = ColorStateList.valueOf(color)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                rightMargin = marginEnd
+            }
+        }
+    }
+
+    private val Int.dp: Int
+        get() = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            toFloat(),
+            activity.resources.displayMetrics
+        ).toInt()
+
     private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
         view.apply {
             beVisibleIf(isUnread)
@@ -291,5 +340,6 @@ abstract class BaseConversationsAdapter(
 
     companion object {
         private const val MAX_UNREAD_BADGE_COUNT = 99
+        private const val MAX_VISIBLE_CATEGORY_CHIPS = 3
     }
 }
