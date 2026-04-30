@@ -40,9 +40,7 @@ class AddOrEditCategoryDialog(
         val binding = DialogAddOrEditCategoryBinding.inflate(activity.layoutInflater).apply {
             if (originalCategory != null) {
                 addCategoryNameEdittext.setText(originalCategory.name)
-                addCategoryDescriptionEdittext.setText(originalCategory.description)
                 addCategoryKeywordsEdittext.setText(originalCategory.keywords)
-                addCategoryIconEdittext.setText(originalCategory.icon)
             }
 
             fun updateColorPreview() {
@@ -72,9 +70,7 @@ class AddOrEditCategoryDialog(
                     alertDialog.showKeyboard(binding.addCategoryNameEdittext)
                     alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                         val name = binding.addCategoryNameEdittext.value
-                        val description = binding.addCategoryDescriptionEdittext.value
                         val keywords = binding.addCategoryKeywordsEdittext.value
-                        val icon = binding.addCategoryIconEdittext.value
 
                         if (name.isEmpty()) {
                             activity.toast(R.string.category_name_cannot_be_empty)
@@ -86,9 +82,7 @@ class AddOrEditCategoryDialog(
                             val updatedCategory = originalCategory.copy(
                                 name = name,
                                 color = selectedColor,
-                                description = description,
                                 keywords = keywords,
-                                icon = icon
                             )
                             activity.updateCategory(updatedCategory) {
                                 callback()
@@ -99,9 +93,7 @@ class AddOrEditCategoryDialog(
                             activity.createCategory(
                                 name = name,
                                 color = selectedColor,
-                                description = description,
-                                keywords = keywords,
-                                icon = icon
+                                keywords = keywords
                             ) {
                                 callback()
                                 alertDialog.dismiss()
