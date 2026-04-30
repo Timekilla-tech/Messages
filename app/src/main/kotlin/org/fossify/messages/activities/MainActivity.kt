@@ -5,6 +5,9 @@ import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
+import android.graphics.Canvas
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
@@ -14,6 +17,8 @@ import android.widget.EditText
 import android.view.Menu
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
 import androidx.core.view.updatePadding
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.extensions.adjustAlpha
@@ -30,6 +35,7 @@ import org.fossify.commons.extensions.checkWhatsNew
 import org.fossify.commons.extensions.convertToBitmap
 import org.fossify.commons.extensions.fadeIn
 import org.fossify.commons.extensions.formatDateOrTime
+import org.fossify.commons.extensions.getContrastColor
 import org.fossify.commons.extensions.getMyContactsCursor
 import org.fossify.commons.extensions.getProperBackgroundColor
 import org.fossify.commons.extensions.getProperPrimaryColor
@@ -71,6 +77,11 @@ import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.messagesDB
 import org.fossify.messages.extensions.refreshConversationCategoryLabel
 import org.fossify.messages.helpers.ConversationAgeHeaderDecoration
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_ARCHIVE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.SavedViewsStore
 import org.fossify.messages.helpers.THREAD_ID
@@ -100,6 +111,7 @@ class MainActivity : SimpleActivity() {
     private var conversationsBaseBottomPadding = 0
     private var bus: EventBus? = null
     private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
+    private var inboxSwipeHelper: ItemTouchHelper? = null
     private val savedViewsStore by lazy { SavedViewsStore(config) }
     private val savedViewMenuIdOffset = 20_000
     private val savedViewIconOptions = listOf(
@@ -471,8 +483,6 @@ class MainActivity : SimpleActivity() {
                     )
                 }
                 if (conv != null) {
-                    // FIXME: Scheduled message date is being reset here. Conversations with
-                    //  scheduled messages will have their original date.
                     insertOrUpdateConversation(conv)
                 }
             }
@@ -510,6 +520,95 @@ class MainActivity : SimpleActivity() {
                     conversationsAdapter.currentList
                 }
                 binding.conversationsList.addItemDecoration(ageHeaderDecoration!!)
+            }
+
+            if (inboxSwipeHelper == null) {
+                val swipeBackground = ColorDrawable()
+                val archiveIcon = AppCompatResources.getDrawable(this, R.drawable.ic_archive_vector)
+                val readIcon = AppCompatResources.getDrawable(this, R.drawable.ic_check_double_vector)
+                val deleteIcon = AppCompatResources.getDrawable(this, org.fossify.commons.R.drawable.ic_delete_vector)
+
+                inboxSwipeHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.START or ItemTouchHelper.END) {
+                    override fun onMove(
+                        recyclerView: RecyclerView,
+                        viewHolder: RecyclerView.ViewHolder,
+                        target: RecyclerView.ViewHolder,
+                    ) = false
+
+                    override fun getSwipeDirs(
+                        recyclerView: RecyclerView,
+                        viewHolder: RecyclerView.ViewHolder,
+                    ): Int {
+                        if (!conversationsAdapter.canHandleSwipe()) {
+                            return 0
+                        }
+
+                        val position = viewHolder.bindingAdapterPosition
+                        if (position == RecyclerView.NO_POSITION) {
+                            return 0
+                        }
+
+                        var dirs = super.getSwipeDirs(recyclerView, viewHolder)
+                        if (conversationsAdapter.getSwipeActionForPosition(position, ItemTouchHelper.START) == INBOX_SWIPE_ACTION_NONE) {
+                            dirs = dirs and ItemTouchHelper.START.inv()
+                        }
+                        if (conversationsAdapter.getSwipeActionForPosition(position, ItemTouchHelper.END) == INBOX_SWIPE_ACTION_NONE) {
+                            dirs = dirs and ItemTouchHelper.END.inv()
+                        }
+                        return dirs
+                    }
+
+                    override fun onChildDraw(
+                        c: Canvas,
+                        recyclerView: RecyclerView,
+                        viewHolder: RecyclerView.ViewHolder,
+                        dX: Float,
+                        dY: Float,
+                        actionState: Int,
+                        isCurrentlyActive: Boolean,
+                    ) {
+                        if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX != 0f) {
+                            val position = viewHolder.bindingAdapterPosition
+                            if (position == RecyclerView.NO_POSITION) {
+                                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+                                return
+                            }
+
+                            val direction = if (dX < 0) ItemTouchHelper.START else ItemTouchHelper.END
+                            val action = conversationsAdapter.getSwipeActionForPosition(position, direction)
+                            if (action != INBOX_SWIPE_ACTION_NONE) {
+                                val itemView = viewHolder.itemView
+                                val top = itemView.top
+                                val bottom = itemView.bottom
+                                val iconTint = getProperBackgroundColor().getContrastColor()
+                                val (icon, backgroundColor) = getSwipeActionVisuals(
+                                    action = action,
+                                    archiveIcon = archiveIcon,
+                                    readIcon = readIcon,
+                                    deleteIcon = deleteIcon,
+                                )
+
+                                swipeBackground.color = backgroundColor
+                                if (dX < 0) {
+                                    swipeBackground.setBounds(itemView.right + dX.toInt(), top, itemView.right, bottom)
+                                    swipeBackground.draw(c)
+                                    drawSwipeIcon(c, icon, iconTint, itemView, alignEnd = true)
+                                } else {
+                                    swipeBackground.setBounds(itemView.left, top, itemView.left + dX.toInt(), bottom)
+                                    swipeBackground.draw(c)
+                                    drawSwipeIcon(c, icon, iconTint, itemView, alignEnd = false)
+                                }
+                            }
+                        }
+
+                        super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+                    }
+
+                    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                        conversationsAdapter.onSwiped(viewHolder.bindingAdapterPosition, direction)
+                    }
+                })
+                inboxSwipeHelper?.attachToRecyclerView(binding.conversationsList)
             }
 
             if (areSystemAnimationsEnabled) {
@@ -1004,6 +1103,50 @@ class MainActivity : SimpleActivity() {
                 (currAdapter as SearchResultsAdapter).updateItems(searchResults, searchedText)
             }
         }
+    }
+
+    private fun getSwipeActionVisuals(
+        action: Int,
+        archiveIcon: Drawable?,
+        readIcon: Drawable?,
+        deleteIcon: Drawable?,
+    ): Pair<Drawable?, Int> {
+        return when (action) {
+            INBOX_SWIPE_ACTION_ARCHIVE -> archiveIcon to getProperPrimaryColor().adjustAlpha(0.9f)
+            INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS -> readIcon to getProperTextColor().adjustAlpha(0.8f)
+            INBOX_SWIPE_ACTION_DELETE,
+            INBOX_SWIPE_ACTION_BLOCK -> deleteIcon to getProperTextColor().adjustAlpha(0.95f)
+            else -> null to getProperBackgroundColor()
+        }
+    }
+
+    private fun drawSwipeIcon(
+        canvas: Canvas,
+        icon: Drawable?,
+        tintColor: Int,
+        itemView: android.view.View,
+        alignEnd: Boolean,
+    ) {
+        icon ?: return
+        val iconHeight = icon.intrinsicHeight
+        val iconWidth = icon.intrinsicWidth
+        if (iconHeight <= 0 || iconWidth <= 0) return
+
+        val itemHeight = itemView.bottom - itemView.top
+        val iconTop = itemView.top + (itemHeight - iconHeight) / 2
+        val iconBottom = iconTop + iconHeight
+        val horizontalMargin = (itemHeight - iconHeight) / 2
+
+        val iconLeft = if (alignEnd) {
+            itemView.right - horizontalMargin - iconWidth
+        } else {
+            itemView.left + horizontalMargin
+        }
+        val iconRight = iconLeft + iconWidth
+
+        icon.mutate().setTint(tintColor)
+        icon.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+        icon.draw(canvas)
     }
 
     private fun launchRecycleBin() {

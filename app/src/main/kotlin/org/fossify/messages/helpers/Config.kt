@@ -149,6 +149,32 @@ class Config(context: Context) : BaseConfig(context) {
         set(keepConversationsArchived) = prefs.edit()
             .putBoolean(KEEP_CONVERSATIONS_ARCHIVED, keepConversationsArchived).apply()
 
+    var inboxSwipeStartAction: Int
+        get() = sanitizeInboxSwipeAction(
+            prefs.getInt(INBOX_SWIPE_START_ACTION, INBOX_SWIPE_ACTION_ARCHIVE)
+        )
+        set(action) = prefs.edit()
+            .putInt(INBOX_SWIPE_START_ACTION, sanitizeInboxSwipeAction(action)).apply()
+
+    var inboxSwipeEndAction: Int
+        get() = sanitizeInboxSwipeAction(
+            prefs.getInt(INBOX_SWIPE_END_ACTION, INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS)
+        )
+        set(action) = prefs.edit()
+            .putInt(INBOX_SWIPE_END_ACTION, sanitizeInboxSwipeAction(action)).apply()
+
+    private fun sanitizeInboxSwipeAction(action: Int): Int {
+        return when (action) {
+            INBOX_SWIPE_ACTION_NONE,
+            INBOX_SWIPE_ACTION_ARCHIVE,
+            INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS,
+            INBOX_SWIPE_ACTION_DELETE,
+            INBOX_SWIPE_ACTION_BLOCK -> action
+
+            else -> INBOX_SWIPE_ACTION_NONE
+        }
+    }
+
     var savedViewsJson: String
         get() = prefs.getString(SAVED_VIEWS_JSON, "")!!
         set(savedViewsJson) = prefs.edit().putString(SAVED_VIEWS_JSON, savedViewsJson).apply()
