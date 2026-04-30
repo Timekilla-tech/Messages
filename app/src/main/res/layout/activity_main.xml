@@ -145,4 +145,13 @@
         android:src="@drawable/ic_plus_vector"
         app:applyWindowInsets="true" />
 
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/saved_views_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="?android:attr/windowBackground"
+        app:itemHorizontalTranslationEnabled="false"
+        app:labelVisibilityMode="labeled" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

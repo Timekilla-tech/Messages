@@ -10,6 +10,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import org.fossify.messages.helpers.Converters
 import org.fossify.messages.interfaces.AttachmentsDao
+import org.fossify.messages.interfaces.CategoryDao
 import org.fossify.messages.interfaces.ConversationsDao
 import org.fossify.messages.interfaces.DraftsDao
 import org.fossify.messages.interfaces.MessageAttachmentsDao
@@ -20,6 +21,7 @@ import org.fossify.messages.models.Draft
 import org.fossify.messages.models.Message
 import org.fossify.messages.models.MessageAttachment
 import org.fossify.messages.models.RecycleBinMessage
+import org.fossify.messages.models.Category
 
 @Database(
     entities = [
@@ -28,9 +30,10 @@ import org.fossify.messages.models.RecycleBinMessage
         MessageAttachment::class,
         Message::class,
         RecycleBinMessage::class,
-        Draft::class
+        Draft::class,
+        Category::class
     ],
-    version = 10
+    version = 11
 )
 @TypeConverters(Converters::class)
 abstract class MessagesDatabase : RoomDatabase() {
@@ -44,6 +47,8 @@ abstract class MessagesDatabase : RoomDatabase() {
     abstract fun MessagesDao(): MessagesDao
 
     abstract fun DraftsDao(): DraftsDao
+    
+    abstract fun CategoryDao(): CategoryDao
 
     companion object {
         private var db: MessagesDatabase? = null
@@ -57,7 +62,7 @@ abstract class MessagesDatabase : RoomDatabase() {
                             klass = MessagesDatabase::class.java,
                             name = "conversations.db"
                         )
-                            .fallbackToDestructiveMigration()
+                            .fallbackToDestructiveMigration(dropAllTables = true)
                             .addMigrations(MIGRATION_1_2)
                             .addMigrations(MIGRATION_2_3)
                             .addMigrations(MIGRATION_3_4)
@@ -67,6 +72,7 @@ abstract class MessagesDatabase : RoomDatabase() {
                             .addMigrations(MIGRATION_7_8)
                             .addMigrations(MIGRATION_8_9)
                             .addMigrations(MIGRATION_9_10)
+                            .addMigrations(MIGRATION_10_11)
                             .build()
                     }
                 }
@@ -164,5 +170,54 @@ abstract class MessagesDatabase : RoomDatabase() {
                 }
             }
         }
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.apply {
+                    // 1) Create Room-aligned categories table
+                    execSQL("""
+                CREATE TABLE IF NOT EXISTS `categories` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `color` INTEGER NOT NULL,
+                    `icon` TEXT NOT NULL,
+                    `description` TEXT NOT NULL,
+                    `is_default` INTEGER NOT NULL,
+                    `keywords` TEXT NOT NULL
+                )
+            """.trimIndent())
+
+                    // 2) Backfill from legacy table only if it exists
+                    if (hasTable("category")) {
+                        execSQL("""
+                    INSERT OR IGNORE INTO `categories` (`id`, `name`, `color`, `icon`, `description`, `is_default`, `keywords`)
+                    SELECT `id`, `name`, 0, '', '', 0, '' FROM `category`
+                """.trimIndent())
+                    }
+
+                    // 3) Ensure category columns exist for entities using them
+                    try { execSQL("ALTER TABLE `messages` ADD COLUMN `category_name` TEXT NOT NULL DEFAULT ''") } catch (_: Exception) {}
+                    try { execSQL("ALTER TABLE `messages` ADD COLUMN `category_id` INTEGER NOT NULL DEFAULT 0") } catch (_: Exception) {}
+                    try { execSQL("ALTER TABLE `conversations` ADD COLUMN `category` TEXT NOT NULL DEFAULT ''") } catch (_: Exception) {}
+
+                    // 4) Rebuild messages table so category_* columns match Room schema (no SQL default metadata)
+                    execSQL("DROP TABLE IF EXISTS `messages_new`")
+                    execSQL("CREATE TABLE `messages_new` (`id` INTEGER PRIMARY KEY NOT NULL, `body` TEXT NOT NULL, `type` INTEGER NOT NULL, `status` INTEGER NOT NULL, `participants` TEXT NOT NULL, `date` INTEGER NOT NULL, `read` INTEGER NOT NULL, `thread_id` INTEGER NOT NULL, `is_mms` INTEGER NOT NULL, `attachment` TEXT, `sender_phone_number` TEXT NOT NULL, `sender_name` TEXT NOT NULL, `sender_photo_uri` TEXT NOT NULL, `subscription_id` INTEGER NOT NULL, `is_scheduled` INTEGER NOT NULL, `category_name` TEXT NOT NULL, `category_id` INTEGER NOT NULL)")
+
+                    execSQL("INSERT INTO messages_new (id, body, type, status, participants, date, read, thread_id, is_mms, attachment, sender_phone_number, sender_name, sender_photo_uri, subscription_id, is_scheduled, category_name, category_id) SELECT id, body, type, status, participants, date, read, thread_id, is_mms, attachment, sender_phone_number, sender_name, sender_photo_uri, subscription_id, is_scheduled, category_name, category_id FROM messages")
+
+                    execSQL("DROP TABLE messages")
+                    execSQL("ALTER TABLE messages_new RENAME TO messages")
+                    execSQL("CREATE INDEX IF NOT EXISTS `index_messages_category_id` ON `messages` (`category_id`)")
+                }
+            }
+        }
+
+        private fun SupportSQLiteDatabase.hasTable(tableName: String): Boolean {
+            query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='$tableName' LIMIT 1")
+                .use { cursor ->
+                    return cursor.moveToFirst()
+                }
+        }
+
     }
 }

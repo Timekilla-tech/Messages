@@ -3,8 +3,8 @@ package org.fossify.messages.adapters
 import android.content.Intent
 import android.text.TextUtils
 import android.view.Menu
+import androidx.recyclerview.widget.ItemTouchHelper
 import org.fossify.commons.dialogs.ConfirmationDialog
-import org.fossify.commons.dialogs.FeatureLockedDialog
 import org.fossify.commons.extensions.addBlockedNumber
 import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.copyToClipboard
@@ -15,6 +15,7 @@ import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
 import org.fossify.messages.activities.SimpleActivity
+import org.fossify.messages.dialogs.DeleteConfirmationDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.deleteConversation
@@ -24,6 +25,11 @@ import org.fossify.messages.extensions.markThreadMessagesRead
 import org.fossify.messages.extensions.markThreadMessagesUnread
 import org.fossify.messages.extensions.renameConversation
 import org.fossify.messages.extensions.updateConversationArchivedStatus
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_ARCHIVE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.messaging.isShortCodeWithLetters
 import org.fossify.messages.models.Conversation
@@ -83,6 +89,128 @@ class ConversationsAdapter(
             R.id.cab_pin_conversation -> pinConversation(true)
             R.id.cab_unpin_conversation -> pinConversation(false)
             R.id.cab_select_all -> selectAll()
+        }
+    }
+
+    fun canHandleSwipe() = selectedKeys.isEmpty()
+
+    fun getSwipeActionForPosition(position: Int, direction: Int): Int {
+        if (!canHandleSwipe()) return INBOX_SWIPE_ACTION_NONE
+
+        val conversation = currentList.getOrNull(position) ?: return INBOX_SWIPE_ACTION_NONE
+        val configuredAction = when (direction) {
+            ItemTouchHelper.START -> activity.config.inboxSwipeStartAction
+            ItemTouchHelper.END -> activity.config.inboxSwipeEndAction
+            else -> INBOX_SWIPE_ACTION_NONE
+        }
+
+        return if (canApplySwipeAction(conversation, configuredAction)) {
+            configuredAction
+        } else {
+            INBOX_SWIPE_ACTION_NONE
+        }
+    }
+
+    fun onSwiped(position: Int, direction: Int): Boolean {
+        val conversation = currentList.getOrNull(position) ?: return false
+        val action = getSwipeActionForPosition(position, direction)
+        if (action == INBOX_SWIPE_ACTION_NONE) {
+            notifyItemChanged(position)
+            return false
+        }
+
+        when (action) {
+            INBOX_SWIPE_ACTION_ARCHIVE -> archiveConversation(conversation)
+            INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS -> toggleConversationReadStatus(conversation, position)
+            INBOX_SWIPE_ACTION_DELETE -> deleteConversationBySwipe(conversation, position)
+            INBOX_SWIPE_ACTION_BLOCK -> blockConversationBySwipe(conversation)
+            else -> {
+                notifyItemChanged(position)
+                return false
+            }
+        }
+
+        return true
+    }
+
+    private fun canApplySwipeAction(conversation: Conversation, action: Int): Boolean {
+        return when (action) {
+            INBOX_SWIPE_ACTION_NONE,
+            INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS,
+            INBOX_SWIPE_ACTION_DELETE -> true
+
+            INBOX_SWIPE_ACTION_ARCHIVE -> activity.config.isArchiveAvailable
+            INBOX_SWIPE_ACTION_BLOCK -> !conversation.isGroupConversation && conversation.phoneNumber.isNotBlank()
+            else -> false
+        }
+    }
+
+    private fun archiveConversation(conversation: Conversation) {
+        ensureBackgroundThread {
+            activity.updateConversationArchivedStatus(conversation.threadId, true)
+            activity.notificationManager.cancel(conversation.threadId.hashCode())
+            val updatedList = currentList.toMutableList().apply { remove(conversation) }
+            activity.runOnUiThread {
+                submitList(updatedList)
+                if (updatedList.isEmpty()) {
+                    refreshConversations()
+                }
+            }
+        }
+    }
+//TODO: устгах, архивлах, блоклох үйлдлийг чирж гүйцэтгэхээс өмнө үйлдлийг баталгаажуулах цонх гаргах
+    private fun deleteConversationBySwipe(conversation: Conversation, position: Int) {
+        // Reset swipe state immediately, then delete only after explicit confirmation.
+        notifyItemChanged(position)
+        DeleteConfirmationDialog(
+            activity = activity,
+            message = activity.getString(R.string.delete_whole_conversation_confirmation),
+            showSkipRecycleBinOption = false,
+        ) {
+            ensureBackgroundThread {
+                activity.deleteConversation(conversation.threadId)
+                activity.notificationManager.cancel(conversation.threadId.hashCode())
+                val updatedList = currentList.toMutableList().apply { remove(conversation) }
+                activity.runOnUiThread {
+                    submitList(updatedList)
+                    if (updatedList.isEmpty()) {
+                        refreshConversations()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun blockConversationBySwipe(conversation: Conversation) {
+        ensureBackgroundThread {
+            activity.addBlockedNumber(conversation.phoneNumber)
+            val updatedList = currentList.toMutableList().apply { remove(conversation) }
+            activity.runOnUiThread {
+                submitList(updatedList)
+                if (updatedList.isEmpty()) {
+                    refreshConversations()
+                }
+            }
+        }
+    }
+
+    private fun toggleConversationReadStatus(conversation: Conversation, position: Int) {
+        ensureBackgroundThread {
+            if (conversation.read) {
+                activity.markThreadMessagesUnread(conversation.threadId)
+            } else {
+                activity.markThreadMessagesRead(conversation.threadId)
+            }
+
+            val updatedList = currentList.toMutableList()
+            val updatedConversation = conversation.copy(read = !conversation.read)
+            if (position in updatedList.indices) {
+                updatedList[position] = updatedConversation
+            }
+
+            activity.runOnUiThread {
+                submitList(updatedList)
+            }
         }
     }
 

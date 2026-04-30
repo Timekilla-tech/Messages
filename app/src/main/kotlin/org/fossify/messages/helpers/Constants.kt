@@ -14,6 +14,7 @@ const val THREAD_NUMBER = "thread_number"
 const val THREAD_ATTACHMENT_URI = "thread_attachment_uri"
 const val THREAD_ATTACHMENT_URIS = "thread_attachment_uris"
 const val SEARCHED_MESSAGE_ID = "searched_message_id"
+const val SEARCHED_CATEGORY = "searched_category"
 const val USE_SIM_ID_PREFIX = "use_sim_id_"
 const val NOTIFICATION_CHANNEL_ID = "fossify_messages"
 const val SHOW_CHARACTER_COUNTER = "show_character_counter"
@@ -48,6 +49,16 @@ const val IS_ARCHIVE_AVAILABLE = "is_archive_available"
 const val CUSTOM_NOTIFICATIONS = "custom_notifications"
 const val IS_LAUNCHED_FROM_SHORTCUT = "is_launched_from_shortcut"
 const val KEEP_CONVERSATIONS_ARCHIVED = "keep_conversations_archived"
+const val SAVED_VIEWS_JSON = "saved_views_json"
+const val LAST_SAVED_VIEW_ID = "last_saved_view_id"
+const val INBOX_SWIPE_START_ACTION = "inbox_swipe_start_action"
+const val INBOX_SWIPE_END_ACTION = "inbox_swipe_end_action"
+
+const val INBOX_SWIPE_ACTION_NONE = 0
+const val INBOX_SWIPE_ACTION_ARCHIVE = 1
+const val INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS = 2
+const val INBOX_SWIPE_ACTION_DELETE = 3
+const val INBOX_SWIPE_ACTION_BLOCK = 4
 
 private const val PATH = "org.fossify.org.fossify.messages.action."
 const val MARK_AS_READ = PATH + "mark_as_read"

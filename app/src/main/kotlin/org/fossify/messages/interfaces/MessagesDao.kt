@@ -68,6 +68,13 @@ interface MessagesDao {
     @Query("UPDATE messages SET status = :status WHERE id = :id")
     fun updateStatus(id: Long, status: Int): Int
 
+    @Query("SELECT * FROM messages WHERE category_id = :categoryId")
+    fun getMessagesByCategory(categoryId: Long): List<Message>
+
+    @Query("SELECT DISTINCT category_name FROM messages WHERE thread_id = :threadId AND category_name != ''")
+    fun getThreadCategoryNames(threadId: Long): List<String>
+
+
     @Transaction
     fun delete(id: Long) {
         deleteFromMessages(id)

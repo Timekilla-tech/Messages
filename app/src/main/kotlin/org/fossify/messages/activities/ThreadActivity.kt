@@ -36,6 +36,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams
 import android.widget.RelativeLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.appcompat.content.res.AppCompatResources
@@ -51,7 +52,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.fossify.commons.dialogs.ConfirmationDialog
-import org.fossify.commons.dialogs.FeatureLockedDialog
 import org.fossify.commons.dialogs.PermissionRequiredDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.extensions.addBlockedNumber
@@ -113,6 +113,7 @@ import org.fossify.messages.databinding.ItemSelectedContactBinding
 import org.fossify.messages.dialogs.InvalidNumberDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.dialogs.ScheduleMessageDialog
+import org.fossify.messages.dialogs.SetCategoryDialog
 import org.fossify.messages.extensions.clearExpiredScheduledMessages
 import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.conversationsDB
@@ -125,6 +126,7 @@ import org.fossify.messages.extensions.deleteSmsDraft
 import org.fossify.messages.extensions.dialNumber
 import org.fossify.messages.extensions.emptyMessagesRecycleBinForConversation
 import org.fossify.messages.extensions.filterNotInByKey
+import org.fossify.messages.extensions.getAllCategories
 import org.fossify.messages.extensions.getAddresses
 import org.fossify.messages.extensions.getDefaultKeyboardHeight
 import org.fossify.messages.extensions.getFileSizeFromUri
@@ -145,6 +147,7 @@ import org.fossify.messages.extensions.moveMessageToRecycleBin
 import org.fossify.messages.extensions.onScroll
 import org.fossify.messages.extensions.removeDiacriticsIfNeeded
 import org.fossify.messages.extensions.renameConversation
+import org.fossify.messages.extensions.refreshConversationCategoryLabel
 import org.fossify.messages.extensions.restoreAllMessagesFromRecycleBinForConversation
 import org.fossify.messages.extensions.restoreMessageFromRecycleBin
 import org.fossify.messages.extensions.saveSmsDraft
@@ -155,6 +158,7 @@ import org.fossify.messages.extensions.toArrayList
 import org.fossify.messages.extensions.updateConversationArchivedStatus
 import org.fossify.messages.extensions.updateLastConversationMessage
 import org.fossify.messages.extensions.updateScheduledMessagesThreadId
+import org.fossify.messages.extensions.withAutoCategory
 import org.fossify.messages.helpers.CAPTURE_AUDIO_INTENT
 import org.fossify.messages.helpers.CAPTURE_PHOTO_INTENT
 import org.fossify.messages.helpers.CAPTURE_VIDEO_INTENT
@@ -206,6 +210,7 @@ class ThreadActivity : SimpleActivity() {
     private var currentSIMCardIndex = 0
     private var isActivityVisible = false
     private var refreshedSinceSent = false
+    private var cachedCategoryName = "" // Cache category to prevent flashing
     private var threadItems = ArrayList<ThreadItem>()
     private var bus: EventBus? = null
     private var conversation: Conversation? = null
@@ -288,7 +293,11 @@ class ThreadActivity : SimpleActivity() {
         ensureBackgroundThread {
             val newConv = conversationsDB.getConversationWithThreadId(threadId)
             if (newConv != null) {
-                conversation = newConv
+                conversation = if (newConv.category.isBlank() && cachedCategoryName.isNotBlank()) {
+                    newConv.copy(category = cachedCategoryName)
+                } else {
+                    newConv
+                }
                 runOnUiThread {
                     setupThreadTitle()
                 }
@@ -392,6 +401,7 @@ class ThreadActivity : SimpleActivity() {
             R.id.archive -> archiveConversation()
             R.id.unarchive -> unarchiveConversation()
             R.id.rename_conversation -> renameConversation()
+            R.id.set_category -> setCategory()
             R.id.conversation_details -> launchConversationDetails(threadId)
             R.id.add_number_to_contact -> addNumberToContact()
             R.id.copy_number -> copyNumberToClipboard()
@@ -817,7 +827,16 @@ class ThreadActivity : SimpleActivity() {
 
     private fun setupConversation() {
         ensureBackgroundThread {
-            conversation = conversationsDB.getConversationWithThreadId(threadId)
+            val loadedConversation = conversationsDB.getConversationWithThreadId(threadId)
+            conversation = if (
+                loadedConversation != null &&
+                loadedConversation.category.isBlank() &&
+                cachedCategoryName.isNotBlank()
+            ) {
+                loadedConversation.copy(category = cachedCategoryName)
+            } else {
+                loadedConversation
+            }
         }
     }
 
@@ -1010,7 +1029,77 @@ class ThreadActivity : SimpleActivity() {
         } else {
             participants.getThreadTitle()
         }
+        
+        // Setup category label immediately
+        updateCategoryLabel()
     }
+
+    private fun updateCategoryLabel() {
+        val categoryNames = parseCategoryNames(conversation?.category ?: cachedCategoryName)
+        if (categoryNames.isEmpty()) {
+            if (cachedCategoryName.isEmpty()) {
+                binding.threadCategoryLabels.removeAllViews()
+                binding.threadCategoryScroll.visibility = View.GONE
+            }
+            return
+        }
+
+        cachedCategoryName = categoryNames.joinToString(", ")
+        ensureBackgroundThread {
+            val colorMap = getAllCategories().associate { normalizeCategoryKey(it.name) to it.color }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) {
+                    return@runOnUiThread
+                }
+
+                binding.threadCategoryLabels.removeAllViews()
+                categoryNames.forEach { name ->
+                    val color = colorMap[normalizeCategoryKey(name)] ?: getProperPrimaryColor()
+                    binding.threadCategoryLabels.addView(createThreadCategoryChip(name, color))
+                }
+                binding.threadCategoryScroll.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun parseCategoryNames(raw: String): List<String> {
+        return raw
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { normalizeCategoryKey(it) }
+    }
+
+    private fun normalizeCategoryKey(name: String): String {
+        return name.trim().lowercase()
+    }
+
+    private fun createThreadCategoryChip(name: String, color: Int): TextView {
+        val horizontalPadding = 8.dp
+        val verticalPadding = 2.dp
+        val marginEnd = 6.dp
+
+        return TextView(this).apply {
+            text = name
+            background = AppCompatResources.getDrawable(this@ThreadActivity, R.drawable.chip_rounded)
+            backgroundTintList = ColorStateList.valueOf(color)
+            setTextColor(color.getContrastColor())
+            setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
+            maxWidth = 180.dp
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                rightMargin = marginEnd
+            }
+        }
+    }
+
+    private val Int.dp: Int
+        get() = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            toFloat(),
+            resources.displayMetrics
+        ).toInt()
 
     @SuppressLint("MissingPermission")
     private fun setupSIMSelector() {
@@ -1259,6 +1348,22 @@ class ThreadActivity : SimpleActivity() {
                 conversation = renameConversation(conversation!!, newTitle = title)
                 runOnUiThread {
                     setupThreadTitle()
+                }
+            }
+        }
+    }
+
+    private fun setCategory() {
+        SetCategoryDialog(this, conversation?.category ?: cachedCategoryName) { selectedCategory ->
+            if (conversation != null) {
+                ensureBackgroundThread {
+                    val normalized = parseCategoryNames(selectedCategory).joinToString(", ")
+                    conversation!!.category = normalized
+                    cachedCategoryName = normalized
+                    conversationsDB.insertOrUpdate(conversation!!)
+                    runOnUiThread {
+                        updateCategoryLabel()
+                    }
                 }
             }
         }
@@ -1613,11 +1718,13 @@ class ThreadActivity : SimpleActivity() {
     }
 
     private fun insertOrUpdateMessage(message: Message) {
-        if (messages.map { it.id }.contains(message.id)) {
-            val messageToReplace = messages.find { it.id == message.id }
-            messages[messages.indexOf(messageToReplace)] = message
+        val categorizedMessage = withAutoCategory(message)
+
+        if (messages.map { it.id }.contains(categorizedMessage.id)) {
+            val messageToReplace = messages.find { it.id == categorizedMessage.id }
+            messages[messages.indexOf(messageToReplace)] = categorizedMessage
         } else {
-            messages.add(message)
+            messages.add(categorizedMessage)
         }
 
         val newItems = getThreadItems()
@@ -1627,9 +1734,10 @@ class ThreadActivity : SimpleActivity() {
                 refreshMessages()
             }
         }
-        messagesDB.insertOrUpdate(message)
+        messagesDB.insertOrUpdate(categorizedMessage)
+        refreshConversationCategoryLabel(categorizedMessage.threadId)
         if (shouldUnarchive()) {
-            updateConversationArchivedStatus(message.threadId, false)
+            updateConversationArchivedStatus(categorizedMessage.threadId, false)
             refreshConversations()
         }
     }
