@@ -101,6 +101,10 @@
     <string name="add_a_blocked_keyword">Add a blocked keyword</string>
     <string name="inbox_swipe_start_action">Swipe from start</string>
     <string name="inbox_swipe_end_action">Swipe from end</string>
+    <string name="screen_view_mode">Screen view mode</string>
+    <string name="screen_view_mode_auto">Auto</string>
+    <string name="screen_view_mode_single">Single / long view</string>
+    <string name="screen_view_mode_two_pane">Separated / split view</string>
     <string name="swipe_action_none">Do nothing</string>
     <string name="swipe_action_toggle_read_status">Toggle read status</string>
     <string name="swipe_action_block_number">Block number</string>
