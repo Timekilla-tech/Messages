@@ -69,20 +69,38 @@
         android:inputType="text"
         android:singleLine="true" />
 
-    <org.fossify.commons.views.MyTextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/activity_margin"
-        android:text="@string/keywords"
-        android:textSize="@dimen/normal_text_size"
-        android:textStyle="bold" />
+     <org.fossify.commons.views.MyTextView
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:layout_marginTop="@dimen/activity_margin"
+         android:text="@string/keywords"
+         android:textSize="@dimen/normal_text_size"
+         android:textStyle="bold" />
 
-    <org.fossify.commons.views.MyEditText
-        android:id="@+id/add_category_keywords_edittext"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/enter_keywords_comma_separated"
-        android:inputType="text" />
+     <LinearLayout
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:orientation="horizontal"
+         android:gravity="center_vertical">
+
+         <org.fossify.commons.views.MyEditText
+             android:id="@+id/add_category_keywords_edittext"
+             android:layout_width="0dp"
+             android:layout_height="wrap_content"
+             android:layout_weight="1"
+             android:hint="@string/enter_keywords_comma_separated"
+             android:inputType="text" />
+
+         <ImageButton
+             android:id="@+id/add_category_regex_toggle"
+             android:layout_width="48dp"
+             android:layout_height="48dp"
+             android:layout_marginStart="@dimen/small_margin"
+             android:background="@drawable/ripple_all_corners"
+             android:scaleType="centerInside"
+             android:contentDescription="@string/regex_mode"
+             android:src="@drawable/ic_regex_vector" />
+     </LinearLayout>
 
     <org.fossify.commons.views.MyTextView
         android:layout_width="match_parent"

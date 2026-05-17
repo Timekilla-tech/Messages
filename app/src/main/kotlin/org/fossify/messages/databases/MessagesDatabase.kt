@@ -33,7 +33,7 @@ import org.fossify.messages.models.Category
         Draft::class,
         Category::class
     ],
-    version = 11
+    version = 12
 )
 @TypeConverters(Converters::class)
 abstract class MessagesDatabase : RoomDatabase() {
@@ -73,6 +73,7 @@ abstract class MessagesDatabase : RoomDatabase() {
                             .addMigrations(MIGRATION_8_9)
                             .addMigrations(MIGRATION_9_10)
                             .addMigrations(MIGRATION_10_11)
+                            .addMigrations(MIGRATION_11_12)
                             .build()
                     }
                 }
@@ -208,6 +209,14 @@ abstract class MessagesDatabase : RoomDatabase() {
                     execSQL("DROP TABLE messages")
                     execSQL("ALTER TABLE messages_new RENAME TO messages")
                     execSQL("CREATE INDEX IF NOT EXISTS `index_messages_category_id` ON `messages` (`category_id`)")
+                }
+            }
+        }
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.apply {
+                    // Add regex support to categories table
+                    execSQL("ALTER TABLE `categories` ADD COLUMN `keywords_is_regex` INTEGER NOT NULL DEFAULT 0")
                 }
             }
         }

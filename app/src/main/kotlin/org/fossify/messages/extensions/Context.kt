@@ -1426,6 +1426,7 @@ fun Context.createCategory(
     icon: String = "",
     description: String = "",
     keywords: String = "",
+    keywordIsRegex: Boolean = false,
     isDefault: Boolean = false,
     callback: ((categoryId: Long) -> Unit)? = null
 ) {
@@ -1438,7 +1439,8 @@ fun Context.createCategory(
                 icon = icon,
                 description = description,
                 isDefault = isDefault,
-                keywords = keywords
+                keywords = keywords,
+                keywordIsRegex = keywordIsRegex
             )
             val categoryId = categoryDB.insert(category)
             applyCategoryToExistingMessages(category.copy(id = categoryId))
@@ -1517,18 +1519,31 @@ fun Context.getMessagesByCategory(categoryId: Long): List<org.fossify.messages.m
 
 fun Context.filterMessagesByKeywords(
     messages: List<org.fossify.messages.models.Message>,
-    keywords: String
+    keywords: String,
+    isRegex: Boolean = false
 ): List<org.fossify.messages.models.Message> {
     if (keywords.isEmpty()) return messages
     
-    val keywordList = keywords.split(",")
-        .map { it.trim().lowercase() }
-        .filter { it.isNotEmpty() }
-    
-    return messages.filter { message ->
-        keywordList.any { keyword ->
-            message.body.lowercase().contains(keyword) ||
-            message.senderPhoneNumber.contains(keyword)
+    return if (isRegex) {
+        try {
+            val regex = Regex(keywords)
+            messages.filter { message ->
+                regex.containsMatchIn(message.body) ||
+                regex.containsMatchIn(message.senderPhoneNumber)
+            }
+        } catch (e: Exception) {
+            messages
+        }
+    } else {
+        val keywordList = keywords.split(",")
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+        
+        messages.filter { message ->
+            keywordList.any { keyword ->
+                message.body.lowercase().contains(keyword) ||
+                message.senderPhoneNumber.contains(keyword)
+            }
         }
     }
 }
@@ -1543,13 +1558,23 @@ fun Context.isMessageMatchingCategory(
 ): Boolean {
     if (category.keywords.isEmpty()) return false
     
-    val keywords = category.keywords.split(",")
-        .map { it.trim().lowercase() }
-        .filter { it.isNotEmpty() }
-    
-    return keywords.any { keyword ->
-        message.body.lowercase().contains(keyword) ||
-        message.senderPhoneNumber.contains(keyword)
+    return if (category.keywordIsRegex) {
+        try {
+            val regex = Regex(category.keywords)
+            regex.containsMatchIn(message.body) ||
+            regex.containsMatchIn(message.senderPhoneNumber)
+        } catch (e: Exception) {
+            false
+        }
+    } else {
+        val keywords = category.keywords.split(",")
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+
+        keywords.any { keyword ->
+            message.body.lowercase().contains(keyword) ||
+            message.senderPhoneNumber.contains(keyword)
+        }
     }
 }
 

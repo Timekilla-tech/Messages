@@ -19,11 +19,12 @@ import org.fossify.commons.extensions.toast
 
 class AddOrEditCategoryDialog(
     val activity: BaseSimpleActivity,
-    private val originalCategory: Category? = null,
+    private  val originalCategory: Category? = null,
     val callback: () -> Unit
 ) {
     init {
         var selectedColor = originalCategory?.color ?: activity.getProperTextColor()
+        var isRegexMode = originalCategory?.keywordIsRegex ?: false
         val colorOptions = listOf(
             "Blue" to 0xFF2196F3.toInt(),
             "Green" to 0xFF4CAF50.toInt(),
@@ -38,17 +39,31 @@ class AddOrEditCategoryDialog(
         )
 
         val binding = DialogAddOrEditCategoryBinding.inflate(activity.layoutInflater).apply {
+            fun updateRegexToggleIcon() {
+                addCategoryRegexToggle.setColorFilter(
+                    if (isRegexMode) selectedColor else activity.getProperTextColor()
+                )
+            }
+
             if (originalCategory != null) {
                 addCategoryNameEdittext.setText(originalCategory.name)
                 addCategoryDescriptionEdittext.setText(originalCategory.description)
                 addCategoryKeywordsEdittext.setText(originalCategory.keywords)
                 addCategoryIconEdittext.setText(originalCategory.icon)
+                updateRegexToggleIcon()
+            }
+
+
+            addCategoryRegexToggle.setOnClickListener {
+                isRegexMode = !isRegexMode
+                updateRegexToggleIcon()
             }
 
             fun updateColorPreview() {
                 addCategoryColorPreview.background?.mutate()?.setTint(selectedColor)
                 addCategoryPickColor.setTextColor(selectedColor.getContrastColor())
                 addCategoryPickColor.background?.mutate()?.setTint(selectedColor)
+                updateRegexToggleIcon()
             }
 
             addCategoryPickColor.setOnClickListener {
@@ -81,6 +96,16 @@ class AddOrEditCategoryDialog(
                             return@setOnClickListener
                         }
 
+                        // Validate regex pattern if regex mode is enabled
+                        if (isRegexMode && keywords.isNotEmpty()) {
+                            try {
+                                Regex(keywords)
+                            } catch (e: Exception) {
+                                activity.showErrorToast("${activity.getString(R.string.invalid_regex_pattern)}: ${e.message}")
+                                return@setOnClickListener
+                            }
+                        }
+
                         if (originalCategory != null) {
                             // Edit existing
                             val updatedCategory = originalCategory.copy(
@@ -88,7 +113,8 @@ class AddOrEditCategoryDialog(
                                 color = selectedColor,
                                 description = description,
                                 keywords = keywords,
-                                icon = icon
+                                icon = icon,
+                                keywordIsRegex = isRegexMode
                             )
                             activity.updateCategory(updatedCategory) {
                                 callback()
@@ -101,7 +127,8 @@ class AddOrEditCategoryDialog(
                                 color = selectedColor,
                                 description = description,
                                 keywords = keywords,
-                                icon = icon
+                                icon = icon,
+                                keywordIsRegex = isRegexMode
                             ) {
                                 callback()
                                 alertDialog.dismiss()

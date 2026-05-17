@@ -12,7 +12,8 @@ data class Category(
     @ColumnInfo(name = "icon") var icon: String = "",
     @ColumnInfo(name = "description") var description: String = "",
     @ColumnInfo(name = "is_default") var isDefault: Boolean = false,
-    @ColumnInfo(name = "keywords") var keywords: String = ""
+    @ColumnInfo(name = "keywords") var keywords: String = "",
+    @ColumnInfo(name = "keywords_is_regex") var keywordIsRegex: Boolean = false
 ) {
     companion object {
         fun areItemsTheSame(old: Category, new: Category): Boolean {
@@ -25,7 +26,8 @@ data class Category(
                 old.icon == new.icon &&
                 old.description == new.description &&
                 old.isDefault == new.isDefault &&
-                old.keywords == new.keywords
+                old.keywords == new.keywords &&
+                old.keywordIsRegex == new.keywordIsRegex
         }
     }
 }
