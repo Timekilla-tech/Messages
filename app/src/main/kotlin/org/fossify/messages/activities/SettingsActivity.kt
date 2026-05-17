@@ -3,7 +3,6 @@ package org.fossify.messages.activities
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
-import org.fossify.commons.activities.ManageBlockedNumbersActivity
 import org.fossify.commons.dialogs.ChangeDateTimeFormatDialog
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
@@ -52,6 +51,9 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_AUTO
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_SINGLE
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_TWO_PANE
 import org.fossify.messages.helpers.refreshConversations
 import java.util.Locale
 import kotlin.system.exitProcess
@@ -109,6 +111,7 @@ class SettingsActivity : SimpleActivity() {
         setupLanguage()
         setupInboxSwipeActions()
         setupChangeDateTimeFormat()
+        setupScreenViewMode()
         setupFontSize()
         setupShowCharacterCounter()
         setupUseSimpleCharacters()
@@ -275,6 +278,30 @@ class SettingsActivity : SimpleActivity() {
             }
         }
     }
+
+    private fun setupScreenViewMode() = binding.apply {
+        settingsScreenViewMode.text = getScreenViewModeText()
+        settingsScreenViewModeHolder.setOnClickListener {
+            val items = arrayListOf(
+                RadioItem(SCREEN_VIEW_MODE_AUTO, getString(R.string.screen_view_mode_auto)),
+                RadioItem(SCREEN_VIEW_MODE_SINGLE, getString(R.string.screen_view_mode_single)),
+                RadioItem(SCREEN_VIEW_MODE_TWO_PANE, getString(R.string.screen_view_mode_two_pane)),
+            )
+
+            RadioGroupDialog(this@SettingsActivity, items, config.screenViewMode) {
+                config.screenViewMode = it as Int
+                settingsScreenViewMode.text = getScreenViewModeText()
+            }
+        }
+    }
+
+    private fun getScreenViewModeText() = getString(
+        when (config.screenViewMode) {
+            SCREEN_VIEW_MODE_SINGLE -> R.string.screen_view_mode_single
+            SCREEN_VIEW_MODE_TWO_PANE -> R.string.screen_view_mode_two_pane
+            else -> R.string.screen_view_mode_auto
+        }
+    )
 
     private fun setupFontSize() = binding.apply {
         settingsFontSize.text = getFontSizeText()

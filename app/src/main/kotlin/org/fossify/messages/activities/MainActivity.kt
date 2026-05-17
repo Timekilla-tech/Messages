@@ -82,6 +82,9 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_AUTO
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_SINGLE
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_TWO_PANE
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.SavedViewsStore
 import org.fossify.messages.helpers.THREAD_ID
@@ -91,6 +94,12 @@ import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
 import org.fossify.messages.models.Message
 import org.fossify.messages.models.SavedView
+import androidx.lifecycle.lifecycleScope
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import androidx.window.layout.WindowLayoutInfo
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import org.fossify.messages.models.SavedViewConfig
 import org.fossify.messages.models.SearchResult
 import org.greenrobot.eventbus.EventBus
@@ -102,6 +111,9 @@ class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
 
     private val MAKE_DEFAULT_APP_REQUEST = 1
+    private val SAVED_SCROLL_POSITION = "saved_scroll_position"
+    private val SAVED_ACTIVE_VIEW_ID = "saved_active_view_id"
+    private val SAVED_SEARCH_TEXT = "saved_search_text"
 
     private var storedTextColor = 0
     private var storedFontSize = 0
@@ -126,6 +138,37 @@ class MainActivity : SimpleActivity() {
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
+    // Two-pane state (runtime adaptive using WindowManager / androidx.window)
+    private var isTwoPaneMode: Boolean = false
+    private var detailFragment: ConversationDetailFragment? = null
+    private var lastWindowLayoutInfo: WindowLayoutInfo? = null
+
+    private fun onWindowLayoutInfoChanged(info: WindowLayoutInfo) {
+        lastWindowLayoutInfo = info
+        updateTwoPaneMode()
+    }
+
+    private fun updateTwoPaneMode() {
+        val detailContainerExists = findViewById<android.view.View?>(R.id.thread_detail_container) != null
+        val foldingFeature = lastWindowLayoutInfo
+            ?.displayFeatures
+            ?.filterIsInstance<FoldingFeature>()
+            ?.firstOrNull()
+        val hasSeparatingFold = foldingFeature?.isSeparating == true
+
+        val shouldBeTwoPane = when (config.screenViewMode) {
+            SCREEN_VIEW_MODE_SINGLE -> false
+            SCREEN_VIEW_MODE_TWO_PANE -> detailContainerExists
+            else -> detailContainerExists || hasSeparatingFold
+        }
+
+        if (shouldBeTwoPane != isTwoPaneMode) {
+            isTwoPaneMode = shouldBeTwoPane
+        }
+
+        val detailContainer = findViewById<android.view.View?>(R.id.thread_detail_container)
+        detailContainer?.visibility = if (isTwoPaneMode) android.view.View.VISIBLE else android.view.View.GONE
+    }
     @SuppressLint("InlinedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,6 +183,22 @@ class MainActivity : SimpleActivity() {
         binding.conversationsList.post {
             conversationsBaseBottomPadding = binding.conversationsList.paddingBottom
             setupSavedViewsBottomBar()
+            
+            // Restore scroll position if it was saved (e.g., during fold/unfold)
+            savedInstanceState?.getInt(SAVED_SCROLL_POSITION, -1)?.let { position ->
+                if (position >= 0) {
+                    binding.conversationsList.post {
+                        binding.conversationsList.scrollToPosition(position)
+                    }
+                }
+            }
+        }
+
+        // Restore search text if it was saved
+        savedInstanceState?.getString(SAVED_SEARCH_TEXT)?.let {
+            if (it.isNotEmpty()) {
+                lastSearchedText = it
+            }
         }
 
         checkAndDeleteOldRecycleBinMessages()
@@ -150,12 +209,27 @@ class MainActivity : SimpleActivity() {
         if (checkAppSideloading()) {
             return
         }
+
+        updateTwoPaneMode()
+
+        // Setup window layout tracking to adapt to foldable / large screens at runtime
+        try {
+            val tracker = WindowInfoTracker.getOrCreate(this)
+            lifecycleScope.launch {
+                tracker.windowLayoutInfo(this@MainActivity).collect { info ->
+                    onWindowLayoutInfoChanged(info)
+                }
+            }
+        } catch (_: Exception) {
+            // Window manager may not be available on older platforms - ignore silently
+        }
     }
 
     override fun onResume() {
         super.onResume()
         refreshActiveSavedViewState()
         updateMenuColors()
+        updateTwoPaneMode()
 
         getOrCreateConversationsAdapter().apply {
             if (storedTextColor != getProperTextColor()) {
@@ -955,11 +1029,26 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun handleConversationClick(any: Any) {
-        Intent(this, ThreadActivity::class.java).apply {
-            val conversation = any as Conversation
-            putExtra(THREAD_ID, conversation.threadId)
-            putExtra(THREAD_TITLE, conversation.title)
-            startActivity(this)
+        val conversation = any as Conversation
+        if (isTwoPaneMode) {
+            // show conversation detail in right pane when two-pane is active
+            if (detailFragment != null && detailFragment?.isAdded == true) {
+                // Reuse existing fragment and update it
+                detailFragment?.updateThread(conversation.threadId, conversation.title)
+            } else {
+                // Create a new fragment and show it
+                detailFragment = ConversationDetailFragment.newInstance(conversation.threadId, conversation.title)
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.thread_detail_container, detailFragment!!)
+                    .setReorderingAllowed(true)
+                    .commit()
+            }
+        } else {
+            Intent(this, ThreadActivity::class.java).apply {
+                putExtra(THREAD_ID, conversation.threadId)
+                putExtra(THREAD_TITLE, conversation.title)
+                startActivity(this)
+            }
         }
     }
 

@@ -163,6 +163,10 @@ class Config(context: Context) : BaseConfig(context) {
         set(action) = prefs.edit()
             .putInt(INBOX_SWIPE_END_ACTION, sanitizeInboxSwipeAction(action)).apply()
 
+    var screenViewMode: Int
+        get() = sanitizeScreenViewMode(prefs.getInt(SCREEN_VIEW_MODE, SCREEN_VIEW_MODE_AUTO))
+        set(screenViewMode) = prefs.edit().putInt(SCREEN_VIEW_MODE, sanitizeScreenViewMode(screenViewMode)).apply()
+
     private fun sanitizeInboxSwipeAction(action: Int): Int {
         return when (action) {
             INBOX_SWIPE_ACTION_NONE,
@@ -172,6 +176,16 @@ class Config(context: Context) : BaseConfig(context) {
             INBOX_SWIPE_ACTION_BLOCK -> action
 
             else -> INBOX_SWIPE_ACTION_NONE
+        }
+    }
+
+    private fun sanitizeScreenViewMode(mode: Int): Int {
+        return when (mode) {
+            SCREEN_VIEW_MODE_AUTO,
+            SCREEN_VIEW_MODE_SINGLE,
+            SCREEN_VIEW_MODE_TWO_PANE -> mode
+
+            else -> SCREEN_VIEW_MODE_AUTO
         }
     }
 
