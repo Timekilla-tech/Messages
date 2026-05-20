@@ -10,6 +10,9 @@ import org.fossify.commons.extensions.showKeyboard
 import org.fossify.commons.extensions.value
 import org.fossify.messages.R
 import org.fossify.messages.databinding.DialogAddOrEditCategoryBinding
+import androidx.compose.ui.platform.ComposeView
+import org.fossify.messages.ui.KeywordItem
+import org.fossify.messages.ui.KeywordManager
 import org.fossify.messages.extensions.createCategory
 import org.fossify.messages.extensions.updateCategory
 import org.fossify.messages.models.Category
@@ -24,7 +27,6 @@ class AddOrEditCategoryDialog(
 ) {
     init {
         var selectedColor = originalCategory?.color ?: activity.getProperTextColor()
-        var isRegexMode = originalCategory?.keywordIsRegex ?: false
         val colorOptions = listOf(
             "Blue" to 0xFF2196F3.toInt(),
             "Green" to 0xFF4CAF50.toInt(),
@@ -38,32 +40,51 @@ class AddOrEditCategoryDialog(
             "Gray" to 0xFF607D8B.toInt(),
         )
 
-        val binding = DialogAddOrEditCategoryBinding.inflate(activity.layoutInflater).apply {
-            fun updateRegexToggleIcon() {
-                addCategoryRegexToggle.setColorFilter(
-                    if (isRegexMode) selectedColor else activity.getProperTextColor()
-                )
-            }
+        // keywords list shared between the Compose view and the save handler
+        val currentKeywords = mutableListOf<KeywordItem>()
 
+        val binding = DialogAddOrEditCategoryBinding.inflate(activity.layoutInflater).apply {
             if (originalCategory != null) {
                 addCategoryNameEdittext.setText(originalCategory.name)
                 addCategoryDescriptionEdittext.setText(originalCategory.description)
-                addCategoryKeywordsEdittext.setText(originalCategory.keywords)
+                // keywords will be shown in the Compose KeywordManager; initial value will be set below
                 addCategoryIconEdittext.setText(originalCategory.icon)
-                updateRegexToggleIcon()
             }
 
+            // Prepare initial keywords list for the KeywordManager
+            val initialKeywordItems = mutableListOf<KeywordItem>()
+            if (originalCategory != null) {
+                if (originalCategory.keywordIsRegex) {
+                    originalCategory.keywords
+                        .lineSequence()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .forEach { initialKeywordItems.add(KeywordItem(it, true)) }
+                } else {
+                    // previous format: comma-separated keywords
+                    originalCategory.keywords.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                        .forEach { initialKeywordItems.add(KeywordItem(it, false)) }
+                }
+            }
 
-            addCategoryRegexToggle.setOnClickListener {
-                isRegexMode = !isRegexMode
-                updateRegexToggleIcon()
+            // initialize shared currentKeywords from initial items
+            currentKeywords.addAll(initialKeywordItems)
+
+            // wire the ComposeView to show KeywordManager
+            addCategoryKeywordsCompose.setContent {
+                KeywordManager(
+                    initialKeywords = initialKeywordItems,
+                    onKeywordsChanged = { list ->
+                        currentKeywords.clear()
+                        currentKeywords.addAll(list)
+                    }
+                )
             }
 
             fun updateColorPreview() {
                 addCategoryColorPreview.background?.mutate()?.setTint(selectedColor)
                 addCategoryPickColor.setTextColor(selectedColor.getContrastColor())
                 addCategoryPickColor.background?.mutate()?.setTint(selectedColor)
-                updateRegexToggleIcon()
             }
 
             addCategoryPickColor.setOnClickListener {
@@ -88,7 +109,6 @@ class AddOrEditCategoryDialog(
                     alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                         val name = binding.addCategoryNameEdittext.value
                         val description = binding.addCategoryDescriptionEdittext.value
-                        val keywords = binding.addCategoryKeywordsEdittext.value
                         val icon = binding.addCategoryIconEdittext.value
 
                         if (name.isEmpty()) {
@@ -96,10 +116,21 @@ class AddOrEditCategoryDialog(
                             return@setOnClickListener
                         }
 
-                        // Validate regex pattern if regex mode is enabled
-                        if (isRegexMode && keywords.isNotEmpty()) {
+                        val hasRegexKeywords = currentKeywords.any { it.isRegex }
+                        val keywords: String = if (hasRegexKeywords) {
+                            currentKeywords.joinToString("\n") { keywordItem ->
+                                if (keywordItem.isRegex) keywordItem.keyword else Regex.escape(keywordItem.keyword)
+                            }
+                        } else {
+                            currentKeywords.joinToString(",") { it.keyword }
+                        }
+
+                        // Validate regex pattern(s) if any regex chip is enabled
+                        if (hasRegexKeywords && keywords.isNotEmpty()) {
                             try {
-                                Regex(keywords)
+                                currentKeywords.forEach { item ->
+                                    if (item.isRegex && item.keyword.isNotEmpty()) Regex(item.keyword)
+                                }
                             } catch (e: Exception) {
                                 activity.showErrorToast("${activity.getString(R.string.invalid_regex_pattern)}: ${e.message}")
                                 return@setOnClickListener
@@ -114,7 +145,7 @@ class AddOrEditCategoryDialog(
                                 description = description,
                                 keywords = keywords,
                                 icon = icon,
-                                keywordIsRegex = isRegexMode
+                                keywordIsRegex = hasRegexKeywords
                             )
                             activity.updateCategory(updatedCategory) {
                                 callback()
@@ -128,7 +159,7 @@ class AddOrEditCategoryDialog(
                                 description = description,
                                 keywords = keywords,
                                 icon = icon,
-                                keywordIsRegex = isRegexMode
+                                keywordIsRegex = hasRegexKeywords
                             ) {
                                 callback()
                                 alertDialog.dismiss()
