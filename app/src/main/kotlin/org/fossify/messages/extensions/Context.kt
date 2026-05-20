@@ -1103,8 +1103,14 @@ fun Context.showReceivedMessageNotification(
 fun Context.getNameFromAddress(address: String, privateCursor: Cursor?): String {
     var sender = getNameAndPhotoFromPhoneNumber(address).name
     if (address == sender) {
-        val privateContacts = MyContactsContentProvider.getSimpleContacts(this, privateCursor)
-        sender = privateContacts.firstOrNull { it.doesHavePhoneNumber(address) }?.name ?: address
+        try {
+            val privateContacts = MyContactsContentProvider.getSimpleContacts(this, privateCursor)
+            sender = privateContacts.firstOrNull { it.doesHavePhoneNumber(address) }?.name ?: address
+        } catch (e: Exception) {
+            // Provider may be missing on some installs/devices; fall back to address
+            e.printStackTrace()
+            sender = address
+        }
     }
     return sender
 }
@@ -1114,9 +1120,15 @@ fun Context.getContactFromAddress(address: String, callback: ((contact: SimpleCo
     SimpleContactsHelper(this).getAvailableContacts(false) {
         val contact = it.firstOrNull { it.doesHavePhoneNumber(address) }
         if (contact == null) {
-            val privateContacts = MyContactsContentProvider.getSimpleContacts(this, privateCursor)
-            val privateContact = privateContacts.firstOrNull { it.doesHavePhoneNumber(address) }
-            callback(privateContact)
+            try {
+                val privateContacts = MyContactsContentProvider.getSimpleContacts(this, privateCursor)
+                val privateContact = privateContacts.firstOrNull { it.doesHavePhoneNumber(address) }
+                callback(privateContact)
+            } catch (e: Exception) {
+                // Provider missing or visibility restriction; return null
+                e.printStackTrace()
+                callback(null)
+            }
         } else {
             callback(contact)
         }
@@ -1443,7 +1455,14 @@ fun Context.createCategory(
                 keywordIsRegex = keywordIsRegex
             )
             val categoryId = categoryDB.insert(category)
-            applyCategoryToExistingMessages(category.copy(id = categoryId))
+            // Re-run categorization for all categories so message assignments reflect the new rule
+            reclassifyAllCategories()
+            // Notify UI to refresh so newly created category appears in lists immediately
+            try {
+                org.fossify.messages.helpers.refreshConversations()
+                org.fossify.messages.helpers.refreshMessages()
+            } catch (_: Exception) {
+            }
             callback?.invoke(categoryId)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1463,7 +1482,14 @@ fun Context.updateCategory(
             if (previousCategory != null) {
                 replaceCategoryNameInConversations(previousCategory.name, category.name)
             }
-            applyCategoryToExistingMessages(category)
+            // Re-run categorization for all categories to propagate changes
+            reclassifyAllCategories()
+            // Notify UI to refresh so updated category name/color propagates immediately
+            try {
+                org.fossify.messages.helpers.refreshConversations()
+                org.fossify.messages.helpers.refreshMessages()
+            } catch (_: Exception) {
+            }
             callback?.invoke()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1478,14 +1504,29 @@ fun Context.deleteCategory(
 ) {
     ensureBackgroundThread {
         try {
+            android.util.Log.d("CategoryDebug", "deleteCategory: deleting ${category.id} / ${category.name}")
             categoryDB.deleteCategory(category)
             // Remove category assignment from messages and refresh affected conversations.
             val messages = messagesDB.getMessagesByCategory(category.id)
             val affectedThreadIds = messages.map { it.threadId }.toSet()
+            android.util.Log.d("CategoryDebug", "deleteCategory: messages found=${messages.size}, affectedThreads=${affectedThreadIds.size}")
             messages.forEach { message ->
                 messagesDB.insertOrUpdate(message.copy(categoryId = 0, categoryName = ""))
             }
-            affectedThreadIds.forEach { refreshConversationCategoryLabel(it) }
+            affectedThreadIds.forEach {
+                android.util.Log.d("CategoryDebug", "deleteCategory: refreshing threadId=$it")
+                refreshConversationCategoryLabel(it)
+            }
+            // Also remove stale labels from cached conversation.category strings.
+            removeCategoryNameFromConversations(category.name)
+            // Notify UI to refresh conversations/messages so deleted category is removed from views
+            try {
+                android.util.Log.d("CategoryDebug", "deleteCategory: posting RefreshConversations/RefreshMessages events")
+                org.fossify.messages.helpers.refreshConversations()
+                org.fossify.messages.helpers.refreshMessages()
+            } catch (_: Exception) {
+                // ignore any issues posting events
+            }
             callback?.invoke()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1525,14 +1566,28 @@ fun Context.filterMessagesByKeywords(
     if (keywords.isEmpty()) return messages
     
     return if (isRegex) {
-        try {
-            val regex = Regex(keywords)
-            messages.filter { message ->
-                regex.containsMatchIn(message.body) ||
-                regex.containsMatchIn(message.senderPhoneNumber)
+        val regexes = keywords
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .mapNotNull { pattern ->
+                try {
+                    Regex(pattern)
+                } catch (_: Exception) {
+                    null
+                }
             }
-        } catch (e: Exception) {
+            .toList()
+
+        if (regexes.isEmpty()) {
             messages
+        } else {
+            messages.filter { message ->
+                regexes.any { regex ->
+                    regex.containsMatchIn(message.body) ||
+                        regex.containsMatchIn(message.senderPhoneNumber)
+                }
+            }
         }
     } else {
         val keywordList = keywords.split(",")
@@ -1559,12 +1614,26 @@ fun Context.isMessageMatchingCategory(
     if (category.keywords.isEmpty()) return false
     
     return if (category.keywordIsRegex) {
-        try {
-            val regex = Regex(category.keywords)
-            regex.containsMatchIn(message.body) ||
-            regex.containsMatchIn(message.senderPhoneNumber)
-        } catch (e: Exception) {
+        val regexes = category.keywords
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .mapNotNull { pattern ->
+                try {
+                    Regex(pattern)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            .toList()
+
+        if (regexes.isEmpty()) {
             false
+        } else {
+            regexes.any { regex ->
+                regex.containsMatchIn(message.body) ||
+                    regex.containsMatchIn(message.senderPhoneNumber)
+            }
         }
     } else {
         val keywords = category.keywords.split(",")
@@ -1648,6 +1717,29 @@ private fun Context.replaceCategoryNameInConversations(oldName: String, newName:
     }
 }
 
+private fun Context.removeCategoryNameFromConversations(nameToRemove: String) {
+    val normalizedTarget = nameToRemove.trim()
+    if (normalizedTarget.isEmpty()) {
+        return
+    }
+
+    val allConversations = (conversationsDB.getNonArchived() + conversationsDB.getAllArchived())
+        .distinctBy { it.threadId }
+
+    allConversations.forEach { conversation ->
+        val updatedCategories = conversation.category
+            .split(",")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.equals(normalizedTarget, ignoreCase = true) }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .joinToString(", ")
+
+        if (updatedCategories != conversation.category) {
+            conversationsDB.insertOrUpdate(conversation.copy(category = updatedCategories))
+        }
+    }
+}
+
 fun Context.refreshConversationCategoryLabel(threadId: Long) {
     val conversation = conversationsDB.getConversationWithThreadId(threadId) ?: return
     val categorizedMessages = messagesDB.getThreadMessages(threadId)
@@ -1667,6 +1759,38 @@ fun Context.refreshConversationCategoryLabel(threadId: Long) {
         .joinToString(", ")
 
     if (conversation.category != conversationCategories) {
+        android.util.Log.d("CategoryDebug", "refreshConversationCategoryLabel: threadId=$threadId old='${conversation.category}' new='$conversationCategories'")
         conversationsDB.insertOrUpdate(conversation.copy(category = conversationCategories))
     }
 }
+
+/**
+ * Re-run categorization for all categories. This ensures message-category assignments are
+ * recalculated after category create/update/delete operations.
+ */
+fun Context.reclassifyAllCategories() {
+    ensureBackgroundThread {
+        try {
+            val categories = try {
+                categoryDB.getAllCategories()
+            } catch (e: Exception) {
+                emptyList()
+            }
+
+            // Apply categories in stable order (by id) so priority is deterministic
+            categories.sortedBy { it.id }.forEach { cat ->
+                applyCategoryToExistingMessages(cat)
+            }
+
+            // Notify UI after reclassification
+            try {
+                org.fossify.messages.helpers.refreshConversations()
+                org.fossify.messages.helpers.refreshMessages()
+            } catch (_: Exception) {
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
