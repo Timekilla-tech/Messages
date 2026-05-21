@@ -333,7 +333,7 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSavedViewsBottomBar() {
         val bar = binding.savedViewsBottomBar
-        if (binding.selectionBottomBar.visibility == android.view.View.GONE) {
+        if (binding.selectionBottomBar?.visibility == android.view.View.GONE) {
             bar.beVisible()
         } else {
             bar.beGone()
@@ -394,13 +394,49 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun setupSelectionBottomBar() {
-        binding.selectionBottomBar.setOnItemSelectedListener { item ->
+        binding.selectionBottomBar?.setOnItemSelectedListener { item ->
             getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
             false
         }
+
+        // Long press for "Set Category" fast action (assign to a specific folder immediately)
+        binding.selectionBottomBar.post {
+            try {
+                val menuView = binding.selectionBottomBar.getChildAt(0) as? android.view.ViewGroup
+                for (i in 0 until (menuView?.childCount ?: 0)) {
+                    val itemView = menuView?.getChildAt(i)
+                    if (itemView?.id == R.id.cab_set_category) {
+                        itemView.setOnLongClickListener {
+                            showQuickFolderAssignmentMenu(itemView)
+                            true
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
         binding.selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateBottomBarDependentPadding()
         }
+    }
+
+    private fun showQuickFolderAssignmentMenu(anchor: android.view.View) {
+        val folders = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
+        if (folders.isEmpty()) {
+            toast(R.string.no_categories)
+            return
+        }
+
+        val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
+        folders.forEach { folder ->
+            popup.menu.add(folder.title)
+        }
+
+        popup.setOnMenuItemClickListener { item ->
+            getOrCreateConversationsAdapter().actionItemPressed(R.id.cab_set_category, item.title.toString())
+            true
+        }
+        popup.show()
     }
 
     fun updateSelectionBottomBar(selectedCount: Int) {
@@ -445,7 +481,7 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun updateBottomBarDependentPadding() {
-        val activeBar = if (binding.selectionBottomBar.visibility == android.view.View.VISIBLE) {
+        val activeBar = if (binding.selectionBottomBar?.visibility == android.view.View.VISIBLE) {
             binding.selectionBottomBar
         } else {
             binding.savedViewsBottomBar

@@ -84,6 +84,10 @@ class ConversationsAdapter(
     }
 
     override fun actionItemPressed(id: Int) {
+        actionItemPressed(id, null)
+    }
+
+    fun actionItemPressed(id: Int, extra: String? = null) {
         if (selectedKeys.isEmpty()) {
             return
         }
@@ -114,7 +118,7 @@ class ConversationsAdapter(
                 pinConversation(!allPinned)
             }
             R.id.cab_unpin_conversation -> pinConversation(false)
-            R.id.cab_set_category -> askSetCategory()
+            R.id.cab_set_category -> if (extra != null) setCategory(extra) else askSetCategory()
             R.id.cab_select_all -> selectAll()
         }
     }
