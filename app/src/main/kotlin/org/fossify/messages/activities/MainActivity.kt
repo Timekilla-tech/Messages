@@ -15,6 +15,7 @@ import android.provider.Telephony
 import android.text.TextUtils
 import android.widget.EditText
 import android.view.Menu
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -82,6 +83,8 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_SINGLE
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_TWO_PANE
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.SavedViewsStore
 import org.fossify.messages.helpers.THREAD_ID
@@ -93,6 +96,11 @@ import org.fossify.messages.models.Message
 import org.fossify.messages.models.SavedView
 import org.fossify.messages.models.SavedViewConfig
 import org.fossify.messages.models.SearchResult
+import androidx.lifecycle.lifecycleScope
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import androidx.window.layout.WindowLayoutInfo
+import kotlinx.coroutines.launch
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -101,7 +109,8 @@ import java.util.Locale
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
 
-    private val MAKE_DEFAULT_APP_REQUEST = 1
+    private val SAVED_SCROLL_POSITION = "saved_scroll_position"
+    private val SAVED_SEARCH_TEXT = "saved_search_text"
 
     private var storedTextColor = 0
     private var storedFontSize = 0
@@ -126,6 +135,45 @@ class MainActivity : SimpleActivity() {
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
+    private val defaultAppLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            askPermissions()
+        } else {
+            finish()
+        }
+    }
+
+    // Two-pane state (runtime adaptive using WindowManager / androidx.window)
+    private var isTwoPaneMode: Boolean = false
+    private var detailFragment: ConversationDetailFragment? = null
+    private var lastWindowLayoutInfo: WindowLayoutInfo? = null
+
+    private fun onWindowLayoutInfoChanged(info: WindowLayoutInfo) {
+        lastWindowLayoutInfo = info
+        updateTwoPaneMode()
+    }
+
+    private fun updateTwoPaneMode() {
+        val detailContainerExists = findViewById<android.view.View?>(R.id.thread_detail_container) != null
+        val foldingFeature = lastWindowLayoutInfo
+            ?.displayFeatures
+            ?.filterIsInstance<FoldingFeature>()
+            ?.firstOrNull()
+        val hasSeparatingFold = foldingFeature?.isSeparating == true
+
+        val shouldBeTwoPane = when (config.screenViewMode) {
+            SCREEN_VIEW_MODE_SINGLE -> false
+            SCREEN_VIEW_MODE_TWO_PANE -> detailContainerExists
+            else -> detailContainerExists || hasSeparatingFold
+        }
+
+        if (shouldBeTwoPane != isTwoPaneMode) {
+            isTwoPaneMode = shouldBeTwoPane
+        }
+
+        val detailContainer = findViewById<android.view.View?>(R.id.thread_detail_container)
+        detailContainer?.visibility = if (isTwoPaneMode) android.view.View.VISIBLE else android.view.View.GONE
+    }
     @SuppressLint("InlinedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,6 +188,23 @@ class MainActivity : SimpleActivity() {
         binding.conversationsList.post {
             conversationsBaseBottomPadding = binding.conversationsList.paddingBottom
             setupSavedViewsBottomBar()
+            setupSelectionBottomBar()
+            
+            // Restore scroll position if it was saved (e.g., during fold/unfold)
+            savedInstanceState?.getInt(SAVED_SCROLL_POSITION, -1)?.let { position ->
+                if (position >= 0) {
+                    binding.conversationsList.post {
+                        binding.conversationsList.scrollToPosition(position)
+                    }
+                }
+            }
+        }
+
+        // Restore search text if it was saved
+        savedInstanceState?.getString(SAVED_SEARCH_TEXT)?.let {
+            if (it.isNotEmpty()) {
+                lastSearchedText = it
+            }
         }
 
         checkAndDeleteOldRecycleBinMessages()
@@ -150,12 +215,27 @@ class MainActivity : SimpleActivity() {
         if (checkAppSideloading()) {
             return
         }
+
+        updateTwoPaneMode()
+
+        // Setup window layout tracking to adapt to foldable / large screens at runtime
+        try {
+            val tracker = WindowInfoTracker.getOrCreate(this)
+            lifecycleScope.launch {
+                tracker.windowLayoutInfo(this@MainActivity).collect { info ->
+                    onWindowLayoutInfoChanged(info)
+                }
+            }
+        } catch (_: Exception) {
+            // Window manager may not be available on older platforms - ignore silently
+        }
     }
 
     override fun onResume() {
         super.onResume()
         refreshActiveSavedViewState()
         updateMenuColors()
+        updateTwoPaneMode()
 
         getOrCreateConversationsAdapter().apply {
             if (storedTextColor != getProperTextColor()) {
@@ -203,7 +283,6 @@ class MainActivity : SimpleActivity() {
 
     private fun setupOptionsMenu() {
         binding.mainMenu.requireToolbar().inflateMenu(R.menu.menu_main)
-        binding.mainMenu.toggleHideOnScroll(true)
         binding.mainMenu.setupMenu()
 
         binding.mainMenu.onSearchClosedListener = {
@@ -252,6 +331,11 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSavedViewsBottomBar() {
         val bar = binding.savedViewsBottomBar
+        if (binding.selectionBottomBar.visibility == android.view.View.GONE) {
+            bar.beVisible()
+        } else {
+            bar.beGone()
+        }
         val views = savedViewsStore.getViews()
         val menu = bar.menu
         menu.clear()
@@ -271,11 +355,75 @@ class MainActivity : SimpleActivity() {
             true
         }
 
+        bar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomBarDependentPadding()
+        }
         bar.post { updateBottomBarDependentPadding() }
     }
 
+    private fun setupSelectionBottomBar() {
+        binding.selectionBottomBar.setOnItemSelectedListener { item ->
+            getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
+            false
+        }
+        binding.selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomBarDependentPadding()
+        }
+    }
+
+    fun updateSelectionBottomBar(selectedCount: Int) {
+        val isSelecting = selectedCount > 0
+        binding.selectionBottomBar.beVisibleIf(isSelecting)
+        binding.savedViewsBottomBar.beGoneIf(isSelecting)
+        
+        if (isSelecting) {
+            val menu = binding.selectionBottomBar.menu
+            val adapter = getOrCreateConversationsAdapter()
+            val selectedItems = adapter.getSelectedConversations()
+            
+            val archiveAvailable = config.isArchiveAvailable
+            val pinnedConversations = config.pinnedConversations
+
+            menu.findItem(R.id.cab_archive)?.isVisible = archiveAvailable
+            
+            val hasUnread = selectedItems.any { !it.read }
+            val readItem = menu.findItem(R.id.cab_mark_as_read)
+            if (readItem != null) {
+                if (hasUnread) {
+                    readItem.title = getString(R.string.mark_as_read)
+                    readItem.setIcon(R.drawable.ic_check_double_vector)
+                } else {
+                    readItem.title = getString(R.string.mark_as_unread)
+                    readItem.setIcon(R.drawable.ic_check_double_vector) 
+                }
+            }
+
+            val allPinned = selectedItems.all { pinnedConversations.contains(it.threadId.toString()) }
+            val pinItem = menu.findItem(R.id.cab_pin_conversation)
+            if (pinItem != null) {
+                if (allPinned) {
+                    pinItem.title = getString(R.string.unpin_conversation)
+                    pinItem.setIcon(R.drawable.ic_unpin_vector)
+                } else {
+                    pinItem.title = getString(R.string.pin_conversation)
+                    pinItem.setIcon(R.drawable.ic_pin_vector)
+                }
+            }
+        }
+    }
+
     private fun updateBottomBarDependentPadding() {
-        val barHeight = binding.savedViewsBottomBar.height
+        val activeBar = if (binding.selectionBottomBar.visibility == android.view.View.VISIBLE) {
+            binding.selectionBottomBar
+        } else {
+            binding.savedViewsBottomBar
+        }
+
+        val barHeight = activeBar.height
+        if (barHeight == 0) {
+            return
+        }
+
         if (conversationsBaseBottomPadding != 0) {
             binding.conversationsList.updatePadding(bottom = conversationsBaseBottomPadding + barHeight)
         }
@@ -296,28 +444,8 @@ class MainActivity : SimpleActivity() {
         val iconName = view.iconResName?.trim().takeUnless { it.isNullOrEmpty() }
             ?: if (view.id == SavedView.MAIN_VIEW_ID) SavedView.MAIN_VIEW_ICON else SavedView.DEFAULT_CUSTOM_VIEW_ICON
 
-        val mappedRes = savedViewIconOptions.firstOrNull { it.iconResName == iconName }?.drawableRes
-        if (mappedRes != null) {
-            return mappedRes
-        }
-
-        val dynamicRes = resources.getIdentifier(iconName, "drawable", packageName)
-        if (dynamicRes != 0) {
-            return dynamicRes
-        }
-
-        return if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_filter_list_vector
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
-        super.onActivityResult(requestCode, resultCode, resultData)
-        if (requestCode == MAKE_DEFAULT_APP_REQUEST) {
-            if (resultCode == RESULT_OK) {
-                askPermissions()
-            } else {
-                finish()
-            }
-        }
+        return savedViewIconOptions.firstOrNull { it.iconResName == iconName }?.drawableRes
+            ?: if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_filter_list_vector
     }
 
     private fun storeStateVariables() {
@@ -337,7 +465,7 @@ class MainActivity : SimpleActivity() {
                     askPermissions()
                 } else {
                     val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS)
-                    startActivityForResult(intent, MAKE_DEFAULT_APP_REQUEST)
+                    defaultAppLauncher.launch(intent)
                 }
             } else {
                 toast(org.fossify.commons.R.string.unknown_error_occurred)
@@ -349,7 +477,7 @@ class MainActivity : SimpleActivity() {
             } else {
                 val intent = Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT)
                 intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, packageName)
-                startActivityForResult(intent, MAKE_DEFAULT_APP_REQUEST)
+                defaultAppLauncher.launch(intent)
             }
         }
     }
@@ -955,11 +1083,26 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun handleConversationClick(any: Any) {
-        Intent(this, ThreadActivity::class.java).apply {
-            val conversation = any as Conversation
-            putExtra(THREAD_ID, conversation.threadId)
-            putExtra(THREAD_TITLE, conversation.title)
-            startActivity(this)
+        val conversation = any as Conversation
+        if (isTwoPaneMode) {
+            // show conversation detail in right pane when two-pane is active
+            if (detailFragment != null && detailFragment?.isAdded == true) {
+                // Reuse existing fragment and update it
+                detailFragment?.updateThread(conversation.threadId, conversation.title)
+            } else {
+                // Create a new fragment and show it
+                detailFragment = ConversationDetailFragment.newInstance(conversation.threadId, conversation.title)
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.thread_detail_container, detailFragment!!)
+                    .setReorderingAllowed(true)
+                    .commit()
+            }
+        } else {
+            Intent(this, ThreadActivity::class.java).apply {
+                putExtra(THREAD_ID, conversation.threadId)
+                putExtra(THREAD_TITLE, conversation.title)
+                startActivity(this)
+            }
         }
     }
 
