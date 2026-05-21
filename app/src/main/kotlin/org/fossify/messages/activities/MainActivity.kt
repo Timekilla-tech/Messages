@@ -94,14 +94,14 @@ import org.fossify.messages.models.Conversation
 import org.fossify.messages.models.Events
 import org.fossify.messages.models.Message
 import org.fossify.messages.models.SavedView
+import org.fossify.messages.models.SavedViewConfig
+import org.fossify.messages.models.SearchResult
 import androidx.lifecycle.lifecycleScope
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 import androidx.window.layout.WindowLayoutInfo
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import org.fossify.messages.models.SavedViewConfig
-import org.fossify.messages.models.SearchResult
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -112,7 +112,6 @@ class MainActivity : SimpleActivity() {
 
     private val MAKE_DEFAULT_APP_REQUEST = 1
     private val SAVED_SCROLL_POSITION = "saved_scroll_position"
-    private val SAVED_ACTIVE_VIEW_ID = "saved_active_view_id"
     private val SAVED_SEARCH_TEXT = "saved_search_text"
 
     private var storedTextColor = 0
@@ -183,7 +182,8 @@ class MainActivity : SimpleActivity() {
         binding.conversationsList.post {
             conversationsBaseBottomPadding = binding.conversationsList.paddingBottom
             setupSavedViewsBottomBar()
-            
+            setupSelectionBottomBar()
+
             // Restore scroll position if it was saved (e.g., during fold/unfold)
             savedInstanceState?.getInt(SAVED_SCROLL_POSITION, -1)?.let { position ->
                 if (position >= 0) {
@@ -326,6 +326,11 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSavedViewsBottomBar() {
         val bar = binding.savedViewsBottomBar
+        if (binding.selectionBottomBar?.visibility == android.view.View.GONE) {
+            bar.beVisible()
+        } else {
+            bar.beGone()
+        }
         val views = savedViewsStore.getViews()
         val menu = bar.menu
         menu.clear()
@@ -346,6 +351,54 @@ class MainActivity : SimpleActivity() {
         }
 
         bar.post { updateBottomBarDependentPadding() }
+    }
+
+    private fun setupSelectionBottomBar() {
+        binding.selectionBottomBar?.setOnItemSelectedListener { item ->
+            getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
+            true
+        }
+    }
+
+    fun updateSelectionBottomBar(selectedCount: Int) {
+        val isSelecting = selectedCount > 0
+        binding.selectionBottomBar?.beVisibleIf(isSelecting)
+        binding.savedViewsBottomBar?.beGoneIf(isSelecting)
+        
+        if (isSelecting) {
+            val menu = binding.selectionBottomBar?.menu ?: return
+            val adapter = getOrCreateConversationsAdapter()
+            val selectedItems = adapter.getSelectedConversations()
+            
+            val archiveAvailable = config.isArchiveAvailable
+            val pinnedConversations = config.pinnedConversations
+
+            menu.findItem(R.id.cab_archive)?.isVisible = archiveAvailable
+            
+            val hasUnread = selectedItems.any { !it.read }
+            val readItem = menu.findItem(R.id.cab_mark_as_read)
+            if (readItem != null) {
+                if (hasUnread) {
+                    readItem.title = getString(R.string.mark_as_read)
+                    readItem.setIcon(R.drawable.ic_check_double_vector)
+                } else {
+                    readItem.title = getString(R.string.mark_as_unread)
+                    readItem.setIcon(R.drawable.ic_check_double_vector) 
+                }
+            }
+
+            val allPinned = selectedItems.all { pinnedConversations.contains(it.threadId.toString()) }
+            val pinItem = menu.findItem(R.id.cab_pin_conversation)
+            if (pinItem != null) {
+                if (allPinned) {
+                    pinItem.title = getString(R.string.unpin_conversation)
+                    pinItem.setIcon(R.drawable.ic_unpin_vector)
+                } else {
+                    pinItem.title = getString(R.string.pin_conversation)
+                    pinItem.setIcon(R.drawable.ic_pin_vector)
+                }
+            }
+        }
     }
 
     private fun updateBottomBarDependentPadding() {

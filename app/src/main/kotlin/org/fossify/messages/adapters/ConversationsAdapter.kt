@@ -14,10 +14,12 @@ import org.fossify.commons.helpers.KEY_PHONE
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
+import org.fossify.messages.activities.MainActivity
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.dialogs.DeleteConfirmationDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.extensions.config
+import org.fossify.messages.extensions.conversationsDB
 import org.fossify.messages.extensions.deleteConversation
 import org.fossify.messages.extensions.dialNumber
 import org.fossify.messages.extensions.launchConversationDetails
@@ -41,6 +43,18 @@ class ConversationsAdapter(
     itemClick: (Any) -> Unit
 ) : BaseConversationsAdapter(activity, recyclerView, onRefresh, itemClick) {
     override fun getActionMenuId() = R.menu.cab_conversations
+
+    fun getSelectedConversations() = getSelectedItems()
+
+    override fun onActionModeCreated() {
+        super.onActionModeCreated()
+        (activity as? MainActivity)?.updateSelectionBottomBar(selectedKeys.size)
+    }
+
+    override fun onActionModeDestroyed() {
+        super.onActionModeDestroyed()
+        (activity as? MainActivity)?.updateSelectionBottomBar(0)
+    }
 
     override fun prepareActionMode(menu: Menu) {
         val selectedItems = getSelectedItems()
@@ -66,6 +80,7 @@ class ConversationsAdapter(
             findItem(R.id.cab_archive).isVisible = archiveAvailable
             checkPinBtnVisibility(this)
         }
+        (activity as? MainActivity)?.updateSelectionBottomBar(selectedKeys.size)
     }
 
     override fun actionItemPressed(id: Int) {
@@ -88,6 +103,7 @@ class ConversationsAdapter(
             R.id.cab_mark_as_unread -> markAsUnread()
             R.id.cab_pin_conversation -> pinConversation(true)
             R.id.cab_unpin_conversation -> pinConversation(false)
+            R.id.cab_set_category -> askSetCategory()
             R.id.cab_select_all -> selectAll()
         }
     }
@@ -306,7 +322,7 @@ class ConversationsAdapter(
 
         val newList = try {
             currentList.toMutableList().apply { removeAll(conversationsToRemove) }
-        } catch (ignored: Exception) {
+        } catch (_: Exception) {
             currentList.toMutableList()
         }
 
@@ -337,7 +353,7 @@ class ConversationsAdapter(
 
         val newList = try {
             currentList.toMutableList().apply { removeAll(conversationsToRemove) }
-        } catch (ignored: Exception) {
+        } catch (_: Exception) {
             currentList.toMutableList()
         }
 
@@ -436,6 +452,28 @@ class ConversationsAdapter(
             selectedConversations.any { !pinnedConversations.contains(it.threadId.toString()) }
         menu.findItem(R.id.cab_unpin_conversation).isVisible =
             selectedConversations.all { pinnedConversations.contains(it.threadId.toString()) }
+    }
+
+    private fun askSetCategory() {
+        val selectedConversations = getSelectedItems()
+        val currentCategory = if (selectedConversations.size == 1) selectedConversations.first().category else ""
+        org.fossify.messages.dialogs.SetCategoryDialog(activity as SimpleActivity, currentCategory) { newCategory ->
+            setCategory(newCategory)
+        }
+    }
+
+    private fun setCategory(category: String) {
+        val conversationsToUpdate = getSelectedItems()
+        ensureBackgroundThread {
+            conversationsToUpdate.forEach {
+                it.category = category
+                activity.conversationsDB.insertOrUpdate(it)
+            }
+            activity.runOnUiThread {
+                finishActMode()
+                refreshConversations()
+            }
+        }
     }
 
     private fun refreshConversationsAndFinishActMode() {
