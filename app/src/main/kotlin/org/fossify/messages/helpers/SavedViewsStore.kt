@@ -39,12 +39,15 @@ class SavedViewsStore(private val config: Config) {
         title: String,
         config: SavedViewConfig = SavedViewConfig(),
         iconResName: String = SavedView.DEFAULT_CUSTOM_VIEW_ICON,
+        position: Int? = null,
     ): SavedView {
+        val views = getViews()
+        val finalPosition = position ?: views.size
         val view = SavedView(
             id = "view_${UUID.randomUUID()}",
             type = SavedViewType.CUSTOM,
             title = title,
-            position = getViews().size,
+            position = finalPosition,
             isEditable = true,
             config = config,
             iconResName = iconResName,

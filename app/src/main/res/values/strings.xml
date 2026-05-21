@@ -150,6 +150,7 @@
     <string name="color">Color</string>
     <string name="select_color">Select color</string>
     <string name="choose_color">Choose color</string>
+    <string name="choose_position">Choose position</string>
     <string name="description">Description</string>
     <string name="enter_category_description">Enter category description</string>
      <string name="keywords">Keywords</string>

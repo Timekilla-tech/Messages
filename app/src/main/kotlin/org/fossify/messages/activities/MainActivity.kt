@@ -10,6 +10,7 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
@@ -18,6 +19,7 @@ import android.view.Menu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.view.updatePadding
@@ -340,13 +342,43 @@ class MainActivity : SimpleActivity() {
         val menu = bar.menu
         menu.clear()
 
+        val activeId = activeSavedView.id
         views.forEachIndexed { index, view ->
-            menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
-                .setIcon(resolveSavedViewIconRes(view))
+            val menuItem = menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
+            
+            // Create a StateListDrawable for each icon
+            val iconRes = resolveSavedViewIconRes(view)
+            val activeColor = view.config.color ?: getProperPrimaryColor()
+            val inactiveColor = getProperTextColor().adjustAlpha(0.3f)
+            
+            val stateListDrawable = StateListDrawable().apply {
+                // Active state (selected)
+                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+                activeIcon?.let {
+                    DrawableCompat.setTint(it, activeColor)
+                    addState(intArrayOf(android.R.attr.state_selected), it)
+                }
+                
+                // Inactive state (default)
+                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+                inactiveIcon?.let {
+                    DrawableCompat.setTint(it, inactiveColor)
+                    addState(intArrayOf(), it)
+                }
+            }
+            
+            menuItem.icon = stateListDrawable
         }
 
-        val selectedIndex = views.indexOfFirst { it.id == activeSavedView.id }.takeIf { it >= 0 } ?: 0
+        val selectedIndex = views.indexOfFirst { it.id == activeId }.takeIf { it >= 0 } ?: 0
         bar.setOnItemSelectedListener(null)
+        bar.itemIconTintList = null // Disable default tinting to use our manual tints
+        
+        // Ensure text color also reflects the selection state
+        val states = arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf())
+        val colors = intArrayOf(getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
+        bar.itemTextColor = android.content.res.ColorStateList(states, colors)
+
         bar.selectedItemId = savedViewMenuIdOffset + selectedIndex
         bar.setOnItemSelectedListener { item ->
             val viewIndex = item.itemId - savedViewMenuIdOffset
@@ -424,14 +456,28 @@ class MainActivity : SimpleActivity() {
             return
         }
 
-        if (conversationsBaseBottomPadding != 0) {
-            binding.conversationsList.updatePadding(bottom = conversationsBaseBottomPadding + barHeight)
+        val updateLogic = {
+            if (conversationsBaseBottomPadding != 0) {
+                val newPadding = conversationsBaseBottomPadding + barHeight
+                if (binding.conversationsList.paddingBottom != newPadding) {
+                    binding.conversationsList.updatePadding(bottom = newPadding)
+                }
+            }
+
+            val fabLayoutParams = binding.conversationsFab.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
+            val defaultFabMargin = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.activity_margin)
+            val newBottomMargin = defaultFabMargin + barHeight
+            if (fabLayoutParams.bottomMargin != newBottomMargin) {
+                fabLayoutParams.bottomMargin = newBottomMargin
+                binding.conversationsFab.layoutParams = fabLayoutParams
+            }
         }
 
-        val fabLayoutParams = binding.conversationsFab.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
-        val defaultFabMargin = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.activity_margin)
-        fabLayoutParams.bottomMargin = defaultFabMargin + barHeight
-        binding.conversationsFab.layoutParams = fabLayoutParams
+        if (binding.root.isInLayout) {
+            binding.root.post { updateLogic() }
+        } else {
+            updateLogic()
+        }
     }
 
     private fun switchToSavedView(viewId: String) {
@@ -853,15 +899,38 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showCreateSavedViewDialog() {
-        val baseConfig = activeSavedView.config
+        val baseConfig = SavedViewConfig() // Start with a fresh config, don't inherit from active folder
         showSavedViewNameDialog(
             title = getString(R.string.create_view),
             initialValue = "",
             confirmLabel = getString(org.fossify.commons.R.string.ok),
         ) { viewName ->
             showSavedViewIconPickerDialog(SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val createdView = savedViewsStore.createView(viewName, baseConfig, iconResName)
-                switchToSavedView(createdView.id)
+                val views = savedViewsStore.getViews()
+                val positions = (0..views.size).map { it.toString() }
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.choose_position)
+                    .setItems(positions.toTypedArray()) { _, which ->
+                        val colorOptions = listOf(
+                            "Default" to null,
+                            "Blue" to 0xFF2196F3.toInt(),
+                            "Green" to 0xFF4CAF50.toInt(),
+                            "Orange" to 0xFFFF9800.toInt(),
+                            "Red" to 0xFFF44336.toInt(),
+                            "Purple" to 0xFF9C27B0.toInt()
+                        )
+                        AlertDialog.Builder(this)
+                            .setTitle(R.string.choose_color)
+                            .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
+                                val selectedColor = colorOptions[colorWhich].second
+                                // Automatically filter for the tag matching the folder's name
+                                val configWithColor = baseConfig.copy(color = selectedColor, tags = setOf(viewName))
+                                val createdView = savedViewsStore.createView(viewName, configWithColor, iconResName, which)
+                                switchToSavedView(createdView.id)
+                            }
+                            .show()
+                    }
+                    .show()
             }
         }
     }
@@ -978,19 +1047,31 @@ class MainActivity : SimpleActivity() {
 
     private fun reloadConversationsForCurrentFilter() {
         ensureBackgroundThread {
-            val conversations = try {
-                conversationsDB.getNonArchived().toMutableList() as ArrayList<Conversation>
+            val nonArchived = try {
+                conversationsDB.getNonArchived()
             } catch (_: Exception) {
-                ArrayList()
+                emptyList()
+            }
+            
+            val archived = try {
+                conversationsDB.getAllArchived()
+            } catch (_: Exception) {
+                emptyList()
             }
 
+            val all = (nonArchived + archived).toMutableList() as ArrayList<Conversation>
+
             runOnUiThread {
-                setupConversations(conversations)
+                setupConversations(all)
             }
         }
     }
 
     private fun conversationMatchesActiveView(conversation: Conversation): Boolean {
+        if (activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+            return true
+        }
+
         val viewConfig = activeSavedView.config
 
         if (viewConfig.unreadOnly && conversation.read) {
@@ -1063,8 +1144,15 @@ class MainActivity : SimpleActivity() {
     private fun showOrHidePlaceholder(show: Boolean) {
         binding.conversationsFastscroller.beGoneIf(show)
         binding.noConversationsPlaceholder.beVisibleIf(show)
-        binding.noConversationsPlaceholder.text = getString(R.string.no_conversations_found)
-        binding.noConversationsPlaceholder2.beVisibleIf(show)
+        
+        val placeholderText = if (activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+            getString(R.string.no_conversations_found)
+        } else {
+            getString(org.fossify.commons.R.string.no_items_found)
+        }
+        
+        binding.noConversationsPlaceholder.text = placeholderText
+        binding.noConversationsPlaceholder2.beVisibleIf(show && activeSavedView.id == SavedView.MAIN_VIEW_ID)
     }
 
     private fun fadeOutSearch() {
