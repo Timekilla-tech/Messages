@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_launcher_name">Messages_debug</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_green">Green</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_red">Red</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_teal">Teal</string>
+    <string name="color_pink">Pink</string>
+    <string name="color_indigo">Indigo</string>
+    <string name="color_brown">Brown</string>
+    <string name="color_gray">Gray</string>
 </resources>

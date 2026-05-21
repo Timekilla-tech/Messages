@@ -148,6 +148,17 @@
     <string name="enter_category_name">Enter category name</string>
     <string name="category_name_cannot_be_empty">Category name cannot be empty</string>
     <string name="color">Color</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_green">Green</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_red">Red</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_teal">Teal</string>
+    <string name="color_pink">Pink</string>
+    <string name="color_indigo">Indigo</string>
+    <string name="color_brown">Brown</string>
+    <string name="color_gray">Gray</string>
+    <string name="default_label">Default</string>
     <string name="select_color">Select color</string>
     <string name="choose_color">Choose color</string>
     <string name="choose_position">Choose position</string>

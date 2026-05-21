@@ -26,16 +26,16 @@ class AddOrEditCategoryDialog(
     init {
         var selectedColor = originalCategory?.color ?: activity.getProperTextColor()
         val colorOptions = listOf(
-            "Blue" to 0xFF2196F3.toInt(),
-            "Green" to 0xFF4CAF50.toInt(),
-            "Orange" to 0xFFFF9800.toInt(),
-            "Red" to 0xFFF44336.toInt(),
-            "Purple" to 0xFF9C27B0.toInt(),
-            "Teal" to 0xFF009688.toInt(),
-            "Pink" to 0xFFE91E63.toInt(),
-            "Indigo" to 0xFF3F51B5.toInt(),
-            "Brown" to 0xFF795548.toInt(),
-            "Gray" to 0xFF607D8B.toInt(),
+            activity.getString(R.string.color_blue) to 0xFF2196F3.toInt(),
+            activity.getString(R.string.color_green) to 0xFF4CAF50.toInt(),
+            activity.getString(R.string.color_orange) to 0xFFFF9800.toInt(),
+            activity.getString(R.string.color_red) to 0xFFF44336.toInt(),
+            activity.getString(R.string.color_purple) to 0xFF9C27B0.toInt(),
+            activity.getString(R.string.color_teal) to 0xFF009688.toInt(),
+            activity.getString(R.string.color_pink) to 0xFFE91E63.toInt(),
+            activity.getString(R.string.color_indigo) to 0xFF3F51B5.toInt(),
+            activity.getString(R.string.color_brown) to 0xFF795548.toInt(),
+            activity.getString(R.string.color_gray) to 0xFF607D8B.toInt(),
         )
 
         // keywords lists shared between the Compose view and the save handler
