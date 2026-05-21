@@ -1,13 +1,19 @@
 package org.fossify.messages.helpers
 
 import android.content.Context
+import com.google.gson.reflect.TypeToken
 import org.fossify.commons.helpers.BaseConfig
+import org.fossify.messages.extensions.gson.gson
 import org.fossify.messages.extensions.getDefaultKeyboardHeight
 import org.fossify.messages.models.Conversation
 
 class Config(context: Context) : BaseConfig(context) {
     companion object {
         fun newInstance(context: Context) = Config(context)
+
+        private const val CONVERSATION_FOLDER_METADATA_JSON = "conversation_folder_metadata_json"
+        private const val LAST_USED_FOLDER_PREFIX = "last_used_folder_"
+        private const val USER_PRIMARY_FOLDER_PREFIX = "user_primary_folder_"
     }
 
     fun saveUseSIMIdAtNumber(number: String, SIMId: Int) {
@@ -196,4 +202,47 @@ class Config(context: Context) : BaseConfig(context) {
     var lastSavedViewId: String
         get() = prefs.getString(LAST_SAVED_VIEW_ID, "main")!!
         set(lastSavedViewId) = prefs.edit().putString(LAST_SAVED_VIEW_ID, lastSavedViewId).apply()
+
+    private var conversationFolderMetadataJson: String
+        get() = prefs.getString(CONVERSATION_FOLDER_METADATA_JSON, "")!!
+        set(value) = prefs.edit().putString(CONVERSATION_FOLDER_METADATA_JSON, value).apply()
+
+    private fun readConversationFolderMap(): MutableMap<String, String> {
+        if (conversationFolderMetadataJson.isBlank()) {
+            return mutableMapOf()
+        }
+
+        return try {
+            val type = object : TypeToken<MutableMap<String, String>>() {}.type
+            gson.fromJson<MutableMap<String, String>>(conversationFolderMetadataJson, type) ?: mutableMapOf()
+        } catch (_: Exception) {
+            mutableMapOf()
+        }
+    }
+
+    private fun writeConversationFolderMap(map: MutableMap<String, String>) {
+        conversationFolderMetadataJson = gson.toJson(map)
+    }
+
+    fun setLastUsedFolderForConversation(threadId: Long, folderId: String) {
+        val map = readConversationFolderMap()
+        map[LAST_USED_FOLDER_PREFIX + threadId] = folderId
+        writeConversationFolderMap(map)
+    }
+
+    fun getLastUsedFolderForConversation(threadId: Long): String? {
+        val map = readConversationFolderMap()
+        return map[LAST_USED_FOLDER_PREFIX + threadId]
+    }
+
+    fun setUserPrimaryFolderForConversation(threadId: Long, folderId: String) {
+        val map = readConversationFolderMap()
+        map[USER_PRIMARY_FOLDER_PREFIX + threadId] = folderId
+        writeConversationFolderMap(map)
+    }
+
+    fun getUserPrimaryFolderForConversation(threadId: Long): String? {
+        val map = readConversationFolderMap()
+        return map[USER_PRIMARY_FOLDER_PREFIX + threadId]
+    }
 }

@@ -394,15 +394,17 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun setupSelectionBottomBar() {
-        binding.selectionBottomBar?.setOnItemSelectedListener { item ->
+        val selectionBottomBar = binding.selectionBottomBar ?: return
+
+        selectionBottomBar.setOnItemSelectedListener { item ->
             getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
             false
         }
 
         // Long press for "Set Category" fast action (assign to a specific folder immediately)
-        binding.selectionBottomBar.post {
+        selectionBottomBar.post {
             try {
-                val menuView = binding.selectionBottomBar.getChildAt(0) as? android.view.ViewGroup
+                val menuView = selectionBottomBar.getChildAt(0) as? android.view.ViewGroup
                 for (i in 0 until (menuView?.childCount ?: 0)) {
                     val itemView = menuView?.getChildAt(i)
                     if (itemView?.id == R.id.cab_set_category) {
@@ -415,7 +417,7 @@ class MainActivity : SimpleActivity() {
             } catch (_: Exception) {}
         }
 
-        binding.selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateBottomBarDependentPadding()
         }
     }
@@ -428,12 +430,16 @@ class MainActivity : SimpleActivity() {
         }
 
         val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
-        folders.forEach { folder ->
-            popup.menu.add(folder.title)
+        folders.forEachIndexed { index, folder ->
+            popup.menu.add(Menu.NONE, index, index, folder.title)
         }
 
         popup.setOnMenuItemClickListener { item ->
-            getOrCreateConversationsAdapter().actionItemPressed(R.id.cab_set_category, item.title.toString())
+            val folder = folders.getOrNull(item.itemId) ?: return@setOnMenuItemClickListener false
+            getOrCreateConversationsAdapter().getSelectedConversations().forEach {
+                setUserPrimaryFolderForConversation(it, folder.id)
+            }
+            getOrCreateConversationsAdapter().assignFolderToSelectedConversations(folder.title)
             true
         }
         popup.show()
@@ -441,11 +447,11 @@ class MainActivity : SimpleActivity() {
 
     fun updateSelectionBottomBar(selectedCount: Int) {
         val isSelecting = selectedCount > 0
-        binding.selectionBottomBar.beVisibleIf(isSelecting)
+        binding.selectionBottomBar?.beVisibleIf(isSelecting)
         binding.savedViewsBottomBar.beGoneIf(isSelecting)
         
         if (isSelecting) {
-            val menu = binding.selectionBottomBar.menu
+            val menu = binding.selectionBottomBar?.menu ?: return
             val adapter = getOrCreateConversationsAdapter()
             val selectedItems = adapter.getSelectedConversations()
             
@@ -481,13 +487,12 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun updateBottomBarDependentPadding() {
-        val activeBar = if (binding.selectionBottomBar?.visibility == android.view.View.VISIBLE) {
-            binding.selectionBottomBar
+        val selectionBottomBar = binding.selectionBottomBar
+        val barHeight = if (selectionBottomBar?.visibility == android.view.View.VISIBLE) {
+            selectionBottomBar.height
         } else {
-            binding.savedViewsBottomBar
+            binding.savedViewsBottomBar.height
         }
-
-        val barHeight = activeBar.height
         if (barHeight == 0) {
             return
         }
@@ -1140,6 +1145,73 @@ class MainActivity : SimpleActivity() {
         }
     }
 
+    private fun conversationMatchesSavedFolder(view: SavedView, conversation: Conversation): Boolean {
+        if (view.id == SavedView.MAIN_VIEW_ID) {
+            return false
+        }
+
+        val selectedTags = view.config.tags
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        if (selectedTags.isEmpty()) {
+            return false
+        }
+
+        val conversationTags = conversation.category
+            .split(",")
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        return if (view.config.matchAllTags) {
+            selectedTags.all { it in conversationTags }
+        } else {
+            selectedTags.any { it in conversationTags }
+        }
+    }
+
+    private fun getPrimaryFolderForConversation(conversation: Conversation): SavedView? {
+        val containingFolders = savedViewsStore.getViews().filter { view ->
+            conversationMatchesSavedFolder(view, conversation)
+        }
+
+        if (containingFolders.isEmpty()) {
+            return null
+        }
+
+        config.getLastUsedFolderForConversation(conversation.threadId)?.let { lastUsedId ->
+            containingFolders.firstOrNull { it.id == lastUsedId }?.let { return it }
+        }
+
+        config.getUserPrimaryFolderForConversation(conversation.threadId)?.let { primaryId ->
+            containingFolders.firstOrNull { it.id == primaryId }?.let { return it }
+        }
+
+        return containingFolders.minByOrNull { it.title.lowercase(Locale.ROOT) }
+    }
+
+    fun getConversationRowTintColor(conversation: Conversation): Int? {
+        if (activeSavedView.id != SavedView.MAIN_VIEW_ID) {
+            return activeSavedView.config.color ?: getProperPrimaryColor()
+        }
+
+        return getPrimaryFolderForConversation(conversation)?.config?.color
+    }
+
+    private fun markConversationFolderAsLastUsed(conversation: Conversation) {
+        if (activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+            return
+        }
+
+        config.setLastUsedFolderForConversation(conversation.threadId, activeSavedView.id)
+    }
+
+    fun setUserPrimaryFolderForConversation(conversation: Conversation, folderId: String) {
+        config.setUserPrimaryFolderForConversation(conversation.threadId, folderId)
+    }
+
     private fun syncTagFiltersFromActiveView() {
         activeTagFilters.clear()
         activeTagFilters.addAll(activeSavedView.config.tags)
@@ -1208,6 +1280,7 @@ class MainActivity : SimpleActivity() {
 
     private fun handleConversationClick(any: Any) {
         val conversation = any as Conversation
+        markConversationFolderAsLastUsed(conversation)
         if (isTwoPaneMode) {
             // show conversation detail in right pane when two-pane is active
             if (detailFragment != null && detailFragment?.isAdded == true) {

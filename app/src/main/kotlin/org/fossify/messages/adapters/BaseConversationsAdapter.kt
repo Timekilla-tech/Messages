@@ -1,7 +1,6 @@
 package org.fossify.messages.adapters
 
 import android.annotation.SuppressLint
-import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.os.Parcelable
 import android.text.TextUtils
@@ -11,13 +10,14 @@ import android.graphics.drawable.GradientDrawable
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.qtalk.recyclerviewfastscroller.RecyclerViewFastScroller
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
+import org.fossify.commons.extensions.adjustAlpha
 import org.fossify.commons.extensions.applyColorFilter
+import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.extensions.formatDateOrTime
 import org.fossify.commons.extensions.getContrastColor
@@ -27,7 +27,7 @@ import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.SimpleContactsHelper
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
-import org.fossify.messages.R
+import org.fossify.messages.activities.MainActivity
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.databinding.ItemConversationBinding
 import org.fossify.messages.extensions.config
@@ -173,6 +173,15 @@ abstract class BaseConversationsAdapter(
     private fun setupView(view: View, conversation: Conversation) {
         ItemConversationBinding.bind(view).apply {
             root.setupViewBackground(activity)
+
+            val tintColor = (activity as? MainActivity)?.getConversationRowTintColor(conversation)
+            if (tintColor == null) {
+                conversationTintOverlay.beGone()
+            } else {
+                conversationTintOverlay.setBackgroundColor(tintColor.adjustAlpha(0.08f))
+                conversationTintOverlay.beVisibleIf(true)
+            }
+
             val smsDraft = drafts[conversation.threadId]
             draftIndicator.beVisibleIf(!smsDraft.isNullOrEmpty())
             draftIndicator.setTextColor(properPrimaryColor)
@@ -265,7 +274,7 @@ abstract class BaseConversationsAdapter(
         // don't continue to appear in the conversation list until DB rows are reconciled.
         val existingCategoryKeys = try {
             activity.getAllCategories().map { normalizeCategoryKey(it.name) }.toSet()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptySet<String>()
         }
 
@@ -279,7 +288,7 @@ abstract class BaseConversationsAdapter(
             val color = categoryColors[key] ?: try {
                 // Attempt to resolve missing color from DB synchronously so the UI updates immediately
                 activity.getAllCategories().firstOrNull { normalizeCategoryKey(it.name) == key }?.color
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             } ?: properPrimaryColor
 

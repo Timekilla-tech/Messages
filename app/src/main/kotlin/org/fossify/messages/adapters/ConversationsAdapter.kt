@@ -23,6 +23,7 @@ import org.fossify.messages.extensions.conversationsDB
 import org.fossify.messages.extensions.deleteConversation
 import org.fossify.messages.extensions.dialNumber
 import org.fossify.messages.extensions.launchConversationDetails
+import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.markThreadMessagesRead
 import org.fossify.messages.extensions.markThreadMessagesUnread
 import org.fossify.messages.extensions.renameConversation
@@ -35,6 +36,7 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.messaging.isShortCodeWithLetters
 import org.fossify.messages.models.Conversation
+import java.util.Locale
 
 class ConversationsAdapter(
     activity: SimpleActivity,
@@ -45,6 +47,32 @@ class ConversationsAdapter(
     override fun getActionMenuId() = R.menu.cab_conversations
 
     fun getSelectedConversations() = getSelectedItems()
+
+    fun assignFolderToSelectedConversations(folderTitle: String) {
+        if (selectedKeys.isEmpty()) {
+            return
+        }
+
+        val selectedConversations = getSelectedItems()
+        ensureBackgroundThread {
+            selectedConversations.forEach { conversation ->
+                val updatedCategories = (conversation.category
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() } + folderTitle)
+                    .distinctBy { it.lowercase(Locale.ROOT) }
+                    .joinToString(", ")
+
+                if (updatedCategories != conversation.category) {
+                    activity.insertOrUpdateConversation(conversation.copy(category = updatedCategories))
+                }
+            }
+
+            activity.runOnUiThread {
+                refreshConversationsAndFinishActMode()
+            }
+        }
+    }
 
     override fun onActionModeCreated() {
         super.onActionModeCreated()
