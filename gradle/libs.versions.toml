@@ -44,6 +44,7 @@ androidx-window = { module = "androidx.window:window", version.ref = "androidx-w
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 #Compose
 compose-detekt = { module = "io.nlopez.compose.rules:detekt", version.ref = "detektCompose" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }

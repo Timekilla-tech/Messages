@@ -95,6 +95,7 @@ android {
 
     sourceSets {
         getByName("main").java.directories.add("src/main/kotlin")
+        getByName("androidTest").assets.srcDirs(files("$projectDir/schemas"))
     }
 
     compileOptions {
@@ -162,5 +163,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.bundles.room)
     ksp(libs.androidx.room.compiler)
+    androidTestImplementation("androidx.room:room-testing:2.8.4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
     detektPlugins(libs.compose.detekt)
 }
