@@ -349,13 +349,18 @@ class MainActivity : SimpleActivity() {
             // Create a StateListDrawable for each icon
             val iconRes = resolveSavedViewIconRes(view)
             val activeColor = view.config.color ?: getProperPrimaryColor()
-            val inactiveColor = getProperTextColor().adjustAlpha(0.3f)
-            
+            // Use the same hue for inactive state but with lower alpha so each item's icon
+            // visually matches its folder color even when not selected.
+            val inactiveColor = (view.config.color ?: getProperPrimaryColor()).adjustAlpha(0.3f)
+
             val stateListDrawable = StateListDrawable().apply {
                 // Active state (selected)
                 val activeIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
                 activeIcon?.let {
                     DrawableCompat.setTint(it, activeColor)
+                    // Ensure both checked and selected states are covered so the
+                    // drawable shows as active when the BottomNavigationView item is selected.
+                    addState(intArrayOf(android.R.attr.state_checked), it)
                     addState(intArrayOf(android.R.attr.state_selected), it)
                 }
                 
@@ -953,12 +958,12 @@ class MainActivity : SimpleActivity() {
                     .setTitle(R.string.choose_position)
                     .setItems(positions.toTypedArray()) { _, which ->
                         val colorOptions = listOf(
-                            "Default" to null,
-                            "Blue" to 0xFF2196F3.toInt(),
-                            "Green" to 0xFF4CAF50.toInt(),
-                            "Orange" to 0xFFFF9800.toInt(),
-                            "Red" to 0xFFF44336.toInt(),
-                            "Purple" to 0xFF9C27B0.toInt()
+                            getString(R.string.default_label) to null,
+                            getString(R.string.color_blue) to 0xFF2196F3.toInt(),
+                            getString(R.string.color_green) to 0xFF4CAF50.toInt(),
+                            getString(R.string.color_orange) to 0xFFFF9800.toInt(),
+                            getString(R.string.color_red) to 0xFFF44336.toInt(),
+                            getString(R.string.color_purple) to 0xFF9C27B0.toInt(),
                         )
                         AlertDialog.Builder(this)
                             .setTitle(R.string.choose_color)
