@@ -148,9 +148,12 @@
     <string name="choose_color">Choose color</string>
     <string name="description">Description</string>
     <string name="enter_category_description">Enter category description</string>
-    <string name="keywords">Keywords</string>
-    <string name="enter_keywords_comma_separated">Enter keywords separated by commas</string>
-    <string name="icon">Icon</string>
+     <string name="keywords">Keywords</string>
+     <string name="enter_keywords_comma_separated">Enter keywords separated by commas</string>
+     <string name="regex_mode">Use regex</string>
+     <string name="regex_mode_description">Match using regular expression</string>
+     <string name="invalid_regex_pattern">Invalid regex pattern</string>
+     <string name="icon">Icon</string>
     <string name="enter_icon">Enter icon or emoji</string>
     <string name="pick_color">Pick color</string>
     <string name="no_categories">No categories have been created yet</string>

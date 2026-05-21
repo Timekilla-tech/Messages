@@ -1212,6 +1212,7 @@ class MainActivity : SimpleActivity() {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun refreshConversations(@Suppress("unused") event: Events.RefreshConversations) {
+        android.util.Log.d("CategoryDebug", "MainActivity: received RefreshConversations event -> initMessenger")
         initMessenger()
     }
 

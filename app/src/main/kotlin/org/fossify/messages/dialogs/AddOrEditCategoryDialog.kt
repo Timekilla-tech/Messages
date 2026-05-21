@@ -10,6 +10,8 @@ import org.fossify.commons.extensions.showKeyboard
 import org.fossify.commons.extensions.value
 import org.fossify.messages.R
 import org.fossify.messages.databinding.DialogAddOrEditCategoryBinding
+import androidx.compose.ui.platform.ComposeView
+import org.fossify.messages.ui.KeywordManager
 import org.fossify.messages.extensions.createCategory
 import org.fossify.messages.extensions.updateCategory
 import org.fossify.messages.models.Category
@@ -19,7 +21,7 @@ import org.fossify.commons.extensions.toast
 
 class AddOrEditCategoryDialog(
     val activity: BaseSimpleActivity,
-    private val originalCategory: Category? = null,
+    private  val originalCategory: Category? = null,
     val callback: () -> Unit
 ) {
     init {
@@ -37,10 +39,71 @@ class AddOrEditCategoryDialog(
             "Gray" to 0xFF607D8B.toInt(),
         )
 
+        // keywords lists shared between the Compose view and the save handler
+        val currentPlainWords = mutableListOf<String>()
+        val currentRegexPatterns = mutableListOf<String>()
+
         val binding = DialogAddOrEditCategoryBinding.inflate(activity.layoutInflater).apply {
             if (originalCategory != null) {
                 addCategoryNameEdittext.setText(originalCategory.name)
+                addCategoryDescriptionEdittext.setText(originalCategory.description)
+                // keywords will be shown in the Compose KeywordManager; initial value will be set below
+                addCategoryIconEdittext.setText(originalCategory.icon)
                 addCategoryKeywordsEdittext.setText(originalCategory.keywords)
+            }
+
+            // Prepare initial keywords lists for the KeywordManager
+            val initialPlainWords = mutableListOf<String>()
+            val initialRegexPatterns = mutableListOf<String>()
+            if (originalCategory != null) {
+                // Try to load from new columns first (if they exist)
+                if (originalCategory.plainKeywords.isNotEmpty()) {
+                    originalCategory.plainKeywords
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .forEach { initialPlainWords.add(it) }
+                }
+                if (originalCategory.regexPatterns.isNotEmpty()) {
+                    originalCategory.regexPatterns
+                        .lineSequence()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .forEach { initialRegexPatterns.add(it) }
+                }
+
+                // Fallback to old format for backward compatibility
+                if (initialPlainWords.isEmpty() && initialRegexPatterns.isEmpty()) {
+                    if (originalCategory.keywordIsRegex) {
+                        // regex format: newline-separated (legacy)
+                        originalCategory.keywords
+                            .lineSequence()
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                            .forEach { initialRegexPatterns.add(it) }
+                    } else {
+                        // plain format: comma-separated (legacy)
+                        originalCategory.keywords
+                            .split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                            .forEach { initialPlainWords.add(it) }
+                    }
+                }
+            }
+
+            // wire the ComposeView to show KeywordManager
+            addCategoryKeywordsCompose.setContent {
+                KeywordManager(
+                    initialPlainWords = initialPlainWords,
+                    initialRegexPatterns = initialRegexPatterns,
+                    onChanged = { plainWords, regexPatterns ->
+                        currentPlainWords.clear()
+                        currentPlainWords.addAll(plainWords)
+                        currentRegexPatterns.clear()
+                        currentRegexPatterns.addAll(regexPatterns)
+                    }
+                )
             }
 
             fun updateColorPreview() {
@@ -69,14 +132,65 @@ class AddOrEditCategoryDialog(
                 activity.setupDialogStuff(binding.root, this) { alertDialog ->
                     alertDialog.showKeyboard(binding.addCategoryNameEdittext)
                     alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                         val name = binding.addCategoryNameEdittext.value
+                         val description = binding.addCategoryDescriptionEdittext.value
+                         val icon = binding.addCategoryIconEdittext.value
                         val name = binding.addCategoryNameEdittext.value
                         val keywords = binding.addCategoryKeywordsEdittext.value
 
-                        if (name.isEmpty()) {
-                            activity.toast(R.string.category_name_cannot_be_empty)
-                            return@setOnClickListener
-                        }
+                         if (name.isEmpty()) {
+                             activity.toast(R.string.category_name_cannot_be_empty)
+                             return@setOnClickListener
+                         }
 
+                          // Store plain words as comma-separated, regex patterns as newline-separated
+                          val plainWordsStr = currentPlainWords.joinToString(",")
+                          val regexPatternsStr = currentRegexPatterns.joinToString("\n")
+                          val hasRegexPatterns = currentRegexPatterns.isNotEmpty()
+
+                          // Regex patterns are already validated during input (immediate validation in KeywordManager)
+                          // But validate again before save to be safe
+                          if (hasRegexPatterns) {
+                              try {
+                                  currentRegexPatterns.forEach { pattern ->
+                                      Regex(pattern)
+                                  }
+                              } catch (e: Exception) {
+                                  activity.showErrorToast("${activity.getString(R.string.invalid_regex_pattern)}: ${e.message}")
+                                  return@setOnClickListener
+                              }
+                          }
+
+                          if (originalCategory != null) {
+                              // Edit existing — save both plain words and regex patterns
+                              val updatedCategory = originalCategory.copy(
+                                  name = name,
+                                  color = selectedColor,
+                                  description = description,
+                                  plainKeywords = plainWordsStr,           // NEW: save plain words
+                                  regexPatterns = regexPatternsStr,        // NEW: save regex patterns
+                                  icon = icon,
+                                  keywordIsRegex = hasRegexPatterns        // For backward compat
+                              )
+                              activity.updateCategory(updatedCategory) {
+                                  callback()
+                                  alertDialog.dismiss()
+                              }
+                          } else {
+                              // Create new — save both plain words and regex patterns
+                              activity.createCategory(
+                                  name = name,
+                                  color = selectedColor,
+                                  description = description,
+                                  plainKeywords = plainWordsStr,           // NEW: save plain words
+                                  regexPatterns = regexPatternsStr,        // NEW: save regex patterns
+                                  icon = icon,
+                                  keywordIsRegex = hasRegexPatterns        // For backward compat
+                              ) {
+                                  callback()
+                                  alertDialog.dismiss()
+                              }
+                          }
                         if (originalCategory != null) {
                             // Edit existing
                             val updatedCategory = originalCategory.copy(

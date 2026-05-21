@@ -573,7 +573,21 @@ class ThreadAdapter(
             return null
         }
 
-        return categoryColors[normalizeCategoryKey(categoryName)]
+        val key = normalizeCategoryKey(categoryName)
+        // Fast path: cached
+        categoryColors[key]?.let { return it }
+
+        // Fallback: attempt to resolve from the DB synchronously so UI reflects recent category changes
+        // (categories list is small; this avoids waiting for updateCategoryColors to run)
+        return try {
+            val found = activity.getAllCategories().firstOrNull { normalizeCategoryKey(it.name) == key }?.color
+            if (found != null) {
+                categoryColors[key] = found
+            }
+            found
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun getAccessibleBubbleColors(baseColor: Int): Pair<Int, Int> {

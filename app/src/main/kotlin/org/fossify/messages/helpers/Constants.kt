@@ -112,11 +112,31 @@ const val BLOCKED_KEYWORDS_EXPORT_DELIMITER = ","
 const val BLOCKED_KEYWORDS_EXPORT_EXTENSION = ".txt"
 
 fun refreshMessages() {
-    EventBus.getDefault().post(Events.RefreshMessages())
+    try {
+        val bus = EventBus.getDefault()
+        if (bus.hasSubscriberForEvent(Events.RefreshMessages::class.java)) {
+            bus.post(Events.RefreshMessages())
+        } else {
+            android.util.Log.d("EventBus", "skip posting RefreshMessages - no subscribers")
+        }
+    } catch (e: Exception) {
+        // Defensive: don't crash callers if EventBus misbehaves
+        e.printStackTrace()
+    }
 }
 
 fun refreshConversations() {
-    EventBus.getDefault().post(Events.RefreshConversations())
+    try {
+        val bus = EventBus.getDefault()
+        if (bus.hasSubscriberForEvent(Events.RefreshConversations::class.java)) {
+            bus.post(Events.RefreshConversations())
+        } else {
+            android.util.Log.d("EventBus", "skip posting RefreshConversations - no subscribers")
+        }
+    } catch (e: Exception) {
+        // Defensive: don't crash callers if EventBus misbehaves
+        e.printStackTrace()
+    }
 }
 
 /** Not to be used with real messages persisted in the telephony db. This is for internal use only (e.g. scheduled messages, notification ids etc). */
