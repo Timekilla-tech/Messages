@@ -10,7 +10,6 @@ import org.fossify.commons.extensions.showKeyboard
 import org.fossify.commons.extensions.value
 import org.fossify.messages.R
 import org.fossify.messages.databinding.DialogAddOrEditCategoryBinding
-import androidx.compose.ui.platform.ComposeView
 import org.fossify.messages.ui.KeywordManager
 import org.fossify.messages.extensions.createCategory
 import org.fossify.messages.extensions.updateCategory
@@ -21,7 +20,7 @@ import org.fossify.commons.extensions.toast
 
 class AddOrEditCategoryDialog(
     val activity: BaseSimpleActivity,
-    private  val originalCategory: Category? = null,
+    private val originalCategory: Category? = null,
     val callback: () -> Unit
 ) {
     init {
@@ -47,9 +46,7 @@ class AddOrEditCategoryDialog(
             if (originalCategory != null) {
                 addCategoryNameEdittext.setText(originalCategory.name)
                 addCategoryDescriptionEdittext.setText(originalCategory.description)
-                // keywords will be shown in the Compose KeywordManager; initial value will be set below
                 addCategoryIconEdittext.setText(originalCategory.icon)
-                addCategoryKeywordsEdittext.setText(originalCategory.keywords)
             }
 
             // Prepare initial keywords lists for the KeywordManager
@@ -132,82 +129,58 @@ class AddOrEditCategoryDialog(
                 activity.setupDialogStuff(binding.root, this) { alertDialog ->
                     alertDialog.showKeyboard(binding.addCategoryNameEdittext)
                     alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                         val name = binding.addCategoryNameEdittext.value
-                         val description = binding.addCategoryDescriptionEdittext.value
-                         val icon = binding.addCategoryIconEdittext.value
                         val name = binding.addCategoryNameEdittext.value
-                        val keywords = binding.addCategoryKeywordsEdittext.value
+                        val description = binding.addCategoryDescriptionEdittext.value
+                        val icon = binding.addCategoryIconEdittext.value
 
-                         if (name.isEmpty()) {
-                             activity.toast(R.string.category_name_cannot_be_empty)
-                             return@setOnClickListener
-                         }
+                        if (name.isEmpty()) {
+                            activity.toast(R.string.category_name_cannot_be_empty)
+                            return@setOnClickListener
+                        }
 
-                          // Store plain words as comma-separated, regex patterns as newline-separated
-                          val plainWordsStr = currentPlainWords.joinToString(",")
-                          val regexPatternsStr = currentRegexPatterns.joinToString("\n")
-                          val hasRegexPatterns = currentRegexPatterns.isNotEmpty()
+                        // Store plain words as comma-separated, regex patterns as newline-separated
+                        val plainWordsStr = currentPlainWords.joinToString(",")
+                        val regexPatternsStr = currentRegexPatterns.joinToString("\n")
+                        val hasRegexPatterns = currentRegexPatterns.isNotEmpty()
 
-                          // Regex patterns are already validated during input (immediate validation in KeywordManager)
-                          // But validate again before save to be safe
-                          if (hasRegexPatterns) {
-                              try {
-                                  currentRegexPatterns.forEach { pattern ->
-                                      Regex(pattern)
-                                  }
-                              } catch (e: Exception) {
-                                  activity.showErrorToast("${activity.getString(R.string.invalid_regex_pattern)}: ${e.message}")
-                                  return@setOnClickListener
-                              }
-                          }
+                        // Regex patterns are already validated during input (immediate validation in KeywordManager)
+                        // But validate again before save to be safe
+                        if (hasRegexPatterns) {
+                            try {
+                                currentRegexPatterns.forEach { pattern ->
+                                    Regex(pattern)
+                                }
+                            } catch (e: Exception) {
+                                activity.showErrorToast("${activity.getString(R.string.invalid_regex_pattern)}: ${e.message}")
+                                return@setOnClickListener
+                            }
+                        }
 
-                          if (originalCategory != null) {
-                              // Edit existing — save both plain words and regex patterns
-                              val updatedCategory = originalCategory.copy(
-                                  name = name,
-                                  color = selectedColor,
-                                  description = description,
-                                  plainKeywords = plainWordsStr,           // NEW: save plain words
-                                  regexPatterns = regexPatternsStr,        // NEW: save regex patterns
-                                  icon = icon,
-                                  keywordIsRegex = hasRegexPatterns        // For backward compat
-                              )
-                              activity.updateCategory(updatedCategory) {
-                                  callback()
-                                  alertDialog.dismiss()
-                              }
-                          } else {
-                              // Create new — save both plain words and regex patterns
-                              activity.createCategory(
-                                  name = name,
-                                  color = selectedColor,
-                                  description = description,
-                                  plainKeywords = plainWordsStr,           // NEW: save plain words
-                                  regexPatterns = regexPatternsStr,        // NEW: save regex patterns
-                                  icon = icon,
-                                  keywordIsRegex = hasRegexPatterns        // For backward compat
-                              ) {
-                                  callback()
-                                  alertDialog.dismiss()
-                              }
-                          }
                         if (originalCategory != null) {
-                            // Edit existing
+                            // Edit existing — save both plain words and regex patterns
                             val updatedCategory = originalCategory.copy(
                                 name = name,
                                 color = selectedColor,
-                                keywords = keywords,
+                                description = description,
+                                plainKeywords = plainWordsStr,           // NEW: save plain words
+                                regexPatterns = regexPatternsStr,        // NEW: save regex patterns
+                                icon = icon,
+                                keywordIsRegex = hasRegexPatterns        // For backward compat
                             )
                             activity.updateCategory(updatedCategory) {
                                 callback()
                                 alertDialog.dismiss()
                             }
                         } else {
-                            // Create new
+                            // Create new — save both plain words and regex patterns
                             activity.createCategory(
                                 name = name,
                                 color = selectedColor,
-                                keywords = keywords
+                                description = description,
+                                plainKeywords = plainWordsStr,           // NEW: save plain words
+                                regexPatterns = regexPatternsStr,        // NEW: save regex patterns
+                                icon = icon,
+                                keywordIsRegex = hasRegexPatterns        // For backward compat
                             ) {
                                 callback()
                                 alertDialog.dismiss()
@@ -218,4 +191,3 @@ class AddOrEditCategoryDialog(
             }
     }
 }
-
