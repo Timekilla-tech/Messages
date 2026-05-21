@@ -171,4 +171,15 @@
         app:itemHorizontalTranslationEnabled="false"
         app:labelVisibilityMode="labeled" />
 
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/selection_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="?android:attr/windowBackground"
+        android:visibility="gone"
+        app:itemHorizontalTranslationEnabled="false"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/selection_conversations" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

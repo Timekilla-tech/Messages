@@ -15,6 +15,7 @@ import android.provider.Telephony
 import android.text.TextUtils
 import android.widget.EditText
 import android.view.Menu
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -82,7 +83,6 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
-import org.fossify.messages.helpers.SCREEN_VIEW_MODE_AUTO
 import org.fossify.messages.helpers.SCREEN_VIEW_MODE_SINGLE
 import org.fossify.messages.helpers.SCREEN_VIEW_MODE_TWO_PANE
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
@@ -100,7 +100,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 import androidx.window.layout.WindowLayoutInfo
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -110,7 +109,6 @@ import java.util.Locale
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
 
-    private val MAKE_DEFAULT_APP_REQUEST = 1
     private val SAVED_SCROLL_POSITION = "saved_scroll_position"
     private val SAVED_SEARCH_TEXT = "saved_search_text"
 
@@ -136,6 +134,14 @@ class MainActivity : SimpleActivity() {
     )
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
+
+    private val defaultAppLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            askPermissions()
+        } else {
+            finish()
+        }
+    }
 
     // Two-pane state (runtime adaptive using WindowManager / androidx.window)
     private var isTwoPaneMode: Boolean = false
@@ -277,7 +283,6 @@ class MainActivity : SimpleActivity() {
 
     private fun setupOptionsMenu() {
         binding.mainMenu.requireToolbar().inflateMenu(R.menu.menu_main)
-        binding.mainMenu.toggleHideOnScroll(true)
         binding.mainMenu.setupMenu()
 
         binding.mainMenu.onSearchClosedListener = {
@@ -326,7 +331,7 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSavedViewsBottomBar() {
         val bar = binding.savedViewsBottomBar
-        if (binding.selectionBottomBar?.visibility == android.view.View.GONE) {
+        if (binding.selectionBottomBar.visibility == android.view.View.GONE) {
             bar.beVisible()
         } else {
             bar.beGone()
@@ -354,7 +359,7 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun setupSelectionBottomBar() {
-        binding.selectionBottomBar?.setOnItemSelectedListener { item ->
+        binding.selectionBottomBar.setOnItemSelectedListener { item ->
             getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
             true
         }
@@ -362,11 +367,11 @@ class MainActivity : SimpleActivity() {
 
     fun updateSelectionBottomBar(selectedCount: Int) {
         val isSelecting = selectedCount > 0
-        binding.selectionBottomBar?.beVisibleIf(isSelecting)
-        binding.savedViewsBottomBar?.beGoneIf(isSelecting)
+        binding.selectionBottomBar.beVisibleIf(isSelecting)
+        binding.savedViewsBottomBar.beGoneIf(isSelecting)
         
         if (isSelecting) {
-            val menu = binding.selectionBottomBar?.menu ?: return
+            val menu = binding.selectionBottomBar.menu
             val adapter = getOrCreateConversationsAdapter()
             val selectedItems = adapter.getSelectedConversations()
             
@@ -423,28 +428,8 @@ class MainActivity : SimpleActivity() {
         val iconName = view.iconResName?.trim().takeUnless { it.isNullOrEmpty() }
             ?: if (view.id == SavedView.MAIN_VIEW_ID) SavedView.MAIN_VIEW_ICON else SavedView.DEFAULT_CUSTOM_VIEW_ICON
 
-        val mappedRes = savedViewIconOptions.firstOrNull { it.iconResName == iconName }?.drawableRes
-        if (mappedRes != null) {
-            return mappedRes
-        }
-
-        val dynamicRes = resources.getIdentifier(iconName, "drawable", packageName)
-        if (dynamicRes != 0) {
-            return dynamicRes
-        }
-
-        return if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_filter_list_vector
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
-        super.onActivityResult(requestCode, resultCode, resultData)
-        if (requestCode == MAKE_DEFAULT_APP_REQUEST) {
-            if (resultCode == RESULT_OK) {
-                askPermissions()
-            } else {
-                finish()
-            }
-        }
+        return savedViewIconOptions.firstOrNull { it.iconResName == iconName }?.drawableRes
+            ?: if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_filter_list_vector
     }
 
     private fun storeStateVariables() {
@@ -464,7 +449,7 @@ class MainActivity : SimpleActivity() {
                     askPermissions()
                 } else {
                     val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS)
-                    startActivityForResult(intent, MAKE_DEFAULT_APP_REQUEST)
+                    defaultAppLauncher.launch(intent)
                 }
             } else {
                 toast(org.fossify.commons.R.string.unknown_error_occurred)
@@ -476,7 +461,7 @@ class MainActivity : SimpleActivity() {
             } else {
                 val intent = Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT)
                 intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, packageName)
-                startActivityForResult(intent, MAKE_DEFAULT_APP_REQUEST)
+                defaultAppLauncher.launch(intent)
             }
         }
     }
