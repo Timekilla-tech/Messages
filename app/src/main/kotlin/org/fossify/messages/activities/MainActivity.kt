@@ -189,7 +189,7 @@ class MainActivity : SimpleActivity() {
             conversationsBaseBottomPadding = binding.conversationsList.paddingBottom
             setupSavedViewsBottomBar()
             setupSelectionBottomBar()
-
+            
             // Restore scroll position if it was saved (e.g., during fold/unfold)
             savedInstanceState?.getInt(SAVED_SCROLL_POSITION, -1)?.let { position ->
                 if (position >= 0) {
@@ -355,13 +355,19 @@ class MainActivity : SimpleActivity() {
             true
         }
 
+        bar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomBarDependentPadding()
+        }
         bar.post { updateBottomBarDependentPadding() }
     }
 
     private fun setupSelectionBottomBar() {
         binding.selectionBottomBar.setOnItemSelectedListener { item ->
             getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
-            true
+            false
+        }
+        binding.selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomBarDependentPadding()
         }
     }
 
@@ -407,7 +413,17 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun updateBottomBarDependentPadding() {
-        val barHeight = binding.savedViewsBottomBar.height
+        val activeBar = if (binding.selectionBottomBar.visibility == android.view.View.VISIBLE) {
+            binding.selectionBottomBar
+        } else {
+            binding.savedViewsBottomBar
+        }
+
+        val barHeight = activeBar.height
+        if (barHeight == 0) {
+            return
+        }
+
         if (conversationsBaseBottomPadding != 0) {
             binding.conversationsList.updatePadding(bottom = conversationsBaseBottomPadding + barHeight)
         }

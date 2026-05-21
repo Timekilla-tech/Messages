@@ -99,9 +99,20 @@ class ConversationsAdapter(
             R.id.cab_conversation_details ->
                 activity.launchConversationDetails(getSelectedItems().first().threadId)
 
-            R.id.cab_mark_as_read -> markAsRead()
+            R.id.cab_mark_as_read -> {
+                val items = getSelectedItems()
+                if (items.any { !it.read }) {
+                    markAsRead()
+                } else {
+                    markAsUnread()
+                }
+            }
             R.id.cab_mark_as_unread -> markAsUnread()
-            R.id.cab_pin_conversation -> pinConversation(true)
+            R.id.cab_pin_conversation -> {
+                val pinnedConversations = activity.config.pinnedConversations
+                val allPinned = getSelectedItems().all { pinnedConversations.contains(it.threadId.toString()) }
+                pinConversation(!allPinned)
+            }
             R.id.cab_unpin_conversation -> pinConversation(false)
             R.id.cab_set_category -> askSetCategory()
             R.id.cab_select_all -> selectAll()
