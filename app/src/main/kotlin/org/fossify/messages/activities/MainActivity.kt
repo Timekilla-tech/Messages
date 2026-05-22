@@ -125,15 +125,6 @@ class MainActivity : SimpleActivity() {
     private var inboxSwipeHelper: ItemTouchHelper? = null
     val savedViewsStore by lazy { SavedViewsStore(config) }
     private val savedViewMenuIdOffset = 20_000
-    private val savedViewIconOptions = listOf(
-        SavedViewIconOption(SavedView.MAIN_VIEW_ICON, R.string.view_icon_home, R.drawable.ic_home_vector),
-        SavedViewIconOption(SavedView.DEFAULT_CUSTOM_VIEW_ICON, R.string.view_icon_filter, R.drawable.ic_folder),
-        SavedViewIconOption("ic_archive_vector", R.string.view_icon_archive, R.drawable.ic_archive_vector),
-        SavedViewIconOption("ic_calendar_month_vector", R.string.view_icon_schedule, R.drawable.ic_calendar_month_vector),
-        SavedViewIconOption("ic_image_vector", R.string.view_icon_image, R.drawable.ic_image_vector),
-        SavedViewIconOption("ic_music_vector", R.string.view_icon_music, R.drawable.ic_music_vector),
-        SavedViewIconOption("ic_pin_vector", R.string.view_icon_pin, R.drawable.ic_pin_vector),
-    )
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
@@ -392,7 +383,26 @@ class MainActivity : SimpleActivity() {
         bar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateBottomBarDependentPadding()
         }
-        bar.post { updateBottomBarDependentPadding() }
+        bar.post {
+            try {
+                val menuView = bar.getChildAt(0) as? android.view.ViewGroup
+                for (i in 0 until (menuView?.childCount ?: 0)) {
+                    val itemView = menuView?.getChildAt(i)
+                    itemView?.setOnLongClickListener {
+                        val clickedView = views.getOrNull(i)
+                        if (clickedView != null) {
+                            if (clickedView.id == SavedView.MAIN_VIEW_ID) {
+                                showCreateSavedViewDialog()
+                            } else {
+                                showEditSavedViewDialog(clickedView)
+                            }
+                            true
+                        } else false
+                    }
+                }
+            } catch (_: Exception) {}
+            updateBottomBarDependentPadding()
+        }
     }
 
     private fun setupSelectionBottomBar() {
@@ -953,10 +963,10 @@ class MainActivity : SimpleActivity() {
             .show()
     }
 
-    private fun showEditSavedViewDialog() {
+    private fun showEditSavedViewDialog(viewToEdit: SavedView = activeSavedView) {
         showSavedViewNameDialog(
             title = getString(R.string.edit_view),
-            initialValue = activeSavedView.title,
+            initialValue = viewToEdit.title,
             confirmLabel = getString(org.fossify.commons.R.string.ok),
         ) { updatedName ->
             val views = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
@@ -976,11 +986,11 @@ class MainActivity : SimpleActivity() {
                         .setTitle(R.string.choose_color)
                         .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
                             val selectedColor = colorOptions[colorWhich].second
-                            val updatedView = activeSavedView.copy(
+                            val updatedView = viewToEdit.copy(
                                 title = updatedName,
                                 iconResName = null,
                                 position = which + 1, // +1 because main is at 0
-                                config = activeSavedView.config.copy(color = selectedColor)
+                                config = viewToEdit.config.copy(color = selectedColor)
                             )
                             savedViewsStore.upsertView(updatedView)
                             switchToSavedView(updatedView.id)
@@ -1007,22 +1017,6 @@ class MainActivity : SimpleActivity() {
                     return@setPositiveButton
                 }
                 switchToSavedView(SavedView.MAIN_VIEW_ID)
-            }
-            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
-            .show()
-    }
-
-    private fun showSavedViewIconPickerDialog(currentIconResName: String, onConfirm: (String) -> Unit) {
-        val iconNames = savedViewIconOptions.map { getString(it.titleRes) }
-        val selectedIndex = savedViewIconOptions.indexOfFirst {
-            it.iconResName.equals(currentIconResName, ignoreCase = true)
-        }.takeIf { it >= 0 } ?: 0
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.choose_view_icon)
-            .setSingleChoiceItems(iconNames.toTypedArray(), selectedIndex) { dialog, which ->
-                onConfirm(savedViewIconOptions[which].iconResName)
-                dialog.dismiss()
             }
             .setNegativeButton(org.fossify.commons.R.string.cancel, null)
             .show()
@@ -1196,10 +1190,6 @@ class MainActivity : SimpleActivity() {
         }
 
         config.setLastUsedFolderForConversation(conversation.threadId, activeSavedView.id)
-    }
-
-    fun setUserPrimaryFolderForConversation(conversation: Conversation, folderId: String) {
-        config.setUserPrimaryFolderForConversation(conversation.threadId, folderId)
     }
 
     private fun syncTagFiltersFromActiveView() {
@@ -1552,9 +1542,4 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-    private data class SavedViewIconOption(
-        val iconResName: String,
-        val titleRes: Int,
-        val drawableRes: Int,
-    )
 }
