@@ -2,11 +2,11 @@ package org.fossify.messages.adapters
 
 import android.annotation.SuppressLint
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Parcelable
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.View
-import android.graphics.drawable.GradientDrawable
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -256,6 +256,21 @@ abstract class BaseConversationsAdapter(
         }
     }
 
+    private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
+        view.apply {
+            beVisibleIf(isUnread)
+            if (isUnread) {
+                text = when {
+                    count > MAX_UNREAD_BADGE_COUNT -> "$MAX_UNREAD_BADGE_COUNT+"
+                    count == 0 -> ""
+                    else -> count.toString()
+                }
+                setTextColor(properPrimaryColor.getContrastColor())
+                background?.applyColorFilter(properPrimaryColor)
+            }
+        }
+    }
+
     private fun normalizeCategoryKey(name: String): String {
         return name.trim().lowercase(Locale.ROOT)
     }
@@ -356,21 +371,6 @@ abstract class BaseConversationsAdapter(
             toFloat(),
             activity.resources.displayMetrics
         ).toInt()
-
-    private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
-        view.apply {
-            beVisibleIf(isUnread)
-            if (isUnread) {
-                text = when {
-                    count > MAX_UNREAD_BADGE_COUNT -> "$MAX_UNREAD_BADGE_COUNT+"
-                    count == 0 -> ""
-                    else -> count.toString()
-                }
-                setTextColor(properPrimaryColor.getContrastColor())
-                background?.applyColorFilter(properPrimaryColor)
-            }
-        }
-    }
 
     override fun onChange(position: Int) = currentList.getOrNull(position)?.title ?: ""
 

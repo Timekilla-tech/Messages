@@ -19,6 +19,7 @@ import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.dialogs.DeleteConfirmationDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.extensions.config
+import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.conversationsDB
 import org.fossify.messages.extensions.deleteConversation
 import org.fossify.messages.extensions.dialNumber
@@ -48,7 +49,7 @@ class ConversationsAdapter(
 
     fun getSelectedConversations() = getSelectedItems()
 
-    fun assignFolderToSelectedConversations(folderTitle: String) {
+    fun assignFolderToSelectedConversations(folderId: String) {
         if (selectedKeys.isEmpty()) {
             return
         }
@@ -56,16 +57,7 @@ class ConversationsAdapter(
         val selectedConversations = getSelectedItems()
         ensureBackgroundThread {
             selectedConversations.forEach { conversation ->
-                val updatedCategories = (conversation.category
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() } + folderTitle)
-                    .distinctBy { it.lowercase(Locale.ROOT) }
-                    .joinToString(", ")
-
-                if (updatedCategories != conversation.category) {
-                    activity.insertOrUpdateConversation(conversation.copy(category = updatedCategories))
-                }
+                activity.config.setUserPrimaryFolderForConversation(conversation.threadId, folderId)
             }
 
             activity.runOnUiThread {

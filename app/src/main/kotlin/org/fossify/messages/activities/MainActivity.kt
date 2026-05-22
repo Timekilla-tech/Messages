@@ -442,16 +442,7 @@ class MainActivity : SimpleActivity() {
 
         popup.setOnMenuItemClickListener { item ->
             val folder = folders.getOrNull(item.itemId) ?: return@setOnMenuItemClickListener false
-            getOrCreateConversationsAdapter().getSelectedConversations().forEach {
-                setUserPrimaryFolderForConversation(it, folder.id)
-                // If the folder has unique tags, adding one makes the conversation appear there
-                if (folder.config.tags.isNotEmpty()) {
-                    getOrCreateConversationsAdapter().assignFolderToSelectedConversations(folder.config.tags.first())
-                }
-            }
-            // Finish action mode and refresh UI
-            getOrCreateConversationsAdapter().actionItemPressed(0) // dummy to trigger close
-            initMessenger()
+            getOrCreateConversationsAdapter().assignFolderToSelectedConversations(folder.id)
             true
         }
         popup.show()
@@ -1185,7 +1176,15 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun getPrimaryFolderForConversation(conversation: Conversation): SavedView? {
-        val containingFolders = savedViewsStore.getViews().filter { view ->
+        val folders = savedViewsStore.getViews()
+        
+        // 1. Check if user manually assigned this conversation to a primary folder
+        config.getUserPrimaryFolderForConversation(conversation.threadId)?.let { folderId ->
+            folders.firstOrNull { it.id == folderId }?.let { return it }
+        }
+
+        // 2. Fallback to containing folders (via tags)
+        val containingFolders = folders.filter { view ->
             conversationMatchesSavedFolder(view, conversation)
         }
 
@@ -1195,10 +1194,6 @@ class MainActivity : SimpleActivity() {
 
         config.getLastUsedFolderForConversation(conversation.threadId)?.let { lastUsedId ->
             containingFolders.firstOrNull { it.id == lastUsedId }?.let { return it }
-        }
-
-        config.getUserPrimaryFolderForConversation(conversation.threadId)?.let { primaryId ->
-            containingFolders.firstOrNull { it.id == primaryId }?.let { return it }
         }
 
         return containingFolders.minByOrNull { it.title.lowercase(Locale.ROOT) }
