@@ -1009,9 +1009,35 @@ class MainActivity : SimpleActivity() {
             confirmLabel = getString(org.fossify.commons.R.string.ok),
         ) { updatedName ->
             showSavedViewIconPickerDialog(activeSavedView.iconResName ?: SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val updatedView = activeSavedView.copy(title = updatedName, iconResName = iconResName)
-                savedViewsStore.upsertView(updatedView)
-                switchToSavedView(updatedView.id)
+                val views = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
+                val positions = (0 until views.size).map { it.toString() }
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.choose_position)
+                    .setItems(positions.toTypedArray()) { _, which ->
+                        val colorOptions = listOf(
+                            getString(R.string.default_label) to null,
+                            getString(R.string.color_blue) to 0xFF2196F3.toInt(),
+                            getString(R.string.color_green) to 0xFF4CAF50.toInt(),
+                            getString(R.string.color_orange) to 0xFFFF9800.toInt(),
+                            getString(R.string.color_red) to 0xFFF44336.toInt(),
+                            getString(R.string.color_purple) to 0xFF9C27B0.toInt()
+                        )
+                        AlertDialog.Builder(this)
+                            .setTitle(R.string.choose_color)
+                            .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
+                                val selectedColor = colorOptions[colorWhich].second
+                                val updatedView = activeSavedView.copy(
+                                    title = updatedName,
+                                    iconResName = iconResName,
+                                    position = which + 1, // +1 because main is at 0
+                                    config = activeSavedView.config.copy(color = selectedColor)
+                                )
+                                savedViewsStore.upsertView(updatedView)
+                                switchToSavedView(updatedView.id)
+                            }
+                            .show()
+                    }
+                    .show()
             }
         }
     }
