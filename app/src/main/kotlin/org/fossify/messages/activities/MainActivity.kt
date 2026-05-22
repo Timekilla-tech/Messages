@@ -338,53 +338,32 @@ class MainActivity : SimpleActivity() {
         } else {
             bar.beGone()
         }
+
         val views = savedViewsStore.getViews()
         val menu = bar.menu
         menu.clear()
 
-        val activeId = activeSavedView.id
         views.forEachIndexed { index, view ->
             val menuItem = menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
-            
-            // Create a StateListDrawable for each icon
             val iconRes = resolveSavedViewIconRes(view)
-            val activeColor = view.config.color ?: getProperPrimaryColor()
-            // Use the same hue for inactive state but with lower alpha so each item's icon
-            // visually matches its folder color even when not selected.
-            val inactiveColor = (view.config.color ?: getProperPrimaryColor()).adjustAlpha(0.3f)
-
-            val stateListDrawable = StateListDrawable().apply {
-                // Active state (selected)
-                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
-                activeIcon?.let {
-                    DrawableCompat.setTint(it, activeColor)
-                    // Ensure both checked and selected states are covered so the
-                    // drawable shows as active when the BottomNavigationView item is selected.
-                    addState(intArrayOf(android.R.attr.state_checked), it)
-                    addState(intArrayOf(android.R.attr.state_selected), it)
-                }
-                
-                // Inactive state (default)
-                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
-                inactiveIcon?.let {
-                    DrawableCompat.setTint(it, inactiveColor)
-                    addState(intArrayOf(), it)
-                }
-            }
-            
-            menuItem.icon = stateListDrawable
+            val icon = AppCompatResources.getDrawable(this, iconRes)?.mutate()
+            // Apply folder color to icon; active state handled separately below
+            val color = view.config.color ?: getProperTextColor()
+            icon?.let { DrawableCompat.setTint(it, color) }
+            menuItem.icon = icon
         }
 
-        val selectedIndex = views.indexOfFirst { it.id == activeId }.takeIf { it >= 0 } ?: 0
-        bar.setOnItemSelectedListener(null)
-        bar.itemIconTintList = null // Disable default tinting to use our manual tints
-        
-        // Ensure text color also reflects the selection state
-        val states = arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf())
-        val colors = intArrayOf(getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
-        bar.itemTextColor = android.content.res.ColorStateList(states, colors)
+        // Disable the framework's own tinting so our manual tints are not overwritten
+        bar.itemIconTintList = null
+        bar.itemTextColor = null
 
+        val selectedIndex = views.indexOfFirst { it.id == activeSavedView.id }.takeIf { it >= 0 } ?: 0
+        bar.setOnItemSelectedListener(null)
         bar.selectedItemId = savedViewMenuIdOffset + selectedIndex
+
+        // Apply alpha to indicate active vs inactive - done after selectedItemId is set
+        applyBottomBarIconAlphas(bar, views, activeSavedView.id)
+
         bar.setOnItemSelectedListener { item ->
             val viewIndex = item.itemId - savedViewMenuIdOffset
             val selectedView = views.getOrNull(viewIndex) ?: return@setOnItemSelectedListener false
@@ -398,11 +377,33 @@ class MainActivity : SimpleActivity() {
         bar.post { updateBottomBarDependentPadding() }
     }
 
+    private fun applyBottomBarIconAlphas(
+        bar: com.google.android.material.bottomnavigation.BottomNavigationView,
+        views: List<SavedView>,
+        activeId: String,
+    ) {
+        views.forEachIndexed { index, view ->
+            val itemId = savedViewMenuIdOffset + index
+            val menuItem = bar.menu.findItem(itemId) ?: return@forEachIndexed
+            val isActive = view.id == activeId
+            menuItem.icon?.alpha = if (isActive) 255 else 80
+        }
+    }
+
     private fun setupSelectionBottomBar() {
         val selectionBottomBar = binding.selectionBottomBar ?: return
 
         selectionBottomBar.setOnItemSelectedListener { item ->
-            getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
+            if (item.itemId == R.id.cab_set_category) {
+                val anchor = selectionBottomBar.findViewById<android.view.View>(R.id.cab_set_category)
+                if (anchor != null) {
+                    showQuickFolderAssignmentMenu(anchor)
+                } else {
+                    getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
+                }
+            } else {
+                getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
+            }
             false
         }
 
@@ -443,8 +444,14 @@ class MainActivity : SimpleActivity() {
             val folder = folders.getOrNull(item.itemId) ?: return@setOnMenuItemClickListener false
             getOrCreateConversationsAdapter().getSelectedConversations().forEach {
                 setUserPrimaryFolderForConversation(it, folder.id)
+                // If the folder has unique tags, adding one makes the conversation appear there
+                if (folder.config.tags.isNotEmpty()) {
+                    getOrCreateConversationsAdapter().assignFolderToSelectedConversations(folder.config.tags.first())
+                }
             }
-            getOrCreateConversationsAdapter().assignFolderToSelectedConversations(folder.title)
+            // Finish action mode and refresh UI
+            getOrCreateConversationsAdapter().actionItemPressed(0) // dummy to trigger close
+            initMessenger()
             true
         }
         popup.show()
@@ -969,8 +976,8 @@ class MainActivity : SimpleActivity() {
                             .setTitle(R.string.choose_color)
                             .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
                                 val selectedColor = colorOptions[colorWhich].second
-                                // Automatically filter for the tag matching the folder's name
-                                val configWithColor = baseConfig.copy(color = selectedColor, tags = setOf(viewName))
+                                // Start with empty tags to avoid echoing the folder name in row chips
+                                val configWithColor = baseConfig.copy(color = selectedColor, tags = emptySet())
                                 val createdView = savedViewsStore.createView(viewName, configWithColor, iconResName, which)
                                 switchToSavedView(createdView.id)
                             }
