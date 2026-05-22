@@ -127,7 +127,7 @@ class MainActivity : SimpleActivity() {
     private val savedViewMenuIdOffset = 20_000
     private val savedViewIconOptions = listOf(
         SavedViewIconOption(SavedView.MAIN_VIEW_ICON, R.string.view_icon_home, R.drawable.ic_home_vector),
-        SavedViewIconOption(SavedView.DEFAULT_CUSTOM_VIEW_ICON, R.string.view_icon_filter, R.drawable.ic_filter_list_vector),
+        SavedViewIconOption(SavedView.DEFAULT_CUSTOM_VIEW_ICON, R.string.view_icon_filter, R.drawable.ic_folder),
         SavedViewIconOption("ic_archive_vector", R.string.view_icon_archive, R.drawable.ic_archive_vector),
         SavedViewIconOption("ic_calendar_month_vector", R.string.view_icon_schedule, R.drawable.ic_calendar_month_vector),
         SavedViewIconOption("ic_image_vector", R.string.view_icon_image, R.drawable.ic_image_vector),
@@ -345,19 +345,22 @@ class MainActivity : SimpleActivity() {
 
         views.forEachIndexed { index, view ->
             val menuItem = menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
-            val iconRes = resolveSavedViewIconRes(view)
-
+            
             val activeColor = view.config.color ?: getProperPrimaryColor()
-            val inactiveColor = getProperTextColor().adjustAlpha(0.6f)
+            val inactiveColor = (view.config.color ?: getProperTextColor()).adjustAlpha(0.3f)
 
             val stateListDrawable = StateListDrawable().apply {
-                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+                val openIconRes = if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_folder_open
+                val closedIconRes = if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_folder
+
+                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, openIconRes)?.mutate()
                 activeIcon?.let {
                     DrawableCompat.setTint(it, activeColor)
-                    addState(intArrayOf(android.R.attr.state_checked), it)  // ✅ Fixed
+                    addState(intArrayOf(android.R.attr.state_checked), it)
+                    addState(intArrayOf(android.R.attr.state_selected), it)
                 }
 
-                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, closedIconRes)?.mutate()
                 inactiveIcon?.let {
                     DrawableCompat.setTint(it, inactiveColor)
                     addState(intArrayOf(), it)
@@ -369,13 +372,14 @@ class MainActivity : SimpleActivity() {
         // Disable framework tinting to use our manual state list colors
         bar.itemIconTintList = null
 
-        val selectedIndex = views.indexOfFirst { it.id == activeSavedView.id }.takeIf { it >= 0 } ?: 0
+        val activeId = activeSavedView.id
+        val selectedIndex = views.indexOfFirst { it.id == activeId }.takeIf { it >= 0 } ?: 0
         bar.setOnItemSelectedListener(null)
         bar.selectedItemId = savedViewMenuIdOffset + selectedIndex
 
         // Ensure text color also reflects the selection state
-        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())  // ✅ Fixed
-        val textColors = intArrayOf(getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf(android.R.attr.state_selected), intArrayOf())
+        val textColors = intArrayOf(getProperPrimaryColor(), getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
         bar.itemTextColor = android.content.res.ColorStateList(states, textColors)
 
         bar.setOnItemSelectedListener { item ->
@@ -486,13 +490,6 @@ class MainActivity : SimpleActivity() {
         reloadConversationsForCurrentFilter()
     }
 
-    private fun resolveSavedViewIconRes(view: SavedView): Int {
-        val iconName = view.iconResName?.trim().takeUnless { it.isNullOrEmpty() }
-            ?: if (view.id == SavedView.MAIN_VIEW_ID) SavedView.MAIN_VIEW_ICON else SavedView.DEFAULT_CUSTOM_VIEW_ICON
-
-        return savedViewIconOptions.firstOrNull { it.iconResName == iconName }?.drawableRes
-            ?: if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_filter_list_vector
-    }
 
     private fun storeStateVariables() {
         storedTextColor = getProperTextColor()
@@ -899,39 +896,37 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showCreateSavedViewDialog() {
+        val views = savedViewsStore.getViews()
         val baseConfig = SavedViewConfig() // Start with a fresh config, don't inherit from active folder
         showSavedViewNameDialog(
             title = getString(R.string.create_view),
             initialValue = "",
             confirmLabel = getString(org.fossify.commons.R.string.ok),
         ) { viewName ->
-            showSavedViewIconPickerDialog(SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val views = savedViewsStore.getViews()
-                val positions = (0..views.size).map { it.toString() }
-                AlertDialog.Builder(this)
-                    .setTitle(R.string.choose_position)
-                    .setItems(positions.toTypedArray()) { _, which ->
-                        val colorOptions = listOf(
-                            getString(R.string.default_label) to null,
-                            getString(R.string.color_blue) to 0xFF2196F3.toInt(),
-                            getString(R.string.color_green) to 0xFF4CAF50.toInt(),
-                            getString(R.string.color_orange) to 0xFFFF9800.toInt(),
-                            getString(R.string.color_red) to 0xFFF44336.toInt(),
-                            getString(R.string.color_purple) to 0xFF9C27B0.toInt(),
-                        )
-                        AlertDialog.Builder(this)
-                            .setTitle(R.string.choose_color)
-                            .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
-                                val selectedColor = colorOptions[colorWhich].second
-                                // Start with empty tags to avoid echoing the folder name in row chips
-                                val configWithColor = baseConfig.copy(color = selectedColor, tags = emptySet())
-                                val createdView = savedViewsStore.createView(viewName, configWithColor, iconResName, which)
-                                switchToSavedView(createdView.id)
-                            }
-                            .show()
-                    }
-                    .show()
-            }
+            val positions = (0..views.size).map { it.toString() }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.choose_position)
+                .setItems(positions.toTypedArray()) { _, which ->
+                    val colorOptions = listOf(
+                        getString(R.string.default_label) to null,
+                        getString(R.string.color_blue) to 0xFF2196F3.toInt(),
+                        getString(R.string.color_green) to 0xFF4CAF50.toInt(),
+                        getString(R.string.color_orange) to 0xFFFF9800.toInt(),
+                        getString(R.string.color_red) to 0xFFF44336.toInt(),
+                        getString(R.string.color_purple) to 0xFF9C27B0.toInt(),
+                    )
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.choose_color)
+                        .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
+                            val selectedColor = colorOptions[colorWhich].second
+                            // Start with empty tags to avoid echoing the folder name in row chips
+                            val configWithColor = baseConfig.copy(color = selectedColor, tags = emptySet())
+                            val createdView = savedViewsStore.createView(viewName, configWithColor, "", which)
+                            switchToSavedView(createdView.id)
+                        }
+                        .show()
+                }
+                .show()
         }
     }
 
@@ -964,37 +959,35 @@ class MainActivity : SimpleActivity() {
             initialValue = activeSavedView.title,
             confirmLabel = getString(org.fossify.commons.R.string.ok),
         ) { updatedName ->
-            showSavedViewIconPickerDialog(activeSavedView.iconResName ?: SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val views = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
-                val positions = (0 until views.size).map { it.toString() }
-                AlertDialog.Builder(this)
-                    .setTitle(R.string.choose_position)
-                    .setItems(positions.toTypedArray()) { _, which ->
-                        val colorOptions = listOf(
-                            getString(R.string.default_label) to null,
-                            getString(R.string.color_blue) to 0xFF2196F3.toInt(),
-                            getString(R.string.color_green) to 0xFF4CAF50.toInt(),
-                            getString(R.string.color_orange) to 0xFFFF9800.toInt(),
-                            getString(R.string.color_red) to 0xFFF44336.toInt(),
-                            getString(R.string.color_purple) to 0xFF9C27B0.toInt()
-                        )
-                        AlertDialog.Builder(this)
-                            .setTitle(R.string.choose_color)
-                            .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
-                                val selectedColor = colorOptions[colorWhich].second
-                                val updatedView = activeSavedView.copy(
-                                    title = updatedName,
-                                    iconResName = iconResName,
-                                    position = which + 1, // +1 because main is at 0
-                                    config = activeSavedView.config.copy(color = selectedColor)
-                                )
-                                savedViewsStore.upsertView(updatedView)
-                                switchToSavedView(updatedView.id)
-                            }
-                            .show()
-                    }
-                    .show()
-            }
+            val views = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
+            val positions = (0 until views.size).map { it.toString() }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.choose_position)
+                .setItems(positions.toTypedArray()) { _, which ->
+                    val colorOptions = listOf(
+                        getString(R.string.default_label) to null,
+                        getString(R.string.color_blue) to 0xFF2196F3.toInt(),
+                        getString(R.string.color_green) to 0xFF4CAF50.toInt(),
+                        getString(R.string.color_orange) to 0xFFFF9800.toInt(),
+                        getString(R.string.color_red) to 0xFFF44336.toInt(),
+                        getString(R.string.color_purple) to 0xFF9C27B0.toInt()
+                    )
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.choose_color)
+                        .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
+                            val selectedColor = colorOptions[colorWhich].second
+                            val updatedView = activeSavedView.copy(
+                                title = updatedName,
+                                iconResName = null,
+                                position = which + 1, // +1 because main is at 0
+                                config = activeSavedView.config.copy(color = selectedColor)
+                            )
+                            savedViewsStore.upsertView(updatedView)
+                            switchToSavedView(updatedView.id)
+                        }
+                        .show()
+                }
+                .show()
         }
     }
 

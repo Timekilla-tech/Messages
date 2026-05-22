@@ -20,7 +20,6 @@ import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.dialogs.DeleteConfirmationDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.extensions.config
-import org.fossify.messages.extensions.config
 import org.fossify.messages.extensions.conversationsDB
 import org.fossify.messages.extensions.deleteConversation
 import org.fossify.messages.extensions.dialNumber

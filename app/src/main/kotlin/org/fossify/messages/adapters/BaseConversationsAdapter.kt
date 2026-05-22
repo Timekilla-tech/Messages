@@ -178,7 +178,7 @@ abstract class BaseConversationsAdapter(
             if (tintColor == null) {
                 conversationTintOverlay.beGone()
             } else {
-                conversationTintOverlay.setBackgroundColor(tintColor.adjustAlpha(0.08f))
+                conversationTintOverlay.setBackgroundColor(tintColor.adjustAlpha(0.12f))
                 conversationTintOverlay.beVisibleIf(true)
             }
 
