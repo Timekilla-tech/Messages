@@ -235,7 +235,6 @@ class ConversationsAdapter(
             }
         }
     }
-//TODO: устгах, архивлах, блоклох үйлдлийг чирж гүйцэтгэхээс өмнө үйлдлийг баталгаажуулах цонх гаргах
     private fun deleteConversationBySwipe(conversation: Conversation, position: Int) {
         // Reset swipe state immediately, then delete only after explicit confirmation.
         notifyItemChanged(position)
