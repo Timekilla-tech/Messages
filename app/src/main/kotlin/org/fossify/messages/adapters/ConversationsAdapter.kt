@@ -10,6 +10,7 @@ import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.copyToClipboard
 import org.fossify.commons.extensions.launchActivityIntent
 import org.fossify.commons.extensions.notificationManager
+import org.fossify.commons.extensions.toast
 import org.fossify.commons.helpers.KEY_PHONE
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
@@ -48,7 +49,7 @@ class ConversationsAdapter(
 
     fun getSelectedConversations() = getSelectedItems()
 
-    fun assignFolderToSelectedConversations(folderTitle: String) {
+    fun assignFolderToSelectedConversations(folderId: String) {
         if (selectedKeys.isEmpty()) {
             return
         }
@@ -56,16 +57,7 @@ class ConversationsAdapter(
         val selectedConversations = getSelectedItems()
         ensureBackgroundThread {
             selectedConversations.forEach { conversation ->
-                val updatedCategories = (conversation.category
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() } + folderTitle)
-                    .distinctBy { it.lowercase(Locale.ROOT) }
-                    .joinToString(", ")
-
-                if (updatedCategories != conversation.category) {
-                    activity.insertOrUpdateConversation(conversation.copy(category = updatedCategories))
-                }
+                activity.config.setConversationFolder(conversation.threadId, folderId)
             }
 
             activity.runOnUiThread {
@@ -112,10 +104,6 @@ class ConversationsAdapter(
     }
 
     override fun actionItemPressed(id: Int) {
-        actionItemPressed(id, null)
-    }
-
-    fun actionItemPressed(id: Int, extra: String? = null) {
         if (selectedKeys.isEmpty()) {
             return
         }
@@ -146,9 +134,39 @@ class ConversationsAdapter(
                 pinConversation(!allPinned)
             }
             R.id.cab_unpin_conversation -> pinConversation(false)
-            R.id.cab_set_category -> if (extra != null) setCategory(extra) else askSetCategory()
+            R.id.cab_set_category -> showFolderPickerDialog()
             R.id.cab_select_all -> selectAll()
         }
+    }
+
+    private fun showFolderPickerDialog() {
+        val folders = (activity as? MainActivity)?.savedViewsStore?.getViews()
+            ?.filter { it.id != org.fossify.messages.models.SavedView.MAIN_VIEW_ID } ?: return
+        
+        if (folders.isEmpty()) {
+            activity.toast(R.string.no_folders)
+            return
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(activity)
+            .setTitle(R.string.assign_folder)
+            .setItems(folders.map { it.title }.toTypedArray()) { _, which ->
+                val folder = folders[which]
+                assignFolderToSelectedConversations(folder.id)
+            }
+            .setNeutralButton(R.string.clear) { _, _ ->
+                val selectedConversations = getSelectedItems()
+                ensureBackgroundThread {
+                    selectedConversations.forEach {
+                        activity.config.setConversationFolder(it.threadId, null)
+                    }
+                    activity.runOnUiThread {
+                        refreshConversationsAndFinishActMode()
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     fun canHandleSwipe() = selectedKeys.isEmpty()
@@ -217,7 +235,6 @@ class ConversationsAdapter(
             }
         }
     }
-//TODO: устгах, архивлах, блоклох үйлдлийг чирж гүйцэтгэхээс өмнө үйлдлийг баталгаажуулах цонх гаргах
     private fun deleteConversationBySwipe(conversation: Conversation, position: Int) {
         // Reset swipe state immediately, then delete only after explicit confirmation.
         notifyItemChanged(position)
@@ -495,28 +512,6 @@ class ConversationsAdapter(
             selectedConversations.any { !pinnedConversations.contains(it.threadId.toString()) }
         menu.findItem(R.id.cab_unpin_conversation).isVisible =
             selectedConversations.all { pinnedConversations.contains(it.threadId.toString()) }
-    }
-
-    private fun askSetCategory() {
-        val selectedConversations = getSelectedItems()
-        val currentCategory = if (selectedConversations.size == 1) selectedConversations.first().category else ""
-        org.fossify.messages.dialogs.SetCategoryDialog(activity as SimpleActivity, currentCategory) { newCategory ->
-            setCategory(newCategory)
-        }
-    }
-
-    private fun setCategory(category: String) {
-        val conversationsToUpdate = getSelectedItems()
-        ensureBackgroundThread {
-            conversationsToUpdate.forEach {
-                it.category = category
-                activity.conversationsDB.insertOrUpdate(it)
-            }
-            activity.runOnUiThread {
-                finishActMode()
-                refreshConversations()
-            }
-        }
     }
 
     private fun refreshConversationsAndFinishActMode() {

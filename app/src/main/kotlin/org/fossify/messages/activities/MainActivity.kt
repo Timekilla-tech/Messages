@@ -123,17 +123,8 @@ class MainActivity : SimpleActivity() {
     private var bus: EventBus? = null
     private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
     private var inboxSwipeHelper: ItemTouchHelper? = null
-    private val savedViewsStore by lazy { SavedViewsStore(config) }
+    val savedViewsStore by lazy { SavedViewsStore(config) }
     private val savedViewMenuIdOffset = 20_000
-    private val savedViewIconOptions = listOf(
-        SavedViewIconOption(SavedView.MAIN_VIEW_ICON, R.string.view_icon_home, R.drawable.ic_home_vector),
-        SavedViewIconOption(SavedView.DEFAULT_CUSTOM_VIEW_ICON, R.string.view_icon_filter, R.drawable.ic_filter_list_vector),
-        SavedViewIconOption("ic_archive_vector", R.string.view_icon_archive, R.drawable.ic_archive_vector),
-        SavedViewIconOption("ic_calendar_month_vector", R.string.view_icon_schedule, R.drawable.ic_calendar_month_vector),
-        SavedViewIconOption("ic_image_vector", R.string.view_icon_image, R.drawable.ic_image_vector),
-        SavedViewIconOption("ic_music_vector", R.string.view_icon_music, R.drawable.ic_music_vector),
-        SavedViewIconOption("ic_pin_vector", R.string.view_icon_pin, R.drawable.ic_pin_vector),
-    )
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
@@ -338,53 +329,50 @@ class MainActivity : SimpleActivity() {
         } else {
             bar.beGone()
         }
+
         val views = savedViewsStore.getViews()
         val menu = bar.menu
         menu.clear()
 
-        val activeId = activeSavedView.id
         views.forEachIndexed { index, view ->
             val menuItem = menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
             
-            // Create a StateListDrawable for each icon
-            val iconRes = resolveSavedViewIconRes(view)
             val activeColor = view.config.color ?: getProperPrimaryColor()
-            // Use the same hue for inactive state but with lower alpha so each item's icon
-            // visually matches its folder color even when not selected.
-            val inactiveColor = (view.config.color ?: getProperPrimaryColor()).adjustAlpha(0.3f)
+            val inactiveColor = (view.config.color ?: getProperTextColor()).adjustAlpha(0.3f)
 
             val stateListDrawable = StateListDrawable().apply {
-                // Active state (selected)
-                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+                val openIconRes = if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_folder_open
+                val closedIconRes = if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_folder
+
+                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, openIconRes)?.mutate()
                 activeIcon?.let {
                     DrawableCompat.setTint(it, activeColor)
-                    // Ensure both checked and selected states are covered so the
-                    // drawable shows as active when the BottomNavigationView item is selected.
                     addState(intArrayOf(android.R.attr.state_checked), it)
                     addState(intArrayOf(android.R.attr.state_selected), it)
                 }
-                
-                // Inactive state (default)
-                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+
+                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, closedIconRes)?.mutate()
                 inactiveIcon?.let {
                     DrawableCompat.setTint(it, inactiveColor)
                     addState(intArrayOf(), it)
                 }
             }
-            
             menuItem.icon = stateListDrawable
         }
 
+        // Disable framework tinting to use our manual state list colors
+        bar.itemIconTintList = null
+
+        val activeId = activeSavedView.id
         val selectedIndex = views.indexOfFirst { it.id == activeId }.takeIf { it >= 0 } ?: 0
         bar.setOnItemSelectedListener(null)
-        bar.itemIconTintList = null // Disable default tinting to use our manual tints
-        
-        // Ensure text color also reflects the selection state
-        val states = arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf())
-        val colors = intArrayOf(getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
-        bar.itemTextColor = android.content.res.ColorStateList(states, colors)
-
         bar.selectedItemId = savedViewMenuIdOffset + selectedIndex
+
+        // Ensure text color also reflects the selection state
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf(android.R.attr.state_selected), intArrayOf())
+        val textColors = intArrayOf(getProperPrimaryColor(), getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
+        bar.itemTextColor = android.content.res.ColorStateList(states, textColors)
+
         bar.setOnItemSelectedListener { item ->
             val viewIndex = item.itemId - savedViewMenuIdOffset
             val selectedView = views.getOrNull(viewIndex) ?: return@setOnItemSelectedListener false
@@ -395,7 +383,26 @@ class MainActivity : SimpleActivity() {
         bar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateBottomBarDependentPadding()
         }
-        bar.post { updateBottomBarDependentPadding() }
+        bar.post {
+            try {
+                val menuView = bar.getChildAt(0) as? android.view.ViewGroup
+                for (i in 0 until (menuView?.childCount ?: 0)) {
+                    val itemView = menuView?.getChildAt(i)
+                    itemView?.setOnLongClickListener {
+                        val clickedView = views.getOrNull(i)
+                        if (clickedView != null) {
+                            if (clickedView.id == SavedView.MAIN_VIEW_ID) {
+                                showCreateSavedViewDialog()
+                            } else {
+                                showEditSavedViewDialog(clickedView)
+                            }
+                            true
+                        } else false
+                    }
+                }
+            } catch (_: Exception) {}
+            updateBottomBarDependentPadding()
+        }
     }
 
     private fun setupSelectionBottomBar() {
@@ -406,48 +413,9 @@ class MainActivity : SimpleActivity() {
             false
         }
 
-        // Long press for "Set Category" fast action (assign to a specific folder immediately)
-        selectionBottomBar.post {
-            try {
-                val menuView = selectionBottomBar.getChildAt(0) as? android.view.ViewGroup
-                for (i in 0 until (menuView?.childCount ?: 0)) {
-                    val itemView = menuView?.getChildAt(i)
-                    if (itemView?.id == R.id.cab_set_category) {
-                        itemView.setOnLongClickListener {
-                            showQuickFolderAssignmentMenu(itemView)
-                            true
-                        }
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-
         selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateBottomBarDependentPadding()
         }
-    }
-
-    private fun showQuickFolderAssignmentMenu(anchor: android.view.View) {
-        val folders = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
-        if (folders.isEmpty()) {
-            toast(R.string.no_categories)
-            return
-        }
-
-        val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
-        folders.forEachIndexed { index, folder ->
-            popup.menu.add(Menu.NONE, index, index, folder.title)
-        }
-
-        popup.setOnMenuItemClickListener { item ->
-            val folder = folders.getOrNull(item.itemId) ?: return@setOnMenuItemClickListener false
-            getOrCreateConversationsAdapter().getSelectedConversations().forEach {
-                setUserPrimaryFolderForConversation(it, folder.id)
-            }
-            getOrCreateConversationsAdapter().assignFolderToSelectedConversations(folder.title)
-            true
-        }
-        popup.show()
     }
 
     fun updateSelectionBottomBar(selectedCount: Int) {
@@ -532,13 +500,6 @@ class MainActivity : SimpleActivity() {
         reloadConversationsForCurrentFilter()
     }
 
-    private fun resolveSavedViewIconRes(view: SavedView): Int {
-        val iconName = view.iconResName?.trim().takeUnless { it.isNullOrEmpty() }
-            ?: if (view.id == SavedView.MAIN_VIEW_ID) SavedView.MAIN_VIEW_ICON else SavedView.DEFAULT_CUSTOM_VIEW_ICON
-
-        return savedViewIconOptions.firstOrNull { it.iconResName == iconName }?.drawableRes
-            ?: if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_filter_list_vector
-    }
 
     private fun storeStateVariables() {
         storedTextColor = getProperTextColor()
@@ -945,39 +906,37 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showCreateSavedViewDialog() {
+        val views = savedViewsStore.getViews()
         val baseConfig = SavedViewConfig() // Start with a fresh config, don't inherit from active folder
         showSavedViewNameDialog(
             title = getString(R.string.create_view),
             initialValue = "",
             confirmLabel = getString(org.fossify.commons.R.string.ok),
         ) { viewName ->
-            showSavedViewIconPickerDialog(SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val views = savedViewsStore.getViews()
-                val positions = (0..views.size).map { it.toString() }
-                AlertDialog.Builder(this)
-                    .setTitle(R.string.choose_position)
-                    .setItems(positions.toTypedArray()) { _, which ->
-                        val colorOptions = listOf(
-                            getString(R.string.default_label) to null,
-                            getString(R.string.color_blue) to 0xFF2196F3.toInt(),
-                            getString(R.string.color_green) to 0xFF4CAF50.toInt(),
-                            getString(R.string.color_orange) to 0xFFFF9800.toInt(),
-                            getString(R.string.color_red) to 0xFFF44336.toInt(),
-                            getString(R.string.color_purple) to 0xFF9C27B0.toInt(),
-                        )
-                        AlertDialog.Builder(this)
-                            .setTitle(R.string.choose_color)
-                            .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
-                                val selectedColor = colorOptions[colorWhich].second
-                                // Automatically filter for the tag matching the folder's name
-                                val configWithColor = baseConfig.copy(color = selectedColor, tags = setOf(viewName))
-                                val createdView = savedViewsStore.createView(viewName, configWithColor, iconResName, which)
-                                switchToSavedView(createdView.id)
-                            }
-                            .show()
-                    }
-                    .show()
-            }
+            val positions = (0..views.size).map { it.toString() }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.choose_position)
+                .setItems(positions.toTypedArray()) { _, which ->
+                    val colorOptions = listOf(
+                        getString(R.string.default_label) to null,
+                        getString(R.string.color_blue) to 0xFF2196F3.toInt(),
+                        getString(R.string.color_green) to 0xFF4CAF50.toInt(),
+                        getString(R.string.color_orange) to 0xFFFF9800.toInt(),
+                        getString(R.string.color_red) to 0xFFF44336.toInt(),
+                        getString(R.string.color_purple) to 0xFF9C27B0.toInt(),
+                    )
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.choose_color)
+                        .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
+                            val selectedColor = colorOptions[colorWhich].second
+                            // Start with empty tags to avoid echoing the folder name in row chips
+                            val configWithColor = baseConfig.copy(color = selectedColor, tags = emptySet())
+                            val createdView = savedViewsStore.createView(viewName, configWithColor, "", which)
+                            switchToSavedView(createdView.id)
+                        }
+                        .show()
+                }
+                .show()
         }
     }
 
@@ -1004,17 +963,41 @@ class MainActivity : SimpleActivity() {
             .show()
     }
 
-    private fun showEditSavedViewDialog() {
+    private fun showEditSavedViewDialog(viewToEdit: SavedView = activeSavedView) {
         showSavedViewNameDialog(
             title = getString(R.string.edit_view),
-            initialValue = activeSavedView.title,
+            initialValue = viewToEdit.title,
             confirmLabel = getString(org.fossify.commons.R.string.ok),
         ) { updatedName ->
-            showSavedViewIconPickerDialog(activeSavedView.iconResName ?: SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val updatedView = activeSavedView.copy(title = updatedName, iconResName = iconResName)
-                savedViewsStore.upsertView(updatedView)
-                switchToSavedView(updatedView.id)
-            }
+            val views = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
+            val positions = (0 until views.size).map { it.toString() }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.choose_position)
+                .setItems(positions.toTypedArray()) { _, which ->
+                    val colorOptions = listOf(
+                        getString(R.string.default_label) to null,
+                        getString(R.string.color_blue) to 0xFF2196F3.toInt(),
+                        getString(R.string.color_green) to 0xFF4CAF50.toInt(),
+                        getString(R.string.color_orange) to 0xFFFF9800.toInt(),
+                        getString(R.string.color_red) to 0xFFF44336.toInt(),
+                        getString(R.string.color_purple) to 0xFF9C27B0.toInt()
+                    )
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.choose_color)
+                        .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
+                            val selectedColor = colorOptions[colorWhich].second
+                            val updatedView = viewToEdit.copy(
+                                title = updatedName,
+                                iconResName = null,
+                                position = which + 1, // +1 because main is at 0
+                                config = viewToEdit.config.copy(color = selectedColor)
+                            )
+                            savedViewsStore.upsertView(updatedView)
+                            switchToSavedView(updatedView.id)
+                        }
+                        .show()
+                }
+                .show()
         }
     }
 
@@ -1034,22 +1017,6 @@ class MainActivity : SimpleActivity() {
                     return@setPositiveButton
                 }
                 switchToSavedView(SavedView.MAIN_VIEW_ID)
-            }
-            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
-            .show()
-    }
-
-    private fun showSavedViewIconPickerDialog(currentIconResName: String, onConfirm: (String) -> Unit) {
-        val iconNames = savedViewIconOptions.map { getString(it.titleRes) }
-        val selectedIndex = savedViewIconOptions.indexOfFirst {
-            it.iconResName.equals(currentIconResName, ignoreCase = true)
-        }.takeIf { it >= 0 } ?: 0
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.choose_view_icon)
-            .setSingleChoiceItems(iconNames.toTypedArray(), selectedIndex) { dialog, which ->
-                onConfirm(savedViewIconOptions[which].iconResName)
-                dialog.dismiss()
             }
             .setNegativeButton(org.fossify.commons.R.string.cancel, null)
             .show()
@@ -1114,10 +1081,18 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun conversationMatchesActiveView(conversation: Conversation): Boolean {
-        if (activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+        val activeId = activeSavedView.id
+        if (activeId == SavedView.MAIN_VIEW_ID) {
             return true
         }
 
+        // 1. Manual Folder Assignment check
+        val manualFolderId = config.getConversationFolder(conversation.threadId)
+        if (manualFolderId != null) {
+            return manualFolderId == activeId
+        }
+
+        // 2. Filter-based matching
         val viewConfig = activeSavedView.config
 
         if (viewConfig.unreadOnly && conversation.read) {
@@ -1178,7 +1153,15 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun getPrimaryFolderForConversation(conversation: Conversation): SavedView? {
-        val containingFolders = savedViewsStore.getViews().filter { view ->
+        val folders = savedViewsStore.getViews()
+        
+        // 1. Check if user manually assigned a folder
+        config.getConversationFolder(conversation.threadId)?.let { folderId ->
+            folders.firstOrNull { it.id == folderId }?.let { return it }
+        }
+
+        // 2. Fallback to containing folders (via tags)
+        val containingFolders = folders.filter { view ->
             conversationMatchesSavedFolder(view, conversation)
         }
 
@@ -1188,10 +1171,6 @@ class MainActivity : SimpleActivity() {
 
         config.getLastUsedFolderForConversation(conversation.threadId)?.let { lastUsedId ->
             containingFolders.firstOrNull { it.id == lastUsedId }?.let { return it }
-        }
-
-        config.getUserPrimaryFolderForConversation(conversation.threadId)?.let { primaryId ->
-            containingFolders.firstOrNull { it.id == primaryId }?.let { return it }
         }
 
         return containingFolders.minByOrNull { it.title.lowercase(Locale.ROOT) }
@@ -1211,10 +1190,6 @@ class MainActivity : SimpleActivity() {
         }
 
         config.setLastUsedFolderForConversation(conversation.threadId, activeSavedView.id)
-    }
-
-    fun setUserPrimaryFolderForConversation(conversation: Conversation, folderId: String) {
-        config.setUserPrimaryFolderForConversation(conversation.threadId, folderId)
     }
 
     private fun syncTagFiltersFromActiveView() {
@@ -1567,9 +1542,4 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-    private data class SavedViewIconOption(
-        val iconResName: String,
-        val titleRes: Int,
-        val drawableRes: Int,
-    )
 }

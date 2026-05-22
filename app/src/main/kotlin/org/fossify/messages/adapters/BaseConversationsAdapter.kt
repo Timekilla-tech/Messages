@@ -2,11 +2,11 @@ package org.fossify.messages.adapters
 
 import android.annotation.SuppressLint
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Parcelable
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.View
-import android.graphics.drawable.GradientDrawable
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -178,7 +178,7 @@ abstract class BaseConversationsAdapter(
             if (tintColor == null) {
                 conversationTintOverlay.beGone()
             } else {
-                conversationTintOverlay.setBackgroundColor(tintColor.adjustAlpha(0.08f))
+                conversationTintOverlay.setBackgroundColor(tintColor.adjustAlpha(0.12f))
                 conversationTintOverlay.beVisibleIf(true)
             }
 
@@ -253,6 +253,21 @@ abstract class BaseConversationsAdapter(
                 placeholderName = conversation.title,
                 placeholderImage = placeholder
             )
+        }
+    }
+
+    private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
+        view.apply {
+            beVisibleIf(isUnread)
+            if (isUnread) {
+                text = when {
+                    count > MAX_UNREAD_BADGE_COUNT -> "$MAX_UNREAD_BADGE_COUNT+"
+                    count == 0 -> ""
+                    else -> count.toString()
+                }
+                setTextColor(properPrimaryColor.getContrastColor())
+                background?.applyColorFilter(properPrimaryColor)
+            }
         }
     }
 
@@ -356,21 +371,6 @@ abstract class BaseConversationsAdapter(
             toFloat(),
             activity.resources.displayMetrics
         ).toInt()
-
-    private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
-        view.apply {
-            beVisibleIf(isUnread)
-            if (isUnread) {
-                text = when {
-                    count > MAX_UNREAD_BADGE_COUNT -> "$MAX_UNREAD_BADGE_COUNT+"
-                    count == 0 -> ""
-                    else -> count.toString()
-                }
-                setTextColor(properPrimaryColor.getContrastColor())
-                background?.applyColorFilter(properPrimaryColor)
-            }
-        }
-    }
 
     override fun onChange(position: Int) = currentList.getOrNull(position)?.title ?: ""
 

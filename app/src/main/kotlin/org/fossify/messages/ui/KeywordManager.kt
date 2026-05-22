@@ -82,7 +82,6 @@ fun KeywordManager(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Column {
-            Text(text = "Keywords", style = MaterialTheme.typography.titleSmall)
             Text(
                 text = "Plain words (case-insensitive) or Regex patterns",
                 style = MaterialTheme.typography.bodySmall,
