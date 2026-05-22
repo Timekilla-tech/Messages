@@ -121,8 +121,8 @@
     <string name="send_long_message_mms">Send long messages as MMS</string>
     <!-- Categories -->
     <string name="manage_categories">Manage Categories</string>
-    <string name="saved_views">Saved views</string>
-    <string name="saved_views_current">Saved views (%1$s)</string>
+    <string name="saved_views">Folder</string>
+    <string name="saved_views_current">Folder (%1$s)</string>
     <string name="saved_view_actions">Actions</string>
     <string name="create_view">Create view</string>
     <string name="edit_view">Edit view</string>
