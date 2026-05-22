@@ -45,8 +45,6 @@ class AddOrEditCategoryDialog(
         val binding = DialogAddOrEditCategoryBinding.inflate(activity.layoutInflater).apply {
             if (originalCategory != null) {
                 addCategoryNameEdittext.setText(originalCategory.name)
-                addCategoryDescriptionEdittext.setText(originalCategory.description)
-                addCategoryIconEdittext.setText(originalCategory.icon)
             }
 
             // Prepare initial keywords lists for the KeywordManager
@@ -130,8 +128,6 @@ class AddOrEditCategoryDialog(
                     alertDialog.showKeyboard(binding.addCategoryNameEdittext)
                     alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                         val name = binding.addCategoryNameEdittext.value
-                        val description = binding.addCategoryDescriptionEdittext.value
-                        val icon = binding.addCategoryIconEdittext.value
 
                         if (name.isEmpty()) {
                             activity.toast(R.string.category_name_cannot_be_empty)
@@ -161,10 +157,8 @@ class AddOrEditCategoryDialog(
                             val updatedCategory = originalCategory.copy(
                                 name = name,
                                 color = selectedColor,
-                                description = description,
                                 plainKeywords = plainWordsStr,           // NEW: save plain words
                                 regexPatterns = regexPatternsStr,        // NEW: save regex patterns
-                                icon = icon,
                                 keywordIsRegex = hasRegexPatterns        // For backward compat
                             )
                             activity.updateCategory(updatedCategory) {
@@ -176,10 +170,8 @@ class AddOrEditCategoryDialog(
                             activity.createCategory(
                                 name = name,
                                 color = selectedColor,
-                                description = description,
                                 plainKeywords = plainWordsStr,           // NEW: save plain words
                                 regexPatterns = regexPatternsStr,        // NEW: save regex patterns
-                                icon = icon,
                                 keywordIsRegex = hasRegexPatterns        // For backward compat
                             ) {
                                 callback()
