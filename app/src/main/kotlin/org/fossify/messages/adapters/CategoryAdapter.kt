@@ -58,6 +58,8 @@ class CategoryAdapter(
         ItemCategoryBinding.bind(view).apply {
             categoryName.text = category.name
             categoryDescription.text = category.description
+            categoryDescription.visibility = if (category.description.isEmpty()) View.GONE else View.VISIBLE
+            
             categoryKeywordCount.text = category.keywords
                 .split(",")
                 .map { it.trim() }
@@ -70,6 +72,7 @@ class CategoryAdapter(
             categoryColor.background = bg
 
             categoryIcon.text = category.icon.ifEmpty { "#" }
+            categoryIcon.visibility = if (category.icon.isEmpty()) View.GONE else View.VISIBLE
             categoryIcon.background?.mutate()?.applyColorFilter(category.color)
 
             defaultBadge.visibility = if (category.isDefault) View.VISIBLE else View.GONE
