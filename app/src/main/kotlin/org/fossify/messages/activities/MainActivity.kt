@@ -123,7 +123,7 @@ class MainActivity : SimpleActivity() {
     private var bus: EventBus? = null
     private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
     private var inboxSwipeHelper: ItemTouchHelper? = null
-    private val savedViewsStore by lazy { SavedViewsStore(config) }
+    val savedViewsStore by lazy { SavedViewsStore(config) }
     private val savedViewMenuIdOffset = 20_000
     private val savedViewIconOptions = listOf(
         SavedViewIconOption(SavedView.MAIN_VIEW_ICON, R.string.view_icon_home, R.drawable.ic_home_vector),
@@ -346,23 +346,37 @@ class MainActivity : SimpleActivity() {
         views.forEachIndexed { index, view ->
             val menuItem = menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
             val iconRes = resolveSavedViewIconRes(view)
-            val icon = AppCompatResources.getDrawable(this, iconRes)?.mutate()
-            // Apply folder color to icon; active state handled separately below
-            val color = view.config.color ?: getProperTextColor()
-            icon?.let { DrawableCompat.setTint(it, color) }
-            menuItem.icon = icon
+
+            val activeColor = view.config.color ?: getProperPrimaryColor()
+            val inactiveColor = getProperTextColor().adjustAlpha(0.6f)
+
+            val stateListDrawable = StateListDrawable().apply {
+                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+                activeIcon?.let {
+                    DrawableCompat.setTint(it, activeColor)
+                    addState(intArrayOf(android.R.attr.state_checked), it)  // ✅ Fixed
+                }
+
+                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, iconRes)?.mutate()
+                inactiveIcon?.let {
+                    DrawableCompat.setTint(it, inactiveColor)
+                    addState(intArrayOf(), it)
+                }
+            }
+            menuItem.icon = stateListDrawable
         }
 
-        // Disable the framework's own tinting so our manual tints are not overwritten
+        // Disable framework tinting to use our manual state list colors
         bar.itemIconTintList = null
-        bar.itemTextColor = null
 
         val selectedIndex = views.indexOfFirst { it.id == activeSavedView.id }.takeIf { it >= 0 } ?: 0
         bar.setOnItemSelectedListener(null)
         bar.selectedItemId = savedViewMenuIdOffset + selectedIndex
 
-        // Apply alpha to indicate active vs inactive - done after selectedItemId is set
-        applyBottomBarIconAlphas(bar, views, activeSavedView.id)
+        // Ensure text color also reflects the selection state
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())  // ✅ Fixed
+        val textColors = intArrayOf(getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
+        bar.itemTextColor = android.content.res.ColorStateList(states, textColors)
 
         bar.setOnItemSelectedListener { item ->
             val viewIndex = item.itemId - savedViewMenuIdOffset
@@ -377,75 +391,17 @@ class MainActivity : SimpleActivity() {
         bar.post { updateBottomBarDependentPadding() }
     }
 
-    private fun applyBottomBarIconAlphas(
-        bar: com.google.android.material.bottomnavigation.BottomNavigationView,
-        views: List<SavedView>,
-        activeId: String,
-    ) {
-        views.forEachIndexed { index, view ->
-            val itemId = savedViewMenuIdOffset + index
-            val menuItem = bar.menu.findItem(itemId) ?: return@forEachIndexed
-            val isActive = view.id == activeId
-            menuItem.icon?.alpha = if (isActive) 255 else 80
-        }
-    }
-
     private fun setupSelectionBottomBar() {
         val selectionBottomBar = binding.selectionBottomBar ?: return
 
         selectionBottomBar.setOnItemSelectedListener { item ->
-            if (item.itemId == R.id.cab_set_category) {
-                val anchor = selectionBottomBar.findViewById<android.view.View>(R.id.cab_set_category)
-                if (anchor != null) {
-                    showQuickFolderAssignmentMenu(anchor)
-                } else {
-                    getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
-                }
-            } else {
-                getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
-            }
+            getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
             false
-        }
-
-        // Long press for "Set Category" fast action (assign to a specific folder immediately)
-        selectionBottomBar.post {
-            try {
-                val menuView = selectionBottomBar.getChildAt(0) as? android.view.ViewGroup
-                for (i in 0 until (menuView?.childCount ?: 0)) {
-                    val itemView = menuView?.getChildAt(i)
-                    if (itemView?.id == R.id.cab_set_category) {
-                        itemView.setOnLongClickListener {
-                            showQuickFolderAssignmentMenu(itemView)
-                            true
-                        }
-                    }
-                }
-            } catch (_: Exception) {}
         }
 
         selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateBottomBarDependentPadding()
         }
-    }
-
-    private fun showQuickFolderAssignmentMenu(anchor: android.view.View) {
-        val folders = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
-        if (folders.isEmpty()) {
-            toast(R.string.no_categories)
-            return
-        }
-
-        val popup = androidx.appcompat.widget.PopupMenu(this, anchor)
-        folders.forEachIndexed { index, folder ->
-            popup.menu.add(Menu.NONE, index, index, folder.title)
-        }
-
-        popup.setOnMenuItemClickListener { item ->
-            val folder = folders.getOrNull(item.itemId) ?: return@setOnMenuItemClickListener false
-            getOrCreateConversationsAdapter().assignFolderToSelectedConversations(folder.id)
-            true
-        }
-        popup.show()
     }
 
     fun updateSelectionBottomBar(selectedCount: Int) {
@@ -1204,8 +1160,8 @@ class MainActivity : SimpleActivity() {
     private fun getPrimaryFolderForConversation(conversation: Conversation): SavedView? {
         val folders = savedViewsStore.getViews()
         
-        // 1. Check if user manually assigned this conversation to a primary folder
-        config.getUserPrimaryFolderForConversation(conversation.threadId)?.let { folderId ->
+        // 1. Check if user manually assigned a folder
+        config.getConversationFolder(conversation.threadId)?.let { folderId ->
             folders.firstOrNull { it.id == folderId }?.let { return it }
         }
 

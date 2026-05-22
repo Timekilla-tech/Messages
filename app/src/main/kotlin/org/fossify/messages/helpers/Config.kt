@@ -203,6 +203,33 @@ class Config(context: Context) : BaseConfig(context) {
         get() = prefs.getString(LAST_SAVED_VIEW_ID, "main")!!
         set(lastSavedViewId) = prefs.edit().putString(LAST_SAVED_VIEW_ID, lastSavedViewId).apply()
 
+    private var conversationFolderMapJson: String
+        get() = prefs.getString("conversation_folders", "{}") ?: "{}"
+        set(value) = prefs.edit().putString("conversation_folders", value).apply()
+
+    private fun getConversationFolderMap(): Map<String, String> {
+        return try {
+            val type = object : TypeToken<Map<String, String>>() {}.type
+            gson.fromJson<Map<String, String>>(conversationFolderMapJson, type) ?: emptyMap()
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    fun setConversationFolder(threadId: Long, folderId: String?) {
+        val map = getConversationFolderMap().toMutableMap()
+        if (folderId == null) {
+            map.remove(threadId.toString())
+        } else {
+            map[threadId.toString()] = folderId
+        }
+        conversationFolderMapJson = gson.toJson(map)
+    }
+
+    fun getConversationFolder(threadId: Long): String? {
+        return getConversationFolderMap()[threadId.toString()]
+    }
+
     private var conversationFolderMetadataJson: String
         get() = prefs.getString(CONVERSATION_FOLDER_METADATA_JSON, "")!!
         set(value) = prefs.edit().putString(CONVERSATION_FOLDER_METADATA_JSON, value).apply()
