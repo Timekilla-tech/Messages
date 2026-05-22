@@ -1087,10 +1087,18 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun conversationMatchesActiveView(conversation: Conversation): Boolean {
-        if (activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+        val activeId = activeSavedView.id
+        if (activeId == SavedView.MAIN_VIEW_ID) {
             return true
         }
 
+        // 1. Manual Folder Assignment check
+        val manualFolderId = config.getConversationFolder(conversation.threadId)
+        if (manualFolderId != null) {
+            return manualFolderId == activeId
+        }
+
+        // 2. Filter-based matching
         val viewConfig = activeSavedView.config
 
         if (viewConfig.unreadOnly && conversation.read) {
