@@ -1,9 +1,6 @@
 package org.fossify.messages.helpers
 
-import android.app.Activity
 import android.content.Context
-import android.graphics.Rect
-import android.util.DisplayMetrics
 
 /**
  * Helper class for handling foldable phone configurations.
@@ -21,6 +18,31 @@ class FoldableHelper(private val context: Context) {
     companion object {
         const val LARGE_SCREEN_WIDTH_DP = 500
         const val ASPECT_RATIO_ULTRA_WIDE = 2.0f // Typical for foldable unfolded
+
+        fun isUnfoldedState(state: FoldStateInfo): Boolean {
+            return state.aspectRatio > ASPECT_RATIO_ULTRA_WIDE
+        }
+
+        fun getOptimalLayoutMetrics(state: FoldStateInfo): LayoutMetrics {
+            return if (state.isLargeScreen) {
+                val panelWidth = state.screenWidth / 2
+                val panelHeight = state.screenHeight / 2
+
+                LayoutMetrics(
+                    panelWidth = panelWidth,
+                    panelHeight = panelHeight,
+                    maxContentWidth = (state.screenWidth * 0.8).toInt(),
+                    isLargeLayout = true
+                )
+            } else {
+                LayoutMetrics(
+                    panelWidth = state.screenWidth,
+                    panelHeight = state.screenHeight,
+                    maxContentWidth = state.screenWidth,
+                    isLargeLayout = false
+                )
+            }
+        }
     }
 
     /**
@@ -58,33 +80,6 @@ class FoldableHelper(private val context: Context) {
     /**
      * Check if device is in ultra-wide aspect ratio (typical for unfolded foldable)
      */
-    fun isUnfoldedState(state: FoldStateInfo): Boolean {
-        return state.aspectRatio > ASPECT_RATIO_ULTRA_WIDE
-    }
-
-    /**
-     * Calculate optimal layout metrics based on screen state
-     */
-    fun getOptimalLayoutMetrics(state: FoldStateInfo): LayoutMetrics {
-        return if (state.isLargeScreen) {
-            val panelWidth = state.screenWidth / 2
-            val panelHeight = state.screenHeight / 2
-
-            LayoutMetrics(
-                panelWidth = panelWidth,
-                panelHeight = panelHeight,
-                maxContentWidth = (state.screenWidth * 0.8).toInt(),
-                isLargeLayout = true
-            )
-        } else {
-            LayoutMetrics(
-                panelWidth = state.screenWidth,
-                panelHeight = state.screenHeight,
-                maxContentWidth = state.screenWidth,
-                isLargeLayout = false
-            )
-        }
-    }
 
     data class LayoutMetrics(
         val panelWidth: Int = 0,

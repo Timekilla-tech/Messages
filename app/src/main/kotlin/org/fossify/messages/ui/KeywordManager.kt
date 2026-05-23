@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -40,7 +39,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.fossify.messages.R
-import java.util.Locale
 
 data class CategoryKeywords(
     val plainWords: List<String> = emptyList(),
@@ -346,30 +344,9 @@ private fun EditKeywordDialog(
 }
 
 private fun addPlainWords(input: String, list: MutableList<String>): Boolean {
-    var anyAdded = false
-    input
-        .split(",")
-        .map { it.trim().lowercase(Locale.ROOT) }
-        .filter { it.isNotEmpty() }
-        .forEach { word ->
-            if (!list.contains(word)) {
-                list.add(word)
-                anyAdded = true
-            }
-        }
-    return anyAdded
+    return appendPlainKeywords(input, list)
 }
 
 private fun addRegexPattern(input: String, list: MutableList<String>): String? {
-    val pattern = input.trim()
-    if (pattern.isEmpty()) return null
-    return try {
-        Regex(pattern)
-        if (!list.contains(pattern)) {
-            list.add(pattern)
-        }
-        null
-    } catch (e: Exception) {
-        "Invalid: ${e.message?.take(60)}"
-    }
+    return appendRegexPattern(input, list)
 }

@@ -10,7 +10,10 @@ plugins {
     alias(libs.plugins.detekt)
     id("org.jetbrains.kotlin.plugin.compose")
 }
-
+dependencies {
+    implementation("androidx.window:window:1.2.0")
+    implementation("androidx.window:window-java:1.2.0")
+}
 val keystorePropertiesFile: File = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
@@ -167,5 +170,6 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
+    testImplementation("junit:junit:4.13.2")
     detektPlugins(libs.compose.detekt)
 }

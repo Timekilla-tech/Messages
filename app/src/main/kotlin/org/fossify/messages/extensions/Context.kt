@@ -57,6 +57,7 @@ import org.fossify.messages.helpers.FILE_SIZE_NONE
 import org.fossify.messages.helpers.MAX_MESSAGE_LENGTH
 import org.fossify.messages.helpers.MESSAGES_LIMIT
 import org.fossify.messages.helpers.MessagingCache
+import org.fossify.messages.helpers.isMessageMatchingCategory
 import org.fossify.messages.helpers.NotificationHelper
 import org.fossify.messages.helpers.ShortcutHelper
 import org.fossify.messages.helpers.generateRandomId
@@ -1623,80 +1624,7 @@ fun Context.isMessageMatchingCategory(
     message: org.fossify.messages.models.Message,
     category: org.fossify.messages.models.Category
 ): Boolean {
-    val body = message.body
-    val sender = message.senderPhoneNumber
-
-    // Check plain words first (new format)
-    if (category.plainKeywords.isNotEmpty()) {
-        val plainMatch = category.plainKeywords
-            .split(",")
-            .map { it.trim().lowercase() }
-            .filter { it.isNotEmpty() }
-            .any { keyword ->
-                body.lowercase().contains(keyword) || sender.contains(keyword)
-            }
-
-        if (plainMatch) return true
-    }
-
-    // Check regex patterns (new format)
-    if (category.regexPatterns.isNotEmpty()) {
-        val regexes = category.regexPatterns
-            .lineSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .mapNotNull { pattern ->
-                try {
-                    Regex(pattern)
-                } catch (_: Exception) {
-                    null
-                }
-            }
-            .toList()
-
-        if (regexes.isNotEmpty()) {
-            val regexMatch = regexes.any { regex ->
-                regex.containsMatchIn(body) || regex.containsMatchIn(sender)
-            }
-            if (regexMatch) return true
-        }
-    }
-
-    // Fallback to old format for backward compatibility
-    if (category.plainKeywords.isEmpty() && category.regexPatterns.isEmpty() && category.keywords.isNotEmpty()) {
-        return if (category.keywordIsRegex) {
-            val regexes = category.keywords
-                .lineSequence()
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .mapNotNull { pattern ->
-                    try {
-                        Regex(pattern)
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-                .toList()
-
-            if (regexes.isEmpty()) {
-                false
-            } else {
-                regexes.any { regex ->
-                    regex.containsMatchIn(body) || regex.containsMatchIn(sender)
-                }
-            }
-        } else {
-            val keywords = category.keywords.split(",")
-                .map { it.trim().lowercase() }
-                .filter { it.isNotEmpty() }
-
-            keywords.any { keyword ->
-                body.lowercase().contains(keyword) || sender.contains(keyword)
-            }
-        }
-    }
-
-    return false
+    return isMessageMatchingCategory(message.body, message.senderPhoneNumber, category)
 }
 
 fun Context.withAutoCategory(message: Message): Message {
