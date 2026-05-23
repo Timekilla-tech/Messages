@@ -201,8 +201,9 @@ fun Context.getMessages(
 
     if (includeScheduledMessages) {
         try {
-            val scheduledMessages = messagesDB.getScheduledThreadMessages(threadId)
-            messages.addAll(scheduledMessages)
+            val localProtectedMessages = messagesDB.getThreadMessages(threadId)
+                .filter { it.isScheduled || it.id >= 1_000_000_000L }
+            messages.addAll(localProtectedMessages)
         } catch (e: Exception) {
             e.printStackTrace()
         }

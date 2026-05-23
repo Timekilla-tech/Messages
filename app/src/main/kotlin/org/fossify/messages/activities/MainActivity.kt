@@ -298,6 +298,8 @@ class MainActivity : SimpleActivity() {
                 R.id.saved_views_picker -> showSavedViewPickerDialog()
                 R.id.show_recycle_bin -> launchRecycleBin()
                 R.id.show_archived -> launchArchivedConversations()
+                R.id.inject_mock_data -> org.fossify.messages.helpers.MockDataHelper.injectMockData(this)
+                R.id.inject_regex_stress -> org.fossify.messages.helpers.MockDataHelper.injectStressTestRegex(this)
                 R.id.settings -> launchSettings()
                 R.id.about -> launchAbout()
                 else -> return@setOnMenuItemClickListener false
@@ -637,15 +639,20 @@ class MainActivity : SimpleActivity() {
             cachedConversations.forEach { cachedConversation ->
                 val threadId = cachedConversation.threadId
 
-                val isTemporaryThread = cachedConversation.isScheduled
+                val isTemporaryThread = cachedConversation.isScheduled || threadId >= 1_000_000_000L
                 val isConversationDeleted = !conversations.map { it.threadId }.contains(threadId)
+                
+                // Only delete if it's NOT in the mock/temp range and not in the system provider
                 if (isConversationDeleted && !isTemporaryThread) {
                     conversationsDB.deleteThreadId(threadId)
                 }
 
-                val newConversation =
+                // Never merge mock threads (>= 1B) with real threads
+                val newConversation = if (threadId < 1_000_000_000L) {
                     conversations.find { it.phoneNumber == cachedConversation.phoneNumber }
-                if (isTemporaryThread && newConversation != null) {
+                } else null
+
+                if (cachedConversation.isScheduled && newConversation != null) {
                     // delete the original temporary thread and move any scheduled messages
                     // to the new thread
                     conversationsDB.deleteThreadId(threadId)

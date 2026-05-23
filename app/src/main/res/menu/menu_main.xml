@@ -35,4 +35,14 @@
         android:showAsAction="never"
         android:title="@string/about"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/inject_mock_data"
+        android:showAsAction="never"
+        android:title="Inject Mock Data (Test)"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/inject_regex_stress"
+        android:showAsAction="never"
+        android:title="Inject 100 Regex (Stress Test)"
+        app:showAsAction="never" />
 </menu>
