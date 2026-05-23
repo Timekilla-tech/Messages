@@ -52,9 +52,6 @@ class CategoryAdapter(
 
     override fun getItemId(position: Int) = getItem(position).id
 
-    fun updateItems(items: List<Category>) {
-        submitList(items.toList())
-    }
 
     private fun setupView(view: View, category: Category) {
         ItemCategoryBinding.bind(view).apply {

@@ -14,7 +14,6 @@ import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
-import android.widget.EditText
 import android.view.Menu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog

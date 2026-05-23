@@ -82,7 +82,7 @@ fun KeywordManager(
     }
 
     MaterialTheme(colorScheme = colorScheme) {
-        androidx.compose.material3.Surface(color = composeBackgroundColor) {
+        Surface(color = composeBackgroundColor) {
             KeywordManagerContent(
                 modifier = modifier,
                 plainWords = plainWords,
@@ -267,7 +267,7 @@ private fun KeywordChip(
                 modifier = Modifier.widthIn(max = 160.dp),
             )
         },
-        colors = androidx.compose.material3.InputChipDefaults.inputChipColors(
+        colors = InputChipDefaults.inputChipColors(
             labelColor = textColor,
             trailingIconColor = textColor.copy(alpha = 0.7f)
         ),
@@ -299,7 +299,6 @@ private fun KeywordChip(
             onDismiss = { showEditDialog = false },
             onConfirm = { newText, newIsRegex ->
                 onEdit(newText, newIsRegex)
-                showEditDialog = false
             },
             textColor = textColor
         )
