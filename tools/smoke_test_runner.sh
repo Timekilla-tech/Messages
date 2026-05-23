@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###############################################################################
-# SMOKE TEST RUNNER — Fossify Messages (Sprint 3)
+# SMOKE TEST RUNNER — Fossify Messages (Final)
 #
 # Purpose: Automate pre-defense smoke test verification
 # Usage: ./tools/smoke_test_runner.sh [device-id]
@@ -11,8 +11,9 @@
 # 1. Builds the APK
 # 2. Installs on device/emulator
 # 3. Grants permissions
-# 4. Runs logcat monitoring in background
-# 5. Reports build status
+# 4. Launches the app
+# 5. Monitors logcat (filtered by app PID)
+# 6. Reports PASS if no crash within 10 seconds, otherwise FAIL
 ###############################################################################
 
 set -e
@@ -27,12 +28,13 @@ NC='\033[0m' # No Color
 # Configuration
 DEVICE_ID="${1:-100.124.101.75:5555}"
 PACKAGE_NAME="org.fossify.messages.debug"
-LOG_FILE="smoke_test_$(date +%Y%m%d_%H%M%S).log"
+BUILD_LOG="smoke_test_build_$(date +%Y%m%d_%H%M%S).log"
+CRASH_DETECTED=0
 
 echo -e "${BLUE}=== Fossify Messages Smoke Test Runner ===${NC}"
 echo -e "${BLUE}Date: $(date)${NC}"
 echo -e "${BLUE}Device: ${DEVICE_ID}${NC}"
-echo -e "${BLUE}Log file: ${LOG_FILE}${NC}"
+echo -e "${BLUE}Package: ${PACKAGE_NAME}${NC}"
 echo
 
 # Function: Print section header
@@ -67,24 +69,24 @@ fi
 
 # 2. BUILD APK
 section "Step 2: Building APK (skipping detekt for speed)"
-if ./gradlew assembleDebug -x detekt >> "$LOG_FILE" 2>&1; then
+if ./gradlew assembleDebug -x detekt >> "$BUILD_LOG" 2>&1; then
     success "APK build successful"
-    # Find the newest debug APK across flavor-specific output directories
+    # Find the newest debug APK
     APK_FILE=$(find app/build/outputs/apk -type f \
         -path '*/debug/*.apk' \
         ! -name '*androidTest.apk' \
         ! -name '*unaligned.apk' \
         | sort -r | head -1)
     if [ -z "$APK_FILE" ]; then
-        error "APK file not found! Expected something like app/build/outputs/apk/<flavor>/debug/*.apk"
+        error "APK file not found!"
         info "Available APK outputs:"
         find app/build/outputs/apk -type f \( -name '*.apk' -o -name '*.apks' \) | sort
         exit 1
     fi
     info "APK: $APK_FILE"
 else
-    error "APK build failed. Check $LOG_FILE"
-    tail -20 "$LOG_FILE"
+    error "APK build failed. Check $BUILD_LOG"
+    tail -20 "$BUILD_LOG"
     exit 1
 fi
 
@@ -95,10 +97,10 @@ success "Previous version uninstalled (or didn't exist)"
 
 # 4. INSTALL APK
 section "Step 4: Installing APK on device"
-if adb -s "$DEVICE_ID" install -g "$APK_FILE" >> "$LOG_FILE" 2>&1; then
+if adb -s "$DEVICE_ID" install -g "$APK_FILE" >> "$BUILD_LOG" 2>&1; then
     success "APK installed successfully"
 else
-    error "APK installation failed. Check $LOG_FILE"
+    error "APK installation failed. Check $BUILD_LOG"
     exit 1
 fi
 
@@ -116,60 +118,83 @@ for perm in "${PERMISSIONS[@]}"; do
 done
 success "Permissions granted"
 
-# 6. START LOGCAT MONITORING
-section "Step 6: Starting logcat monitoring in background"
-LOG_MONITOR_FILE="logcat_$(date +%Y%m%d_%H%M%S).txt"
-adb -s "$DEVICE_ID" logcat | tee "$LOG_MONITOR_FILE" &
-LOGCAT_PID=$!
-info "Logcat monitoring started (PID: $LOGCAT_PID)"
-info "Logcat output: $LOG_MONITOR_FILE"
+# 6. CLEAR LOGS AND PREPARE MONITORING
+section "Step 6: Clearing device logs"
+adb -s "$DEVICE_ID" logcat -c
+success "Logcat cleared"
 
-# Wait a moment for logcat to start
-sleep 2
+# Function to get app PID
+get_app_pid() {
+    adb -s "$DEVICE_ID" shell pidof -s "$PACKAGE_NAME" 2>/dev/null || echo ""
+}
 
 # 7. LAUNCH APP
 section "Step 7: Launching application"
-adb -s "$DEVICE_ID" shell am start -n "$PACKAGE_NAME/.activities.MainActivity" >> "$LOG_FILE" 2>&1
+# Use monkey to launch the default launcher activity
+adb -s "$DEVICE_ID" shell monkey -p "$PACKAGE_NAME" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
 success "App launched"
-info "Waiting 5 seconds for app to stabilize..."
-sleep 5
 
-# 8. CHECK FOR CRASHES
-section "Step 8: Checking for crashes in logcat"
-if grep -i "crash\|fatal\|ANR" "$LOG_MONITOR_FILE" > /dev/null 2>&1; then
-    error "Crashes detected in logcat!"
-    echo "Recent log entries:"
-    tail -30 "$LOG_MONITOR_FILE"
-else
-    success "No crashes detected in initial 5 seconds"
+# Wait for app process to start (up to 10 seconds)
+info "Waiting for app process..."
+for i in {1..10}; do
+    PID=$(get_app_pid)
+    if [ -n "$PID" ]; then
+        success "App PID: $PID"
+        break
+    fi
+    sleep 1
+done
+
+if [ -z "$PID" ]; then
+    error "App process not found within 10 seconds"
+    exit 1
 fi
 
-# 9. PRINT SUMMARY
-section "SMOKE TEST SETUP COMPLETE"
-echo
-echo -e "${GREEN}✅ Prerequisites verified:${NC}"
-echo "   • Device: $DEVICE_ID"
-echo "   • Package: $PACKAGE_NAME"
-echo "   • APK: $APK_FILE"
-echo "   • Build log: $LOG_FILE"
-echo "   • Logcat: $LOG_MONITOR_FILE (PID: $LOGCAT_PID)"
-echo
-echo -e "${YELLOW}📋 Next steps:${NC}"
-echo "   1. Open the app on your device"
-echo "   2. Run through tests 1-11 in SMOKE_TEST_CHECKLIST.md"
-echo "   3. Monitor logcat output: tail -f $LOG_MONITOR_FILE"
-echo "   4. Record demo video when ready"
-echo
-echo -e "${YELLOW}⚠️  Remember to:${NC}"
-echo "   • Check for red errors in logcat"
-echo "   • Test Category creation (TEST 1)"
-echo "   • Verify Age headers (TEST 2)"
-echo "   • Test Swipe actions (TEST 3)"
-echo "   • Test on multiple devices if possible (phone + tablet/foldable)"
-echo
-echo -e "${BLUE}Logcat streaming in background. Press Ctrl+C to stop when done.${NC}"
-echo
+# 8. START LOGCAT MONITORING (filtered by PID)
+section "Step 8: Monitoring logcat for crashes"
+LOG_MONITOR_FILE="logcat_$(date +%Y%m%d_%H%M%S).txt"
+# Use a temporary file to capture logs from the monitoring background process
+MONITOR_TMP=$(mktemp)
 
-# Keep logcat running until user stops
-wait $LOGCAT_PID
+# Start logcat filtered by PID and write to both monitor file and temp file
+adb -s "$DEVICE_ID" logcat --pid="$PID" | tee "$LOG_MONITOR_FILE" > "$MONITOR_TMP" &
+LOGCAT_PID=$!
+info "Logcat monitoring started (background PID: $LOGCAT_PID)"
+info "Logfile: $LOG_MONITOR_FILE"
 
+# Monitor for 10 seconds
+info "Monitoring for 10 seconds..."
+sleep 10
+
+# Stop logcat monitoring
+kill $LOGCAT_PID 2>/dev/null || true
+
+# Check for crashes in the captured logs
+if grep -q "FATAL EXCEPTION" "$MONITOR_TMP"; then
+    error "Crash detected during monitoring!"
+    echo -e "\n${RED}--- Crash stack trace (first 30 lines) ---${NC}"
+    grep -A 30 "FATAL EXCEPTION" "$MONITOR_TMP" | head -40
+    CRASH_DETECTED=1
+else
+    success "No crashes detected within 10 seconds after launch"
+fi
+
+# Clean up temp file
+rm -f "$MONITOR_TMP"
+
+# 9. FINAL VERDICT
+section "SMOKE TEST COMPLETE"
+echo
+if [ $CRASH_DETECTED -eq 0 ]; then
+    echo -e "${GREEN}✅✅✅ SMOKE TEST PASSED ✅✅✅${NC}"
+    echo -e "${GREEN}No crashes detected. App is stable for defense.${NC}"
+    echo
+    echo -e "${YELLOW}📋 Log saved to: $LOG_MONITOR_FILE${NC}"
+    exit 0
+else
+    echo -e "${RED}❌❌❌ SMOKE TEST FAILED ❌❌❌${NC}"
+    echo -e "${RED}Crashes detected. Fix before defense.${NC}"
+    echo
+    echo -e "${YELLOW}📋 Log saved to: $LOG_MONITOR_FILE${NC}"
+    exit 1
+fi
