@@ -3,6 +3,8 @@ package org.fossify.messages.dialogs
 import androidx.appcompat.app.AlertDialog
 import org.fossify.commons.activities.BaseSimpleActivity
 import org.fossify.commons.extensions.getAlertDialogBuilder
+import org.fossify.commons.extensions.getProperBackgroundColor
+import org.fossify.commons.extensions.getProperPrimaryColor
 import org.fossify.commons.extensions.getProperTextColor
 import org.fossify.commons.extensions.setupDialogStuff
 import org.fossify.commons.extensions.showKeyboard
@@ -103,7 +105,9 @@ class AddOrEditCategoryDialog(
                         currentRegexPatterns.clear()
                         currentRegexPatterns.addAll(regexPatterns)
                     },
-                    textColor = activity.getProperTextColor()
+                    textColor = activity.getProperTextColor(),
+                    primaryColor = activity.getProperPrimaryColor(),
+                    backgroundColor = activity.getProperBackgroundColor()
                 )
             }
 

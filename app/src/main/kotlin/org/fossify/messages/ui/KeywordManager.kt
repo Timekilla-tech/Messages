@@ -26,6 +26,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -37,6 +39,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -57,6 +60,8 @@ fun KeywordManager(
     initialRegexPatterns: List<String> = emptyList(),
     onChanged: (plainWords: List<String>, regexPatterns: List<String>) -> Unit = { _, _ -> },
     textColor: Int = 0,
+    primaryColor: Int = 0,
+    backgroundColor: Int = 0,
 ) {
     val plainWords = remember {
         mutableStateListOf<String>().apply { addAll(initialPlainWords) }
@@ -65,17 +70,13 @@ fun KeywordManager(
         mutableStateListOf<String>().apply { addAll(initialRegexPatterns) }
     }
 
-    val composeTextColor = if (textColor != 0) androidx.compose.ui.graphics.Color(textColor) else MaterialTheme.colorScheme.onSurface
-    val secondaryTextColor = composeTextColor.copy(alpha = 0.7f)
-
-    var pendingInput by remember { mutableStateOf("") }
-    var isRegexMode by remember { mutableStateOf(false) }
-    var inputError by remember { mutableStateOf<String?>(null) }
-    var duplicateWarning by remember { mutableStateOf(false) }
+    val composeTextColor = if (textColor != 0) Color(textColor) else MaterialTheme.colorScheme.onSurface
+    val composePrimaryColor = if (primaryColor != 0) Color(primaryColor) else MaterialTheme.colorScheme.primary
+    val composeBackgroundColor = if (backgroundColor != 0) Color(backgroundColor) else MaterialTheme.colorScheme.surface
 
     val signature by remember {
         derivedStateOf {
-            plainWords.joinToString() + "|" + regexPatterns.joinToString()
+            plainWords.joinToString(",") + "|" + regexPatterns.joinToString("\n")
         }
     }
 
@@ -83,6 +84,56 @@ fun KeywordManager(
     LaunchedEffect(signature) {
         currentOnChanged.value(plainWords.toList(), regexPatterns.toList())
     }
+
+    val colorScheme = if (textColor == -1) { // -1 is white, usually means dark mode in Fossify context
+        darkColorScheme(
+            primary = composePrimaryColor,
+            surface = composeBackgroundColor,
+            onSurface = composeTextColor,
+            onSurfaceVariant = composeTextColor.copy(alpha = 0.7f),
+            background = composeBackgroundColor,
+            onBackground = composeTextColor,
+            outline = composeTextColor.copy(alpha = 0.5f),
+            surfaceVariant = composeBackgroundColor
+        )
+    } else {
+        lightColorScheme(
+            primary = composePrimaryColor,
+            surface = composeBackgroundColor,
+            onSurface = composeTextColor,
+            onSurfaceVariant = composeTextColor.copy(alpha = 0.7f),
+            background = composeBackgroundColor,
+            onBackground = composeTextColor,
+            outline = composeTextColor.copy(alpha = 0.5f),
+            surfaceVariant = composeBackgroundColor
+        )
+    }
+
+    MaterialTheme(colorScheme = colorScheme) {
+        androidx.compose.material3.Surface(color = composeBackgroundColor) {
+            KeywordManagerContent(
+                modifier = modifier,
+                plainWords = plainWords,
+                regexPatterns = regexPatterns,
+                textColor = composeTextColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeywordManagerContent(
+    modifier: Modifier,
+    plainWords: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    regexPatterns: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    textColor: Color
+) {
+    var pendingInput by remember { mutableStateOf("") }
+    var isRegexMode by remember { mutableStateOf(false) }
+    var inputError by remember { mutableStateOf<String?>(null) }
+    var duplicateWarning by remember { mutableStateOf(false) }
+
+    val secondaryTextColor = textColor.copy(alpha = 0.7f)
 
     Column(modifier = modifier.fillMaxWidth()) {
         Spacer(modifier = Modifier.height(4.dp))
@@ -109,7 +160,7 @@ fun KeywordManager(
                                 addPlainWords(newValue, plainWords)
                             }
                         },
-                        textColor = composeTextColor
+                        textColor = textColor
                     )
                 }
                 // Then regex patterns
@@ -126,7 +177,7 @@ fun KeywordManager(
                                 addPlainWords(newValue, plainWords)
                             }
                         },
-                        textColor = composeTextColor
+                        textColor = textColor
                     )
                 }
             }
@@ -145,7 +196,7 @@ fun KeywordManager(
             singleLine = true,
             placeholder = { Text(if (isRegexMode) "Add regex pattern" else "Add plain word(s)", color = secondaryTextColor) },
             isError = inputError != null || duplicateWarning,
-            textStyle = androidx.compose.ui.text.TextStyle(color = composeTextColor),
+            textStyle = androidx.compose.ui.text.TextStyle(color = textColor),
             supportingText = {
                 if (inputError != null) {
                     Text(text = inputError!!, color = MaterialTheme.colorScheme.error)
@@ -297,7 +348,10 @@ private fun EditKeywordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Keyword", color = textColor) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = textColor,
+        textContentColor = textColor,
+        title = { Text("Edit Keyword") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
