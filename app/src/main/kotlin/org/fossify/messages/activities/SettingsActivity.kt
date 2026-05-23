@@ -207,7 +207,7 @@ class SettingsActivity : SimpleActivity() {
 
 
     private fun setupManageCategories() = binding.apply {
-        settingsManageCategories.text = addLockedLabelIfNeeded(R.string.manage_categories)
+        settingsManageCategories.text = getText(R.string.manage_categories)
         settingsManageCategoriesHolder.setOnClickListener {
             Intent(this@SettingsActivity, ManageCategoriesActivity::class.java).apply {
                 startActivity(this)

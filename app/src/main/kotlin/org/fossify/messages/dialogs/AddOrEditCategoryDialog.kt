@@ -2,21 +2,13 @@ package org.fossify.messages.dialogs
 
 import androidx.appcompat.app.AlertDialog
 import org.fossify.commons.activities.BaseSimpleActivity
-import org.fossify.commons.extensions.getAlertDialogBuilder
-import org.fossify.commons.extensions.getProperBackgroundColor
-import org.fossify.commons.extensions.getProperPrimaryColor
-import org.fossify.commons.extensions.getProperTextColor
-import org.fossify.commons.extensions.setupDialogStuff
-import org.fossify.commons.extensions.showKeyboard
-import org.fossify.commons.extensions.value
+import org.fossify.commons.extensions.*
 import org.fossify.messages.R
 import org.fossify.messages.databinding.DialogAddOrEditCategoryBinding
-import org.fossify.messages.ui.KeywordManager
 import org.fossify.messages.extensions.createCategory
 import org.fossify.messages.extensions.updateCategory
 import org.fossify.messages.models.Category
-import org.fossify.commons.extensions.showErrorToast
-import org.fossify.commons.extensions.toast
+import org.fossify.messages.ui.KeywordManager
 
 
 class AddOrEditCategoryDialog(

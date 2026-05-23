@@ -371,7 +371,7 @@ class ThreadActivity : SimpleActivity() {
                 participants.size > 1 && conversation != null && !isRecycleBin
             findItem(R.id.conversation_details).isVisible = conversation != null && !isRecycleBin
             findItem(R.id.block_number).title =
-                addLockedLabelIfNeeded(org.fossify.commons.R.string.block_number)
+                getText(org.fossify.commons.R.string.block_number)
             findItem(R.id.block_number).isVisible = !isRecycleBin
             findItem(R.id.dial_number).isVisible =
                 participants.size == 1 && !isSpecialNumber() && !isRecycleBin
