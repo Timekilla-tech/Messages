@@ -1109,7 +1109,7 @@ class MainActivity : SimpleActivity() {
             .toSet()
 
         if (selectedTags.isEmpty()) {
-            return true
+            return false
         }
 
         val conversationTags = conversation.category
