@@ -20,19 +20,9 @@
         android:layout_width="@dimen/small_icon_size"
         android:layout_height="@dimen/small_icon_size"
         android:background="@drawable/circle_background"
-        app:layout_constraintBottom_toBottomOf="@id/categoryIcon"
+        app:layout_constraintBottom_toBottomOf="@id/categoryName"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@id/categoryIcon" />
-
-    <org.fossify.commons.views.MyTextView
-        android:id="@+id/categoryIcon"
-        android:layout_width="@dimen/list_icon_size_medium"
-        android:layout_height="@dimen/list_icon_size_medium"
-        android:gravity="center"
-        android:textSize="@dimen/list_secondary_text_size"
-        app:layout_constraintStart_toEndOf="@id/categoryColor"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="A" />
+        app:layout_constraintTop_toTopOf="@id/categoryName" />
 
     <org.fossify.commons.views.MyTextView
         android:id="@+id/categoryName"
@@ -43,7 +33,7 @@
         android:maxLines="1"
         android:textSize="@dimen/list_primary_text_size"
         app:layout_constraintEnd_toStartOf="@id/defaultBadge"
-        app:layout_constraintStart_toEndOf="@id/categoryIcon"
+        app:layout_constraintStart_toEndOf="@id/categoryColor"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="Blocked" />
 
@@ -99,6 +89,7 @@
         android:textSize="@dimen/list_tertiary_text_size"
         app:layout_constraintStart_toStartOf="@id/categoryName"
         app:layout_constraintTop_toBottomOf="@id/categoryDescription"
+        app:layout_goneMarginTop="0dp"
         tools:text="3" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

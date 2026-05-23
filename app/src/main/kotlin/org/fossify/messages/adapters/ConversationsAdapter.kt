@@ -6,7 +6,6 @@ import android.view.Menu
 import androidx.recyclerview.widget.ItemTouchHelper
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.extensions.addBlockedNumber
-import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.copyToClipboard
 import org.fossify.commons.extensions.launchActivityIntent
 import org.fossify.commons.extensions.notificationManager
@@ -20,11 +19,9 @@ import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.dialogs.DeleteConfirmationDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
 import org.fossify.messages.extensions.config
-import org.fossify.messages.extensions.conversationsDB
 import org.fossify.messages.extensions.deleteConversation
 import org.fossify.messages.extensions.dialNumber
 import org.fossify.messages.extensions.launchConversationDetails
-import org.fossify.messages.extensions.insertOrUpdateConversation
 import org.fossify.messages.extensions.markThreadMessagesRead
 import org.fossify.messages.extensions.markThreadMessagesUnread
 import org.fossify.messages.extensions.renameConversation
@@ -37,7 +34,6 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
 import org.fossify.messages.helpers.refreshConversations
 import org.fossify.messages.messaging.isShortCodeWithLetters
 import org.fossify.messages.models.Conversation
-import java.util.Locale
 
 class ConversationsAdapter(
     activity: SimpleActivity,
@@ -85,7 +81,7 @@ class ConversationsAdapter(
 
         menu.apply {
             findItem(R.id.cab_block_number).title =
-                activity.addLockedLabelIfNeeded(org.fossify.commons.R.string.block_number)
+                activity.getText(org.fossify.commons.R.string.block_number)
             findItem(R.id.cab_add_number_to_contact).isVisible =
                 isSingleSelection && !isGroupConversation
             findItem(R.id.cab_dial_number).isVisible =
