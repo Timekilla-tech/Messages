@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
-import org.fossify.commons.extensions.applyColorFilter
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.databinding.ItemCategoryBinding
@@ -60,20 +59,13 @@ class CategoryAdapter(
             categoryDescription.text = category.description
             categoryDescription.visibility = if (category.description.isEmpty()) View.GONE else View.VISIBLE
             
-            categoryKeywordCount.text = category.keywords
-                .split(",")
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .size
-                .toString()
+            val plainCount = category.plainKeywords.split(",").count { it.trim().isNotEmpty() }
+            val regexCount = category.regexPatterns.lineSequence().count { it.trim().isNotEmpty() }
+            categoryKeywordCount.text = (plainCount + regexCount).toString()
 
             val bg = (categoryColor.background?.mutate() as? GradientDrawable)
             bg?.setColor(category.color)
             categoryColor.background = bg
-
-            categoryIcon.text = category.icon.ifEmpty { "#" }
-            categoryIcon.visibility = if (category.icon.isEmpty()) View.GONE else View.VISIBLE
-            categoryIcon.background?.mutate()?.applyColorFilter(category.color)
 
             defaultBadge.visibility = if (category.isDefault) View.VISIBLE else View.GONE
 

@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardActions
@@ -77,17 +80,8 @@ fun KeywordManager(
         currentOnChanged.value(plainWords.toList(), regexPatterns.toList())
     }
 
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Column {
-            Text(
-                text = "Plain words (case-insensitive) or Regex patterns",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    Column(modifier = modifier.fillMaxWidth()) {
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Combined Chips Section
         if (plainWords.isNotEmpty() || regexPatterns.isNotEmpty()) {
@@ -130,6 +124,7 @@ fun KeywordManager(
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         // Single Input Field
@@ -142,7 +137,7 @@ fun KeywordManager(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text(if (isRegexMode) "Add regex pattern" else "Add plain word(s)") },
+            placeholder = { Text(if (isRegexMode) "Add regex pattern" else "Add plain word(s)") },
             isError = inputError != null || duplicateWarning,
             supportingText = {
                 if (inputError != null) {
