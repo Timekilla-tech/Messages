@@ -906,38 +906,116 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showCreateSavedViewDialog() {
-        val views = savedViewsStore.getViews()
-        val baseConfig = SavedViewConfig() // Start with a fresh config, don't inherit from active folder
-        showSavedViewNameDialog(
-            title = getString(R.string.create_view),
-            initialValue = "",
-            confirmLabel = getString(org.fossify.commons.R.string.ok),
-        ) { viewName ->
-            val positions = (0..views.size).map { it.toString() }
-            AlertDialog.Builder(this)
-                .setTitle(R.string.choose_position)
-                .setItems(positions.toTypedArray()) { _, which ->
-                    val colorOptions = listOf(
-                        getString(R.string.default_label) to null,
-                        getString(R.string.color_blue) to 0xFF2196F3.toInt(),
-                        getString(R.string.color_green) to 0xFF4CAF50.toInt(),
-                        getString(R.string.color_orange) to 0xFFFF9800.toInt(),
-                        getString(R.string.color_red) to 0xFFF44336.toInt(),
-                        getString(R.string.color_purple) to 0xFF9C27B0.toInt(),
-                    )
-                    AlertDialog.Builder(this)
-                        .setTitle(R.string.choose_color)
-                        .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
-                            val selectedColor = colorOptions[colorWhich].second
-                            // Start with empty tags to avoid echoing the folder name in row chips
-                            val configWithColor = baseConfig.copy(color = selectedColor, tags = emptySet())
-                            val createdView = savedViewsStore.createView(viewName, configWithColor, "", which)
-                            switchToSavedView(createdView.id)
-                        }
-                        .show()
-                }
-                .show()
+        showSavedViewEditorDialog(null)
+    }
+
+    private fun showEditSavedViewDialog(viewToEdit: SavedView = activeSavedView) {
+        if (!viewToEdit.isEditable || viewToEdit.id == SavedView.MAIN_VIEW_ID) {
+            toast(R.string.main_view_immutable)
+            return
         }
+        showSavedViewEditorDialog(viewToEdit)
+    }
+
+    private fun showSavedViewEditorDialog(viewToEdit: SavedView?) {
+        val views = savedViewsStore.getViews()
+        val isEditing = viewToEdit != null
+        val title = if (isEditing) R.string.edit_view else R.string.create_view
+        
+        val binding = org.fossify.messages.databinding.DialogAddOrEditFolderBinding.inflate(layoutInflater)
+        val initialName = viewToEdit?.title ?: ""
+        binding.folderName.setText(initialName)
+        binding.folderName.setSelection(initialName.length)
+
+        // Setup position spinner
+        val maxPos = if (isEditing) views.size - 1 else views.size
+        val positions = (0..maxPos).map { it.toString() }
+        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_item, positions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.folderPositionSpinner.adapter = adapter
+        
+        val initialPos = viewToEdit?.position ?: views.size
+        binding.folderPositionSpinner.setSelection(initialPos.coerceAtMost(maxPos))
+
+        // Setup color picker
+        var selectedColor = viewToEdit?.config?.color
+        val colorOptions = listOf(
+            null,
+            0xFF2196F3.toInt(),
+            0xFF4CAF50.toInt(),
+            0xFFFF9800.toInt(),
+            0xFFF44336.toInt(),
+            0xFF9C27B0.toInt(),
+            0xFF009688.toInt(),
+            0xFFE91E63.toInt()
+        )
+
+        fun setupColorOptions() {
+            binding.folderColorOptionsLayout.removeAllViews()
+            val circleSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.list_icon_size_small)
+            val margin = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.small_margin)
+            
+            colorOptions.forEach { color ->
+                val view = android.view.View(this).apply {
+                    layoutParams = android.widget.LinearLayout.LayoutParams(circleSize, circleSize).apply {
+                        setMargins(0, 0, margin, 0)
+                    }
+                    val displayColor = color ?: getProperPrimaryColor()
+                    background = AppCompatResources.getDrawable(this@MainActivity, org.fossify.commons.R.drawable.circle_background)?.mutate()?.apply {
+                        DrawableCompat.setTint(this, displayColor)
+                    }
+                    
+                    if (selectedColor == color) {
+                        alpha = 1.0f
+                        elevation = 4f
+                    } else {
+                        alpha = 0.4f
+                        elevation = 0f
+                    }
+
+                    setOnClickListener {
+                        selectedColor = color
+                        setupColorOptions()
+                    }
+                }
+                binding.folderColorOptionsLayout.addView(view)
+            }
+        }
+
+        setupColorOptions()
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(binding.root)
+            .setPositiveButton(org.fossify.commons.R.string.ok, null)
+            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
+            .create().apply {
+                show()
+                getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val name = binding.folderName.text?.toString()?.trim().orEmpty()
+                    if (name.isEmpty()) {
+                        toast(R.string.view_name_cannot_be_empty)
+                        return@setOnClickListener
+                    }
+
+                    val position = binding.folderPositionSpinner.selectedItemPosition
+                    
+                    if (isEditing) {
+                        val updatedView = viewToEdit!!.copy(
+                            title = name,
+                            position = position,
+                            config = viewToEdit.config.copy(color = selectedColor)
+                        )
+                        savedViewsStore.upsertView(updatedView)
+                        switchToSavedView(updatedView.id)
+                    } else {
+                        val config = SavedViewConfig(color = selectedColor, tags = emptySet())
+                        val createdView = savedViewsStore.createView(name, config, "", position)
+                        switchToSavedView(createdView.id)
+                    }
+                    dismiss()
+                }
+            }
     }
 
     private fun showCurrentSavedViewActionsDialog() {
@@ -963,44 +1041,6 @@ class MainActivity : SimpleActivity() {
             .show()
     }
 
-    private fun showEditSavedViewDialog(viewToEdit: SavedView = activeSavedView) {
-        showSavedViewNameDialog(
-            title = getString(R.string.edit_view),
-            initialValue = viewToEdit.title,
-            confirmLabel = getString(org.fossify.commons.R.string.ok),
-        ) { updatedName ->
-            val views = savedViewsStore.getViews().filter { it.id != SavedView.MAIN_VIEW_ID }
-            val positions = (0 until views.size).map { it.toString() }
-            AlertDialog.Builder(this)
-                .setTitle(R.string.choose_position)
-                .setItems(positions.toTypedArray()) { _, which ->
-                    val colorOptions = listOf(
-                        getString(R.string.default_label) to null,
-                        getString(R.string.color_blue) to 0xFF2196F3.toInt(),
-                        getString(R.string.color_green) to 0xFF4CAF50.toInt(),
-                        getString(R.string.color_orange) to 0xFFFF9800.toInt(),
-                        getString(R.string.color_red) to 0xFFF44336.toInt(),
-                        getString(R.string.color_purple) to 0xFF9C27B0.toInt()
-                    )
-                    AlertDialog.Builder(this)
-                        .setTitle(R.string.choose_color)
-                        .setItems(colorOptions.map { it.first }.toTypedArray()) { _, colorWhich ->
-                            val selectedColor = colorOptions[colorWhich].second
-                            val updatedView = viewToEdit.copy(
-                                title = updatedName,
-                                iconResName = null,
-                                position = which + 1, // +1 because main is at 0
-                                config = viewToEdit.config.copy(color = selectedColor)
-                            )
-                            savedViewsStore.upsertView(updatedView)
-                            switchToSavedView(updatedView.id)
-                        }
-                        .show()
-                }
-                .show()
-        }
-    }
-
     private fun showDeleteSavedViewConfirmation() {
         if (!activeSavedView.isEditable || activeSavedView.id == SavedView.MAIN_VIEW_ID) {
             toast(R.string.main_view_immutable)
@@ -1020,42 +1060,6 @@ class MainActivity : SimpleActivity() {
             }
             .setNegativeButton(org.fossify.commons.R.string.cancel, null)
             .show()
-    }
-
-    private fun showSavedViewNameDialog(
-        title: String,
-        initialValue: String,
-        confirmLabel: String,
-        onConfirm: (String) -> Unit,
-    ) {
-        val input = EditText(this).apply {
-            setText(initialValue)
-            setSelection(text?.length ?: 0)
-            hint = getString(R.string.enter_view_name)
-            setSingleLine(true)
-        }
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(title)
-            .setView(input)
-            .setPositiveButton(confirmLabel, null)
-            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val value = input.text?.toString()?.trim().orEmpty()
-                if (value.isEmpty()) {
-                    toast(R.string.view_name_cannot_be_empty)
-                    return@setOnClickListener
-                }
-
-                onConfirm(value)
-                dialog.dismiss()
-            }
-        }
-
-        dialog.show()
     }
 
     private fun reloadConversationsForCurrentFilter() {
