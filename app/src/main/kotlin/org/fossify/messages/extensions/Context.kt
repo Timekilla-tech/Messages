@@ -1310,6 +1310,13 @@ fun Context.insertOrUpdateConversation(
             isScheduled = true
         )
     }
+
+    // Preserve the archived status from the local database, as the telephony provider
+    // often doesn't support archiving or is slow to update.
+    if (cachedConv != null && cachedConv.isArchived) {
+        updatedConv = updatedConv.copy(isArchived = true)
+    }
+
     conversationsDB.insertOrUpdate(updatedConv)
 }
 
