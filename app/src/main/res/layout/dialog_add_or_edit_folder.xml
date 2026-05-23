@@ -61,5 +61,19 @@
                 android:paddingBottom="@dimen/small_margin" />
         </HorizontalScrollView>
 
+        <org.fossify.commons.views.MyTextView
+            android:id="@+id/folder_delete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/activity_margin"
+            android:background="@drawable/ripple_all_corners"
+            android:gravity="center"
+            android:padding="@dimen/medium_margin"
+            android:text="@string/delete_view"
+            android:textAllCaps="true"
+            android:textSize="@dimen/normal_text_size"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
