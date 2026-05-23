@@ -97,7 +97,8 @@ class AddOrEditCategoryDialog(
                         currentPlainWords.addAll(plainWords)
                         currentRegexPatterns.clear()
                         currentRegexPatterns.addAll(regexPatterns)
-                    }
+                    },
+                    textColor = activity.getProperTextColor()
                 )
             }
 

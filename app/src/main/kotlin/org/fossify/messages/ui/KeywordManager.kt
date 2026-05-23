@@ -56,6 +56,7 @@ fun KeywordManager(
     initialPlainWords: List<String> = emptyList(),
     initialRegexPatterns: List<String> = emptyList(),
     onChanged: (plainWords: List<String>, regexPatterns: List<String>) -> Unit = { _, _ -> },
+    textColor: Int = 0,
 ) {
     val plainWords = remember {
         mutableStateListOf<String>().apply { addAll(initialPlainWords) }
@@ -63,6 +64,9 @@ fun KeywordManager(
     val regexPatterns = remember {
         mutableStateListOf<String>().apply { addAll(initialRegexPatterns) }
     }
+
+    val composeTextColor = if (textColor != 0) androidx.compose.ui.graphics.Color(textColor) else MaterialTheme.colorScheme.onSurface
+    val secondaryTextColor = composeTextColor.copy(alpha = 0.7f)
 
     var pendingInput by remember { mutableStateOf("") }
     var isRegexMode by remember { mutableStateOf(false) }
@@ -104,7 +108,8 @@ fun KeywordManager(
                             } else {
                                 addPlainWords(newValue, plainWords)
                             }
-                        }
+                        },
+                        textColor = composeTextColor
                     )
                 }
                 // Then regex patterns
@@ -120,7 +125,8 @@ fun KeywordManager(
                             } else {
                                 addPlainWords(newValue, plainWords)
                             }
-                        }
+                        },
+                        textColor = composeTextColor
                     )
                 }
             }
@@ -137,15 +143,16 @@ fun KeywordManager(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text(if (isRegexMode) "Add regex pattern" else "Add plain word(s)") },
+            placeholder = { Text(if (isRegexMode) "Add regex pattern" else "Add plain word(s)", color = secondaryTextColor) },
             isError = inputError != null || duplicateWarning,
+            textStyle = androidx.compose.ui.text.TextStyle(color = composeTextColor),
             supportingText = {
                 if (inputError != null) {
                     Text(text = inputError!!, color = MaterialTheme.colorScheme.error)
                 } else if (duplicateWarning) {
                     Text(text = "Already exists", color = MaterialTheme.colorScheme.error)
                 } else {
-                    Text(if (isRegexMode) "Invalid regex will be rejected" else "Comma-separated for multiple")
+                    Text(if (isRegexMode) "Invalid regex will be rejected" else "Comma-separated for multiple", color = secondaryTextColor)
                 }
             },
             leadingIcon = {
@@ -220,7 +227,8 @@ private fun KeywordChip(
     text: String,
     isRegex: Boolean,
     onRemove: () -> Unit,
-    onEdit: (String, Boolean) -> Unit
+    onEdit: (String, Boolean) -> Unit,
+    textColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -236,6 +244,10 @@ private fun KeywordChip(
                 modifier = Modifier.widthIn(max = 160.dp),
             )
         },
+        colors = androidx.compose.material3.InputChipDefaults.inputChipColors(
+            labelColor = textColor,
+            trailingIconColor = textColor.copy(alpha = 0.7f)
+        ),
         leadingIcon = if (isRegex) {
             {
                 Icon(
@@ -265,7 +277,8 @@ private fun KeywordChip(
             onConfirm = { newText, newIsRegex ->
                 onEdit(newText, newIsRegex)
                 showEditDialog = false
-            }
+            },
+            textColor = textColor
         )
     }
 }
@@ -275,7 +288,8 @@ private fun EditKeywordDialog(
     initialText: String,
     initialIsRegex: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (String, Boolean) -> Unit
+    onConfirm: (String, Boolean) -> Unit,
+    textColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
 ) {
     var text by remember { mutableStateOf(initialText) }
     var isRegex by remember { mutableStateOf(initialIsRegex) }
@@ -283,7 +297,7 @@ private fun EditKeywordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Keyword") },
+        title = { Text("Edit Keyword", color = textColor) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -293,7 +307,8 @@ private fun EditKeywordDialog(
                         error = null
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Keyword/Pattern") },
+                    label = { Text("Keyword/Pattern", color = textColor.copy(alpha = 0.7f)) },
+                    textStyle = androidx.compose.ui.text.TextStyle(color = textColor),
                     isError = error != null,
                     supportingText = if (error != null) {
                         { Text(error!!, color = MaterialTheme.colorScheme.error) }
@@ -309,7 +324,7 @@ private fun EditKeywordDialog(
                     }
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Regex mode: ", style = MaterialTheme.typography.bodyMedium)
+                    Text("Regex mode: ", style = MaterialTheme.typography.bodyMedium, color = textColor)
                     Text(
                         text = if (isRegex) "ON" else "OFF",
                         style = MaterialTheme.typography.bodyMedium,

@@ -324,6 +324,7 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSavedViewsBottomBar() {
         val bar = binding.savedViewsBottomBar
+        bar.setBackgroundColor(getProperBackgroundColor())
         if (binding.selectionBottomBar?.visibility == android.view.View.GONE) {
             bar.beVisible()
         } else {
@@ -338,7 +339,7 @@ class MainActivity : SimpleActivity() {
             val menuItem = menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
             
             val activeColor = view.config.color ?: getProperPrimaryColor()
-            val inactiveColor = (view.config.color ?: getProperTextColor()).adjustAlpha(0.3f)
+            val inactiveColor = getProperTextColor().adjustAlpha(0.5f)
 
             val stateListDrawable = StateListDrawable().apply {
                 val openIconRes = if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_folder_open
@@ -370,8 +371,10 @@ class MainActivity : SimpleActivity() {
 
         // Ensure text color also reflects the selection state
         val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf(android.R.attr.state_selected), intArrayOf())
-        val textColors = intArrayOf(getProperPrimaryColor(), getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
+        val textColors = intArrayOf(getProperPrimaryColor(), getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.5f))
         bar.itemTextColor = android.content.res.ColorStateList(states, textColors)
+        bar.itemRippleColor = android.content.res.ColorStateList.valueOf(getProperPrimaryColor().adjustAlpha(0.12f))
+        bar.itemIconTintList = null
 
         bar.setOnItemSelectedListener { item ->
             val viewIndex = item.itemId - savedViewMenuIdOffset
@@ -407,6 +410,7 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSelectionBottomBar() {
         val selectionBottomBar = binding.selectionBottomBar ?: return
+        selectionBottomBar.setBackgroundColor(getProperBackgroundColor())
 
         selectionBottomBar.setOnItemSelectedListener { item ->
             getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
