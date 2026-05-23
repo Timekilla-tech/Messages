@@ -8,6 +8,20 @@
     \item \textbf{Data Management}: Room v13 сангийн өргөтгөл болон SharedPreferences (JSON Mapping) ашигласан хавтаслах систем.
 \end{itemize}
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Figures/Системийн өгөгдлийн урсгал}
+    \caption{Системийн өгөгдлийн урсгал (Data Flow Diagram)}
+    \label{fig:data_flow_diag}
+\end{figure}
+
+\textbf{Диаграммын бүрэлдэхүүн хэсгүүдийн тайлбар:}
+\begin{itemize}
+    \item \textbf{Data Layer (Өгөгдлийн давхарга)}: Room DB (v13) болон DAO (Data Access Objects) хэсгээс бүрдэх бөгөөд зурвас, ангилал, хавтасны мэдээллийг SQLite форматаар локал төхөөрөмж дээр хадгална.
+    \item \textbf{Repository / Context Extensions}: Төслийн бизнес логикийн цөм хэсэг. Ирж буй зурвасыг Regex-ээр шалгаж ангилах (Filtering Engine) болон өгөгдлийн урсгалыг (Flow) удирдах үйлдлүүд энд ажиллана.
+    \item \textbf{Presentation Layer (Танилцуулга давхарга)}: ViewModel, Activity болон Compose UI хэсгүүдийг агуулна. ViewModel нь өгөгдлийг UI-д харуулахад бэлэн ``State'' (төлөв) болгон хувиргаж, дэлгэц нугалах үед (Continuity) өгөгдлийг алдалгүй хадгалах үүрэгтэй.
+\end{itemize}
+
 \section{Өгөгдлийн загварчлал}
 Room v13 схемд \texttt{plain\_keywords} болон \texttt{regex\_patterns} талбаруудыг нэмж оруулсан. Энэ нь шүүлтүүрийг илүү нарийвчлалтай болгосон.
 \begin{lstlisting}[language=Kotlin, caption=Category Entity-ийн бүтэц]
