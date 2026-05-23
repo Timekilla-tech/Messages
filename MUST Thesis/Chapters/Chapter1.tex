@@ -1,0 +1,47 @@
+\chapter{Төслийн тухай онол, арга зүйн судалгаа}
+
+\section{Ижил төрлийн аппликейшнуудын судалгаа}
+Төслийн хүрээнд хийгдэх UX сайжруулалтын чиглэлийг тодорхойлохын тулд Google Messages, Samsung Messages, Textra болон Pulse SMS зэрэг түгээмэл ашиглагддаг аппликейшнуудыг дараах үзүүлэлтээр харьцуулан судлав.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.8}
+\begin{tabular}{|l|>{\raggedright\arraybackslash}p{2.1cm}|>{\raggedright\arraybackslash}p{2.1cm}|>{\raggedright\arraybackslash}p{2.1cm}|>{\raggedright\arraybackslash}p{2.1cm}|>{\raggedright\arraybackslash}p{2.1cm}|}
+\hline
+\textbf{Үзүүлэлт} & \textbf{Google Messages} & \textbf{Samsung Messages} & \textbf{Textra} & \textbf{Pulse SMS} & \textbf{Fossify (Сайжруулсан)} \\ \hline
+Хугацаагаар бүлэглэх & Үгүй & Үгүй & Үгүй & Тийм & Тийм (Sticky Headers) \\ \hline
+Нугалдаг төхөөрөмж & Маш сайн & Сайн & Муу & Дунд & Сайн (Two-pane) \\ \hline
+Хавтас / Ангилалт & Тогтсон 4 төрөл & Гар аргаар (Categories) & Үгүй & Бүрэн тохируулах боломжтой & Бүрэн (Manual + Regex) \\ \hline
+Шудрах үйлдэл & 2 төрөл & Үгүй & 2 төрөл & Олон төрлийн сонголттой & Олон төрлийн (Customizable) \\ \hline
+Удаан дарах цэс & Floating menu & Bottom toolbar & Top bar icons & Selection mode & Bottom selection bar \\ \hline
+\end{tabular}
+\caption{Ижил төрлийн аппликейшнуудын харьцуулсан судалгаа}
+\label{tab:app_comparison}
+\end{table}
+
+Судалгаанаас харахад Pulse SMS нь зохион байгуулалтын (organization) хувьд давуу талтай байгаа бол Google болон Samsung Messages нь дэлгэцийн өөрчлөлтөд дасан зохицох чадвар (adaptive layout) сайтай байна~\cite{foldable_guide}. Textra нь хурд болон энгийн байдалд төвлөрсөн боловч орчин үеийн foldable төхөөрөмжийн continuity-г дэмжих тал дээр дутагдалтай байна. Иймд эдгээр давуу талуудыг нэгтгэж, илүү уян хатан хавтаслах систем болон огнооны бүлэглэлт бүхий шийдлийг Fossify Messages-д хэрэгжүүлэхээр сонгов.
+
+\section{Android архитектурын судалгаа}
+Орчин үеийн Android хөгжүүлэлтэд MVVM (Model-View-ViewModel) архитектур нь албан ёсны санал болгож буй стандарт юм. Энэхүү архитектур нь UI логикийг өгөгдлийн логикоос салгаж, аппликейшныг тестлэх болон хөгжүүлэхэд хялбар болгодог.
+\begin{itemize}
+    \item \textbf{Model}: Room өгөгдлийн сангийн entities (\texttt{Conversation}, \texttt{Category}) болон Repository давхарга.
+    \item \textbf{View}: Activity болон Fragment-ууд. ViewBinding technologies ашиглан XML-тэй холбогдоно.
+    \item \textbf{ViewModel}: UI-д зориулсан өгөгдлийг бэлтгэж, \texttt{StateFlow} эсвэл \texttt{LiveData} ашиглан өгөгдлийг дамжуулна. Энэ нь Configuration Change (жишээ нь, дэлгэц эргүүлэх эсвэл нугалах) үед UI state-ийг хадгалж үлддэг.
+\end{itemize}
+
+\section{Kotlin, Coroutines болон Flow}
+Асинхрон ажиллагаа болон өгөгдлийн урсгалыг удирдах нь мессежийн апп-ын хувьд маш чухал. 10,000+ мессеж ачаалахад UI thread гацах ёсгүй. Үүнийг Kotlin Coroutines ашиглан background thread-д гүйцэтгэнэ. \texttt{Flow} технологийг ашиглан өгөгдлийн санд өөрчлөлт орох бүрт UI автоматаар шинэчлэгдэх ``Reactive Programming'' зарчмыг хэрэгжүүлсэн~\cite{kotlin_programming}.
+
+\section{Room өгөгдлийн сан}
+Room нь SQLite дээр суурилсан өгөгдлийн сангийн удирдлагын систем (ORM) юм. Төслийн явцад өгөгдлийн сан v10-аас v13 руу шилжсэн. v13 хувилбарт бид дараах өөрчлөлтүүдийг хийсэн:
+\begin{itemize}
+    \item \texttt{plain\_keywords}: Түлхүүр үгс хадгалах талбар.
+    \item \texttt{regex\_patterns}: Регуляр илэрхийлэл хадгалах талбар.
+    \item \texttt{thread\_color}: Харилцан яриа бүрт оноох тусгай өнгө.
+\end{itemize}
+Шилжилт (Migration) хийхдээ \texttt{MigrationTestHelper} ашиглан data loss байхгүй гэдгийг баталгаажуулсан~\cite{room_guide}.
+
+\section{Foldable төхөөрөмжийн дэмжлэг}
+Нугалдаг төхөөрөмжүүд нь дэлгэцийн хэмжээ нь динамикаар өөрчлөгддөг онцлогтой. Үүнийг \texttt{WindowManager} сангийн \texttt{WindowInfoTracker} ашиглан мэдэрч, UI-г хоёр баганатай (master-detail) харагдац руу шилжүүлнэ. Дэлгэц нугалагдах үед \texttt{savedInstanceState} болон \texttt{ViewModel}-ийг ашиглан хэрэглэгчийн scroll position-ийг хадгалж үлддэг.

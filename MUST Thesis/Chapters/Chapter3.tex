@@ -1,0 +1,39 @@
+\chapter{Системийн зохиомж ба хөгжүүлэлт}
+
+\section{Системийн архитектур}
+Төслийн архитектурыг дараах гол хэсгүүдэд хувааж болно:
+\begin{itemize}
+    \item \textbf{Filtering Engine}: Ирж буй зурвасыг ``Intercept'' хийж, \texttt{Category} дүрмүүдийн дагуу \texttt{folder\_id} оноох логик.
+    \item \textbf{UI Layouts}: RecyclerView-ийн Sticky Headers (Age Grouping) болон Foldable хоёр баганат харагдац.
+    \item \textbf{Data Management}: Room v13 сангийн өргөтгөл болон SharedPreferences (JSON Mapping) ашигласан хавтаслах систем.
+\end{itemize}
+
+\section{Өгөгдлийн загварчлал}
+Room v13 схемд \texttt{plain\_keywords} болон \texttt{regex\_patterns} талбаруудыг нэмж оруулсан. Энэ нь шүүлтүүрийг илүү нарийвчлалтай болгосон.
+\begin{lstlisting}[language=Kotlin, caption=Category Entity-ийн бүтэц]
+@Entity(tableName = "categories")
+data class Category(
+    @PrimaryKey(autoGenerate = true) var id: Long = 0,
+    var name: String,
+    var color: Int,
+    var plainKeywords: String = "",
+    var regexPatterns: String = ""
+)
+\end{lstlisting}
+
+\section{UI/UX хэрэгжүүлэлт}
+\textbf{KeywordManager}: Jetpack Compose ашиглан ``Keywords'' болон ``Regex'' хэсгийг нэгтгэсэн 1-field UI хөгжүүлсэн.
+
+\textbf{Folder Tinting}: Харилцан ярианы жагсаалтад тухайн хавтасны өнгийг row background-д (12\% opacity) оноодог.
+
+\section{Хяналтын үзлэгийн тайлан}
+\begin{longtable}{|l|l|p{8cm}|}
+\hline
+\textbf{Үзлэг} & \textbf{Огноо} & \textbf{Гарах үр дүн} \\ \hline
+Үзлэг I & 2026.03.04 & Архитектурын ноорог, DB Schema / ERD (Эхлэл), UI/UX Wireframe. \\ \hline
+Үзлэг II & 2026.04.01 & Room DB өргөтгөл, Regex Filtering Engine, Swipe Actions хөгжүүлэлт. \\ \hline
+Үзлэг III & 2026.04.29 & Foldable Continuity (QA), Long-press цэс, Гүйцэтгэлийн туршилт, Бичиг баримт. \\ \hline
+\end{longtable}
+
+\section{Тест ба чанарын баталгаажуулалт}
+\texttt{MigrationTest.kt} ашиглан v10-аас v13 хүртэлх шилжилтийг шалгасан. Туршилтаар 5,000+ мессежтэй өгөгдлийн санг шилжүүлэхэд data loss үүсээгүй байна.
