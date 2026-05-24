@@ -4,7 +4,18 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T2A]{fontenc}
 \usepackage[mongolian]{babel}
-\usepackage{titlesec, xcolor, rotating, enumitem, longtable, array, graphicx, listings, amsmath, amssymb}
+\usepackage{csquotes}
+\usepackage{titlesec, xcolor, rotating, enumitem, longtable, array, graphicx, listings, amsmath, amssymb, float, url, hyperref}
+
+% Listings тохиргоо (Код хүрээнээс гарахгүй байх)
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=single,
+    showstringspaces=false,
+    columns=fullflexible
+}
 
 % Өнгөний тодорхойлолт (Хар хуудас гарахаас сэргийлнэ)
 \definecolor{Cover}{RGB}{255,255,255}
@@ -12,7 +23,7 @@
 \definecolor{lightlightgray}{gray}{0.9}
 
 % Ном зүйн тохиргоо
-\usepackage[backend=bibtex,natbib=true,sorting=none,sortcites]{biblatex}
+\usepackage[backend=biber,style=numeric,natbib=true,sorting=none,sortcites]{biblatex}
 \addbibresource{references.bib}
 
 % Сургууль болон төслийн мэдээлэл (Metadata)
@@ -51,6 +62,12 @@
     \include{Chapters/Chapter2}
     \include{Chapters/Chapter3}
 
-    \defformat
+% Ном зүй (Ашигласан материал)
+    \nocite{*}
     \printbibliography[heading=bibliography,title={Ном зүй}]
+
+% Хавсралт
+    \appendix
+    \include{Appendices/AppendixA}
+
 \end{document}

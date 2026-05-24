@@ -8,7 +8,7 @@
     \item \textbf{Data Management}: Room v13 сангийн өргөтгөл болон SharedPreferences (JSON Mapping) ашигласан хавтаслах систем.
 \end{itemize}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{Figures/Системийн өгөгдлийн урсгал}
     \caption{Системийн өгөгдлийн урсгал (Data Flow Diagram)}
@@ -26,9 +26,9 @@
 Системийн өгөгдлийн бүтцийг Room v13 схемд шилжүүлж, шүүлтүүрийн чадамжийг нэмэгдүүлсэн. Өгөгдлийн сангийн хувилбаруудын өөрчлөлтийг дараах байдлаар дүгнэж болно:
 
 \begin{itemize}
-    \item \textbf{Room v11}: Ангиллын системийн хамгийн анхны хувилбар бөгөөд зөвхөн \texttt{id}, \texttt{name}, \texttt{color} гэсэн үндсэн мэдээллүүдийг хадгалдаг байсан. Энэ үед мессежүүдийг автоматаар ангилах шүүлтүүрийн логик хараахан нэмэгдээгүй байв.
-    \item \textbf{Room v12}: Ангилалд \texttt{keywords} болон \texttt{keyword\_is\_regex} гэсэн талбаруудыг нэмж, анхны автомат шүүлтүүрийн системийг нэвтрүүлсэн. Гэвч энэ нь хэрэглэгчийг зөвхөн нэг төрлийн (текст эсвэл Regex) шүүлтүүр ашиглахад хязгаарлаж байв.
-    \item \textbf{Room v13}: Шүүлтүүрийг илүү уян хатан болгохын тулд \texttt{plain\_keywords} (энгийн үгс) болон \texttt{regex\_patterns} (төвөгтэй илэрхийллүүд) гэсэн хоёр тусдаа талбарыг нэмж оруулсан. Ингэснээр нэг ангилалд энгийн үг болон Regex-ийг зэрэг ашиглах боломж бүрдсэн.
+    \item \textbf{Room v11}: Ангиллын системийн хамгийн анхны хувилбар бөгөөд зөвхөн \texttt{id}, \texttt{name}, \texttt{color} гэсэн үндсэн мэдээллүүдийг хадгалдаг байсан.
+    \item \textbf{Room v12}: Ангилалд \texttt{keywords} болон \texttt{keyword\_is\_regex} гэсэн талбаруудыг нэмж, анхны автомат шүүлтүүрийн системийг нэвтрүүлсэн.
+    \item \textbf{Room v13}: Шүүлтүүрийг илүү уян хатан болгохын тулд \texttt{plain\_keywords} болон \texttt{regex\_patterns} гэсэн хоёр тусдаа талбарыг нэмж оруулсан.
 \end{itemize}
 
 \begin{lstlisting}[language=Kotlin, caption=Category Entity-ийн шинэчлэгдсэн бүтэц (v13)]
@@ -37,22 +37,99 @@ data class Category(
     @PrimaryKey(autoGenerate = true) var id: Long = 0,
     var name: String,
     var color: Int,
-    var plainKeywords: String = "", // Шинээр нэмэгдсэн
-    var regexPatterns: String = ""  // Шинээр нэмэгдсэн
+    var plainKeywords: String = "",
+    var regexPatterns: String = ""
 )
 \end{lstlisting}
 
 Өгөгдлийн сангийн шилжилт (Migration)-ийн явцад хуучин \texttt{keywords} талбарт байсан өгөгдлийг алдалгүйгээр шинэ талбарууд руу хөрвүүлэх логикийг \texttt{Migration(12, 13)} хэсэгт хэрэгжүүлсэн.
 
-\section{Системийн хэрэглээний тохиолдол}
-Системийн үндсэн функцүүдийг хэрэглэгчийн зүгээс хэрхэн ашиглахыг дараах хэрэглээний тохиолдлуудаар (Use Cases) тодорхойлов.
+\section{Ангиллын логик ба Regex боловсруулалт}
+Системийн хамгийн чухал хэсэг болох зурвас ангилах логикийг \texttt{isMessageMatchingCategory} функцэд хэрэгжүүлсэн.
 
+\begin{lstlisting}[language=Kotlin, caption=Зурвасыг Regex болон түлхүүр үгээр шалгах функц]
+fun isMessageMatchingCategory(message: Message, category: Category): Boolean {
+    val body = message.body.lowercase()
+    val sender = message.senderPhoneNumber
+
+    // 1. Энгийн түлхүүр үгээр шалгах
+    if (category.plainKeywords.isNotEmpty()) {
+        val keywords = category.plainKeywords.split(",").map { it.trim() }
+        if (keywords.any { body.contains(it) || sender.contains(it) }) return true
+    }
+
+    // 2. Regex паттернээр шалгах
+    if (category.regexPatterns.isNotEmpty()) {
+        val patterns = category.regexPatterns.lineSequence()
+            .map { it.trim() }.filter { it.isNotEmpty() }
+
+        for (pattern in patterns) {
+            try {
+                val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+                if (regex.containsMatchIn(body) || regex.containsMatchIn(sender)) return true
+            } catch (e: Exception) { continue }
+        }
+    }
+    return false
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Kotlin, caption=Room Database Migration жишээ код (v10-v13)]
+// v10-аас v11: Ангиллын хүснэгтийг үүсгэж, зурвасуудын бүтцийг шинэчлэх
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `categories` (...)")
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `category_name` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `category_id` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+// v12-оос v13: Plain keywords болон Regex patterns-ийг салгаж хадгалах
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `categories` ADD COLUMN `plain_keywords` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `categories` ADD COLUMN `regex_patterns` TEXT NOT NULL DEFAULT ''")
+    }
+}
+\end{lstlisting}
+
+\section{Системийн хэрэглээний тохиолдол}
 \input{table/UseCases}
 
-\section{UI/UX хэрэгжүүлэлт}
-\textbf{KeywordManager}: Jetpack Compose ашиглан ``Keywords'' болон ``Regex'' хэсгийг нэгтгэсэн 1-field UI хөгжүүлсэн.
+\section{Foldable төхөөрөмжийн дэмжлэг}
+Нугалах дэлгэцтэй (Foldable) төхөөрөмжүүд дээр хэрэглэгчийн интерфейсийг динамикаар өөрчлөхөд \texttt{WindowInfoTracker} санг ашигласан.
 
-\begin{figure}[htbp]
+\begin{lstlisting}[language=Kotlin, caption=Foldable төлөвийг мэдэрч буй WindowInfoTracker код]
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    val tracker = WindowInfoTracker.getOrCreate(this)
+    lifecycleScope.launch {
+        tracker.windowLayoutInfo(this@MainActivity)
+            .collect { layoutInfo ->
+                onWindowLayoutInfoChanged(layoutInfo)
+            }
+    }
+}
+
+private fun onWindowLayoutInfoChanged(layoutInfo: WindowLayoutInfo) {
+    val isLarge = layoutInfo.displayFeatures.any {
+        it is FoldingFeature && it.state == FoldingFeature.State.FLAT
+    }
+    updateTwoPaneMode(isLarge)
+}
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Chart/unfold}
+    \caption{Нугалах дэлгэц дээрх хоёр баганат харагдац (Foldable Support)}
+    \label{fig:foldable_support}
+\end{figure}
+
+\section{UI/UX хэрэгжүүлэлт}
+\textbf{KeywordManager}: Jetpack Compose ашиглан ``Keywords'' болон ``Regex'' хэсгийг нэгтгэсэн 1-field UI хөгжүүлсэн. Энэхүү шийдэл нь Material Design 3-ийн удирдамжийн дагуу хийгдсэн~\cite{material_design}.
+
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{Chart/category_edit}
     \caption{Ангилал үүсгэх ба засах цонх (KeywordManager)}
@@ -61,7 +138,7 @@ data class Category(
 
 \textbf{Folder Tinting}: Харилцан ярианы жагсаалтад тухайн хавтасны өнгийг row background-д (12\% opacity) оноодог.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{Chart/edit_view}
     \caption{Хадгалсан харагдац (Folder) үүсгэх ба засах цонх}
@@ -70,62 +147,46 @@ data class Category(
 
 \textbf{Swipe Actions}: Харилцан яриаг шудрах үйлдлийг тохируулах боломжтой.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.45\textwidth]{Chart/swipe}
     \caption{Шудрах үйлдлийн тохиргоо (Swipe Actions)}
     \label{fig:swipe_actions}
 \end{figure}
 
-\textbf{Foldable Support}: Том дэлгэцтэй төхөөрөмж дээр хоёр баганат харагдацыг дэмжинэ.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{Chart/unfold}
-    \caption{Нугалах дэлгэц дээрх хоёр баганат харагдац (Foldable Support)}
-    \label{fig:foldable_support}
-\end{figure}
-
 \section{Хөгжүүлэлтийн явц ба Git бүтэц}
-Төслийн хөгжүүлэлтийг системтэй, алдаа багатай гүйцэтгэхийн тулд Git-ийн ``Feature Branch'' стратегийг ашигласан. Энэ нь шинэ функц бүрийг тусдаа салбар (branch) дээр хөгжүүлж, туршсаны дараа үндсэн кодтой нэгтгэх боломжийг олгосон.
+Төслийн хөгжүүлэлтийг системтэй, алдаа багатай гүйцэтгэхийн тулд Git-ийн ``Feature Branch'' стратегийг ашигласан.
 
 \begin{itemize}
     \item \textbf{feature/* салбарууд}: Функц бүрийг тусгаарлан хөгжүүлсэн (\texttt{feature/regex}, \texttt{feature/fold}, \texttt{feature/category} г.м).
-    \item \textbf{merged салбар}: Хөгжүүлж дууссан функцүүдийг нэгтгэж, хоорондын уялдааг шалгах орчин.
+    \item \textbf{merged салбар}: Хөгжүүлж дууссан функцүүдийг нэгтгэсэн орчин.
     \item \textbf{test салбар}: Төхөөрөмж дээрх бодит туршилт болон нэгж тестүүдийг ажиллуулах салбар.
-    \item \textbf{main салбар}: Тогтвортой, алдаагүй ажиллагаа нь баталгаажсан эцсийн хувилбар.
+    \item \textbf{main салбар}: Баталгаажсан эцсийн хувилбар.
 \end{itemize}
-
-Энэхүү бүтэц нь олон функц зэрэг хөгжүүлэгдэж буй үед кодын зөрчил (conflict) үүсэхээс сэргийлж, хувилбарын удирдлагыг илүү тодорхой болгосон.
 
 \section{Хяналтын үзлэгийн тайлан}
 \begin{longtable}{|l|l|p{8cm}|}
 \hline
 \textbf{Үзлэг} & \textbf{Огноо} & \textbf{Гарах үр дүн} \\ \hline
-Үзлэг I & 2026.03.04 & Архитектурын ноорог, DB Schema / ERD (Эхлэл), UI/UX Wireframe. \\ \hline
-Үзлэг II & 2026.04.01 & Room DB өргөтгөл, Regex Filtering Engine, Swipe Actions хөгжүүлэлт. \\ \hline
-Үзлэг III & 2026.04.29 & Foldable Continuity (QA), Long-press цэс, Гүйцэтгэлийн туршилт, Бичиг баримт. \\ \hline
+Үзлэг I & 2026.03.04 & Архитектурын ноорог, DB Schema, UI/UX Wireframe. \\ \hline
+Үзлэг II & 2026.04.01 & Room DB, Regex Filtering Engine, Swipe Actions. \\ \hline
+Үзлэг III & 2026.04.29 & Foldable Continuity, Long-press цэс, Гүйцэтгэл, Бичиг баримт. \\ \hline
 \end{longtable}
 
 \section{Тест ба чанарын баталгаажуулалт}
-Системийн тогтвортой ажиллагаа болон логик алдааг шалгах зорилгоор нэгж тестүүдийг (Unit Tests) тогтмол ажиллуулж байна. Одоогоор нийт 24 нэгж тест амжилттай хийгдэж, дараах үндсэн функцүүдийг баталгаажуулсан:
-
+Нийт 24 нэгж тест амжилттай хийгдэж, дараах функцүүдийг баталгаажуулсан:
 \begin{itemize}
-    \item \textbf{Category Matching (13 тест)}: Regex болон энгийн үгээр шүүх логик, legacy форматын дэмжлэг, олон мөртэй мессежийг шүүх чадвар.
-    \item \textbf{Keyword Parsing (5 тест)}: Оруулсан түлхүүр үгсийг цэвэрлэх (normalize), давхардлыг арилгах, Regex-ийн хүчинтэй байдлыг шалгах.
-    \item \textbf{Foldable Helper (4 тест)}: Дэлгэцийн хэмжээг зөв тодорхойлж, Foldable болон Tablet төхөөрөмж дээр split-view-г зөв идэвхжүүлэх.
-    \item \textbf{Age Buckets (2 тест)}: Мессежүүдийг хугацаагаар нь (Өнөөдөр, Өчигдөр, Өнгөрсөн сар г.м) зөв бүлэглэх.
+    \item \textbf{Category Matching (13 тест)}: Regex болон энгийн үгээр шүүх логик.
+    \item \textbf{Keyword Parsing (5 тест)}: Түлхүүр үгсийг цэвэрлэх, Regex шалгах.
+    \item \textbf{Foldable Helper (4 тест)}: Дэлгэцийн төлөвийг зөв тодорхойлох.
+    \item \textbf{Age Buckets (2 тест)}: Мессежүүдийг хугацаагаар бүлэглэх.
 \end{itemize}
 
-Туршилтаар бүх тестүүд амжилттай (Passed) гарсан бөгөөд системд ноцтой логик алдаа байхгүй болохыг баталлаа.
-
-Системийн гүйцэтгэл болон тогтвортой байдлыг шалгах зорилгоор 40,000 харилцан яриа (conversations), 1,000 энгийн түлхүүр үг (plain words), болон 1,000 Regex паттерн ашиглан ачааллын туршилт (Stress Test) хийхэд систем ямар нэгэн crash (гацалт) өгөөгүй тогтвортой ажилласан.
-
-Туршилтын явцад 5-аас дээш фолдер үүсгэх үед системийн ажиллагаанд алдаа зааж байсан тул системийн тогтвортой байдлыг хангах үүднээс дараах техникийн хязгаарлалтуудыг тогтоож өгсөн:
+Системийн ачаалал даах чадварыг 40,000 харилцан яриа, 1,000 энгийн үг, 1,000 Regex паттерн ашиглан шалгахад тогтвортой ажилласан. Туршилтын явцад тогтоосон хязгаарлалтууд:
 \begin{itemize}
-    \item Үүсгэж болох фолдерын дээд хязгаарыг 4 болгож хязгаарласан.
-    \item Үүсгэж болох ангиллын тоог нийт ялгаатай өнгийн тоогоор буюу 16-аар хязгаарласан.
-    \item Ангилал бүрт оруулах энгийн үг болон Regex паттерны тоог тус бүр 100 болгон хязгаарлаж, санах ойн ачааллыг оновчилсон.
+    \item Үүсгэж болох фолдерын дээд хязгаар: 4.
+    \item Үүсгэж болох ангиллын тоо: 16.
+    \item Ангилал бүрт оруулах үг, паттерны тоо: 100/100.
 \end{itemize}
 
-Мөн \texttt{MigrationTest.kt} ашиглан v10-аас v13 хүртэлх шилжилтийг шалгасан бөгөөд 5,000+ мессежтэй өгөгдлийн санг шилжүүлэхэд data loss үүсээгүй байна.
+\texttt{MigrationTest.kt} ашиглан v10-аас v13 хүртэлх шилжилтийг 5,000+ мессеж дээр дата алдагдалгүй шалгаж дууссан.
