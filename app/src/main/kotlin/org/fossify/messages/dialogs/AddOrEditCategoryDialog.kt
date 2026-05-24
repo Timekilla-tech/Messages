@@ -3,8 +3,10 @@ package org.fossify.messages.dialogs
 import androidx.appcompat.app.AlertDialog
 import org.fossify.commons.activities.BaseSimpleActivity
 import org.fossify.commons.extensions.*
+import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.messages.R
 import org.fossify.messages.databinding.DialogAddOrEditCategoryBinding
+import org.fossify.messages.extensions.categoryDB
 import org.fossify.messages.extensions.createCategory
 import org.fossify.messages.extensions.updateCategory
 import org.fossify.messages.models.Category
@@ -169,30 +171,39 @@ class AddOrEditCategoryDialog(
                             }
                         }
 
-                        if (originalCategory != null) {
-                            // Edit existing — save both plain words and regex patterns
-                            val updatedCategory = originalCategory.copy(
-                                name = name,
-                                color = selectedColor,
-                                plainKeywords = plainWordsStr,           // NEW: save plain words
-                                regexPatterns = regexPatternsStr,        // NEW: save regex patterns
-                                keywordIsRegex = hasRegexPatterns        // For backward compat
-                            )
-                            activity.updateCategory(updatedCategory) {
-                                callback()
-                                alertDialog.dismiss()
+                        ensureBackgroundThread {
+                            if (originalCategory == null && activity.categoryDB.getAllCategories().size >= colorOptions.size) {
+                                activity.toast("Maximum category limit reached")
+                                return@ensureBackgroundThread
                             }
-                        } else {
-                            // Create new — save both plain words and regex patterns
-                            activity.createCategory(
-                                name = name,
-                                color = selectedColor,
-                                plainKeywords = plainWordsStr,           // NEW: save plain words
-                                regexPatterns = regexPatternsStr,        // NEW: save regex patterns
-                                keywordIsRegex = hasRegexPatterns        // For backward compat
-                            ) {
-                                callback()
-                                alertDialog.dismiss()
+
+                            activity.runOnUiThread {
+                                if (originalCategory != null) {
+                                    // Edit existing — save both plain words and regex patterns
+                                    val updatedCategory = originalCategory.copy(
+                                        name = name,
+                                        color = selectedColor,
+                                        plainKeywords = plainWordsStr,           // NEW: save plain words
+                                        regexPatterns = regexPatternsStr,        // NEW: save regex patterns
+                                        keywordIsRegex = hasRegexPatterns        // For backward compat
+                                    )
+                                    activity.updateCategory(updatedCategory) {
+                                        callback()
+                                        alertDialog.dismiss()
+                                    }
+                                } else {
+                                    // Create new — save both plain words and regex patterns
+                                    activity.createCategory(
+                                        name = name,
+                                        color = selectedColor,
+                                        plainKeywords = plainWordsStr,           // NEW: save plain words
+                                        regexPatterns = regexPatternsStr,        // NEW: save regex patterns
+                                        keywordIsRegex = hasRegexPatterns        // For backward compat
+                                    ) {
+                                        callback()
+                                        alertDialog.dismiss()
+                                    }
+                                }
                             }
                         }
                     }

@@ -1471,7 +1471,11 @@ fun Context.createCategory(
                 org.fossify.messages.helpers.refreshMessages()
             } catch (_: Exception) {
             }
-            callback?.invoke(categoryId)
+            callback?.let {
+                Handler(Looper.getMainLooper()).post {
+                    it(categoryId)
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             showErrorToast(e)
@@ -1498,7 +1502,11 @@ fun Context.updateCategory(
                 org.fossify.messages.helpers.refreshMessages()
             } catch (_: Exception) {
             }
-            callback?.invoke()
+            callback?.let {
+                Handler(Looper.getMainLooper()).post {
+                    it()
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             showErrorToast(e)
@@ -1535,7 +1543,11 @@ fun Context.deleteCategory(
             } catch (_: Exception) {
                 // ignore any issues posting events
             }
-            callback?.invoke()
+            callback?.let {
+                Handler(Looper.getMainLooper()).post {
+                    it()
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             showErrorToast(e)
@@ -1715,7 +1727,15 @@ fun Context.withAutoCategory(message: Message): Message {
 
 private fun Context.applyCategoryToExistingMessages(category: org.fossify.messages.models.Category) {
     val affectedThreadIds = HashSet<Long>()
-    val allMessages = messagesDB.getAll()
+    val messagesToUpdate = mutableListOf<org.fossify.messages.models.Message>()
+    
+    // Process messages in batches to avoid OOM with very large databases (like 40k+ messages)
+    val allMessages = try {
+        messagesDB.getAll()
+    } catch (e: Exception) {
+        android.util.Log.e("CategoryDebug", "applyCategoryToExistingMessages failed to load messages", e)
+        emptyList()
+    }
 
     allMessages.forEach { message ->
         val isCurrentlyAssigned = message.categoryId == category.id
@@ -1730,12 +1750,30 @@ private fun Context.applyCategoryToExistingMessages(category: org.fossify.messag
         if (updatedMessage != null &&
             (updatedMessage.categoryId != message.categoryId || updatedMessage.categoryName != message.categoryName)
         ) {
-            messagesDB.insertOrUpdate(updatedMessage)
+            messagesToUpdate.add(updatedMessage)
             affectedThreadIds.add(message.threadId)
         }
     }
 
-    affectedThreadIds.forEach { refreshConversationCategoryLabel(it) }
+    // Batch update messages to avoid multiple database locking cycles
+    if (messagesToUpdate.isNotEmpty()) {
+        try {
+            messagesToUpdate.chunked(1000).forEach { chunk ->
+                messagesDB.insertMessages(*chunk.toTypedArray())
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("CategoryDebug", "applyCategoryToExistingMessages failed to batch insert", e)
+        }
+    }
+
+    // Refresh snippets and labels for affected conversations
+    affectedThreadIds.forEach { threadId ->
+        try {
+            refreshConversationCategoryLabel(threadId)
+        } catch (e: Exception) {
+            android.util.Log.e("CategoryDebug", "Failed to refresh label for thread $threadId", e)
+        }
+    }
 }
 
 private fun Context.replaceCategoryNameInConversations(oldName: String, newName: String) {
@@ -1747,6 +1785,7 @@ private fun Context.replaceCategoryNameInConversations(oldName: String, newName:
 
     val allConversations = (conversationsDB.getNonArchived() + conversationsDB.getAllArchived())
         .distinctBy { it.threadId }
+    val toUpdate = mutableListOf<org.fossify.messages.models.Conversation>()
 
     allConversations.forEach { conversation ->
         val updatedCategories = conversation.category
@@ -1760,9 +1799,11 @@ private fun Context.replaceCategoryNameInConversations(oldName: String, newName:
             .joinToString(", ")
 
         if (updatedCategories != conversation.category) {
-            conversationsDB.insertOrUpdate(conversation.copy(category = updatedCategories))
+            toUpdate.add(conversation.copy(category = updatedCategories))
         }
     }
+    
+    toUpdate.forEach { conversationsDB.insertOrUpdate(it) }
 }
 
 private fun Context.removeCategoryNameFromConversations(nameToRemove: String) {
@@ -1773,6 +1814,7 @@ private fun Context.removeCategoryNameFromConversations(nameToRemove: String) {
 
     val allConversations = (conversationsDB.getNonArchived() + conversationsDB.getAllArchived())
         .distinctBy { it.threadId }
+    val toUpdate = mutableListOf<org.fossify.messages.models.Conversation>()
 
     allConversations.forEach { conversation ->
         val updatedCategories = conversation.category
@@ -1783,9 +1825,11 @@ private fun Context.removeCategoryNameFromConversations(nameToRemove: String) {
             .joinToString(", ")
 
         if (updatedCategories != conversation.category) {
-            conversationsDB.insertOrUpdate(conversation.copy(category = updatedCategories))
+            toUpdate.add(conversation.copy(category = updatedCategories))
         }
     }
+    
+    toUpdate.forEach { conversationsDB.insertOrUpdate(it) }
 }
 
 fun Context.refreshConversationCategoryLabel(threadId: Long) {
@@ -1820,24 +1864,74 @@ fun Context.reclassifyAllCategories() {
     ensureBackgroundThread {
         try {
             val categories = try {
-                categoryDB.getAllCategories()
+                categoryDB.getAllCategories().sortedBy { it.id }
             } catch (e: Exception) {
+                android.util.Log.e("CategoryDebug", "reclassifyAllCategories failed to load categories", e)
                 emptyList()
             }
 
-            // Apply categories in stable order (by id) so priority is deterministic
-            categories.sortedBy { it.id }.forEach { cat ->
-                applyCategoryToExistingMessages(cat)
+            // Optimization: Process all categories in one single pass over messages
+            val allMessages = try {
+                messagesDB.getAll()
+            } catch (e: Exception) {
+                android.util.Log.e("CategoryDebug", "reclassifyAllCategories failed to load messages", e)
+                emptyList()
             }
 
-            // Notify UI after reclassification
+            if (categories.isEmpty()) {
+                val toUpdate = allMessages.filter { it.categoryId != 0L }
+                if (toUpdate.isNotEmpty()) {
+                    val affectedThreads = toUpdate.map { it.threadId }.toSet()
+                    toUpdate.chunked(1000).forEach { chunk ->
+                        messagesDB.insertMessages(*chunk.map { it.copy(categoryId = 0, categoryName = "") }.toTypedArray())
+                    }
+                    affectedThreads.forEach { refreshConversationCategoryLabel(it) }
+                }
+                return@ensureBackgroundThread
+            }
+
+            val messagesToUpdate = mutableListOf<org.fossify.messages.models.Message>()
+            val affectedThreadIds = HashSet<Long>()
+
+            allMessages.forEach { message ->
+                // Priority is determined by category ID (deterministic)
+                val matchingCategory = categories.firstOrNull { isMessageMatchingCategory(message, it) }
+                
+                val newId = matchingCategory?.id ?: 0L
+                val newName = matchingCategory?.name ?: ""
+
+                if (message.categoryId != newId || message.categoryName != newName) {
+                    messagesToUpdate.add(message.copy(categoryId = newId, categoryName = newName))
+                    affectedThreadIds.add(message.threadId)
+                }
+            }
+
+            if (messagesToUpdate.isNotEmpty()) {
+                messagesToUpdate.chunked(1000).forEach { chunk ->
+                    try {
+                        messagesDB.insertMessages(*chunk.toTypedArray())
+                    } catch (e: Exception) {
+                        android.util.Log.e("CategoryDebug", "reclassifyAllCategories batch update failed", e)
+                    }
+                }
+            }
+
+            affectedThreadIds.forEach { threadId ->
+                try {
+                    refreshConversationCategoryLabel(threadId)
+                } catch (e: Exception) {
+                    android.util.Log.e("CategoryDebug", "Failed to refresh label for thread $threadId", e)
+                }
+            }
+
+            // Notify UI
             try {
                 org.fossify.messages.helpers.refreshConversations()
                 org.fossify.messages.helpers.refreshMessages()
             } catch (_: Exception) {
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("CategoryDebug", "Global reclassify error", e)
         }
     }
 }
