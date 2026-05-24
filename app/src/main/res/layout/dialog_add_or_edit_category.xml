@@ -32,30 +32,19 @@
             android:textSize="@dimen/normal_text_size"
             android:textStyle="bold" />
 
-        <LinearLayout
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_marginTop="@dimen/small_margin"
+            android:scrollbars="none">
 
-            <View
-                android:id="@+id/add_category_color_preview"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginEnd="@dimen/normal_margin"
-                android:background="@drawable/circle_background" />
-
-            <org.fossify.commons.views.MyTextView
-                android:id="@+id/add_category_pick_color"
+            <LinearLayout
+                android:id="@+id/add_category_color_options_layout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/ripple_all_corners"
-                android:paddingStart="@dimen/normal_margin"
-                android:paddingTop="@dimen/small_margin"
-                android:paddingEnd="@dimen/normal_margin"
-                android:paddingBottom="@dimen/small_margin"
-                android:text="@string/select_color" />
-        </LinearLayout>
+                android:orientation="horizontal"
+                android:paddingBottom="@dimen/small_margin" />
+        </HorizontalScrollView>
 
         <org.fossify.commons.views.MyTextView
             android:layout_width="match_parent"

@@ -199,7 +199,7 @@ class AttachmentsAdapter(
             .into(binding.thumbnail)
     }
 
-    inner class AttachmentsViewHolder(val binding: ViewBinding) : RecyclerView.ViewHolder(binding.root) {
+    class AttachmentsViewHolder(val binding: ViewBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bindView(callback: (binding: ViewBinding, adapterPosition: Int) -> Unit) {
             callback(binding, adapterPosition)
         }

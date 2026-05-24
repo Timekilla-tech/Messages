@@ -13,11 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract.PhoneLookup
 import android.provider.OpenableColumns
-import android.provider.Telephony.Mms
-import android.provider.Telephony.MmsSms
-import android.provider.Telephony.Sms
-import android.provider.Telephony.Threads
-import android.provider.Telephony.ThreadsColumns
+import android.provider.Telephony.*
 import android.telephony.SubscriptionManager
 import android.text.TextUtils
 import androidx.core.net.toUri
@@ -40,46 +36,38 @@ import org.fossify.commons.extensions.queryCursor
 import org.fossify.commons.extensions.showErrorToast
 import org.fossify.commons.extensions.toast
 import org.fossify.commons.extensions.trimToComparableNumber
-import org.fossify.commons.helpers.DAY_SECONDS
-import org.fossify.commons.helpers.MONTH_SECONDS
-import org.fossify.commons.helpers.MyContactsContentProvider
-import org.fossify.commons.helpers.PERMISSION_READ_CONTACTS
-import org.fossify.commons.helpers.SimpleContactsHelper
-import org.fossify.commons.helpers.ensureBackgroundThread
-import org.fossify.commons.helpers.isQPlus
+import org.fossify.commons.helpers.*
 import org.fossify.commons.models.PhoneNumber
 import org.fossify.commons.models.SimpleContact
 import org.fossify.messages.R
 import org.fossify.messages.databases.MessagesDatabase
+import org.fossify.messages.helpers.*
 import org.fossify.messages.helpers.AttachmentUtils.parseAttachmentNames
-import org.fossify.messages.helpers.Config
-import org.fossify.messages.helpers.FILE_SIZE_NONE
-import org.fossify.messages.helpers.MAX_MESSAGE_LENGTH
-import org.fossify.messages.helpers.MESSAGES_LIMIT
-import org.fossify.messages.helpers.MessagingCache
-import org.fossify.messages.helpers.NotificationHelper
-import org.fossify.messages.helpers.ShortcutHelper
-import org.fossify.messages.helpers.generateRandomId
-import org.fossify.messages.interfaces.AttachmentsDao
-import org.fossify.messages.interfaces.ConversationsDao
-import org.fossify.messages.interfaces.DraftsDao
-import org.fossify.messages.interfaces.MessageAttachmentsDao
-import org.fossify.messages.interfaces.MessagesDao
-import org.fossify.messages.interfaces.CategoryDao
+import org.fossify.messages.interfaces.*
 import org.fossify.messages.messaging.MessagingUtils
 import org.fossify.messages.messaging.MessagingUtils.Companion.ADDRESS_SEPARATOR
 import org.fossify.messages.messaging.SmsSender
 import org.fossify.messages.messaging.scheduleMessage
-import org.fossify.messages.models.Attachment
-import org.fossify.messages.models.Conversation
-import org.fossify.messages.models.Draft
-import org.fossify.messages.models.Message
-import org.fossify.messages.models.MessageAttachment
-import org.fossify.messages.models.NamePhoto
-import org.fossify.messages.models.RecycleBinMessage
+import org.fossify.messages.models.*
 import org.xmlpull.v1.XmlPullParserException
 import java.io.FileNotFoundException
 import java.util.Locale
+import kotlin.text.Regex
+import kotlin.text.contains
+import kotlin.text.equals
+import kotlin.text.isBlank
+import kotlin.text.isEmpty
+import kotlin.text.isNotBlank
+import kotlin.text.isNotEmpty
+import kotlin.text.lineSequence
+import kotlin.text.lowercase
+import kotlin.text.orEmpty
+import kotlin.text.split
+import kotlin.text.startsWith
+import kotlin.text.take
+import kotlin.text.toInt
+import kotlin.text.toLong
+import kotlin.text.trim
 import kotlin.time.Duration.Companion.minutes
 
 val Context.config: Config
@@ -1482,7 +1470,11 @@ fun Context.createCategory(
                 org.fossify.messages.helpers.refreshMessages()
             } catch (_: Exception) {
             }
-            callback?.invoke(categoryId)
+            callback?.let {
+                Handler(Looper.getMainLooper()).post {
+                    it(categoryId)
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             showErrorToast(e)
@@ -1509,7 +1501,11 @@ fun Context.updateCategory(
                 org.fossify.messages.helpers.refreshMessages()
             } catch (_: Exception) {
             }
-            callback?.invoke()
+            callback?.let {
+                Handler(Looper.getMainLooper()).post {
+                    it()
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             showErrorToast(e)
@@ -1546,7 +1542,11 @@ fun Context.deleteCategory(
             } catch (_: Exception) {
                 // ignore any issues posting events
             }
-            callback?.invoke()
+            callback?.let {
+                Handler(Looper.getMainLooper()).post {
+                    it()
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             showErrorToast(e)
@@ -1556,7 +1556,7 @@ fun Context.deleteCategory(
 
 fun Context.assignMessageToCategory(messageId: Long, categoryId: Long, categoryName: String = "") {
     try {
-        val categoryNameToUse = if (categoryName.isEmpty()) {
+        if (categoryName.isEmpty()) {
             getCategoryById(categoryId)?.name ?: ""
         } else {
             categoryName
@@ -1568,7 +1568,7 @@ fun Context.assignMessageToCategory(messageId: Long, categoryId: Long, categoryN
     }
 }
 
-fun Context.getMessagesByCategory(categoryId: Long): List<org.fossify.messages.models.Message> {
+fun Context.getMessagesByCategory(categoryId: Long): List<Message> {
     return try {
         messagesDB.getMessagesByCategory(categoryId)
     } catch (e: Exception) {
@@ -1578,10 +1578,10 @@ fun Context.getMessagesByCategory(categoryId: Long): List<org.fossify.messages.m
 }
 
 fun Context.filterMessagesByKeywords(
-    messages: List<org.fossify.messages.models.Message>,
+    messages: List<Message>,
     keywords: String,
     isRegex: Boolean = false
-): List<org.fossify.messages.models.Message> {
+): List<Message> {
     if (keywords.isEmpty()) return messages
     
     return if (isRegex) {
@@ -1627,7 +1627,7 @@ fun Context.getDefaultCategory(): org.fossify.messages.models.Category? {
 }
 
 fun Context.isMessageMatchingCategory(
-    message: org.fossify.messages.models.Message,
+    message: Message,
     category: org.fossify.messages.models.Category
 ): Boolean {
     val body = message.body
@@ -1726,7 +1726,15 @@ fun Context.withAutoCategory(message: Message): Message {
 
 private fun Context.applyCategoryToExistingMessages(category: org.fossify.messages.models.Category) {
     val affectedThreadIds = HashSet<Long>()
-    val allMessages = messagesDB.getAll()
+    val messagesToUpdate = mutableListOf<org.fossify.messages.models.Message>()
+    
+    // Process messages in batches to avoid OOM with very large databases (like 40k+ messages)
+    val allMessages = try {
+        messagesDB.getAll()
+    } catch (e: Exception) {
+        android.util.Log.e("CategoryDebug", "applyCategoryToExistingMessages failed to load messages", e)
+        emptyList()
+    }
 
     allMessages.forEach { message ->
         val isCurrentlyAssigned = message.categoryId == category.id
@@ -1741,12 +1749,30 @@ private fun Context.applyCategoryToExistingMessages(category: org.fossify.messag
         if (updatedMessage != null &&
             (updatedMessage.categoryId != message.categoryId || updatedMessage.categoryName != message.categoryName)
         ) {
-            messagesDB.insertOrUpdate(updatedMessage)
+            messagesToUpdate.add(updatedMessage)
             affectedThreadIds.add(message.threadId)
         }
     }
 
-    affectedThreadIds.forEach { refreshConversationCategoryLabel(it) }
+    // Batch update messages to avoid multiple database locking cycles
+    if (messagesToUpdate.isNotEmpty()) {
+        try {
+            messagesToUpdate.chunked(1000).forEach { chunk ->
+                messagesDB.insertMessages(*chunk.toTypedArray())
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("CategoryDebug", "applyCategoryToExistingMessages failed to batch insert", e)
+        }
+    }
+
+    // Refresh snippets and labels for affected conversations
+    affectedThreadIds.forEach { threadId ->
+        try {
+            refreshConversationCategoryLabel(threadId)
+        } catch (e: Exception) {
+            android.util.Log.e("CategoryDebug", "Failed to refresh label for thread $threadId", e)
+        }
+    }
 }
 
 private fun Context.replaceCategoryNameInConversations(oldName: String, newName: String) {
@@ -1758,6 +1784,7 @@ private fun Context.replaceCategoryNameInConversations(oldName: String, newName:
 
     val allConversations = (conversationsDB.getNonArchived() + conversationsDB.getAllArchived())
         .distinctBy { it.threadId }
+    val toUpdate = mutableListOf<org.fossify.messages.models.Conversation>()
 
     allConversations.forEach { conversation ->
         val updatedCategories = conversation.category
@@ -1771,9 +1798,11 @@ private fun Context.replaceCategoryNameInConversations(oldName: String, newName:
             .joinToString(", ")
 
         if (updatedCategories != conversation.category) {
-            conversationsDB.insertOrUpdate(conversation.copy(category = updatedCategories))
+            toUpdate.add(conversation.copy(category = updatedCategories))
         }
     }
+    
+    toUpdate.forEach { conversationsDB.insertOrUpdate(it) }
 }
 
 private fun Context.removeCategoryNameFromConversations(nameToRemove: String) {
@@ -1784,6 +1813,7 @@ private fun Context.removeCategoryNameFromConversations(nameToRemove: String) {
 
     val allConversations = (conversationsDB.getNonArchived() + conversationsDB.getAllArchived())
         .distinctBy { it.threadId }
+    val toUpdate = mutableListOf<org.fossify.messages.models.Conversation>()
 
     allConversations.forEach { conversation ->
         val updatedCategories = conversation.category
@@ -1794,9 +1824,11 @@ private fun Context.removeCategoryNameFromConversations(nameToRemove: String) {
             .joinToString(", ")
 
         if (updatedCategories != conversation.category) {
-            conversationsDB.insertOrUpdate(conversation.copy(category = updatedCategories))
+            toUpdate.add(conversation.copy(category = updatedCategories))
         }
     }
+    
+    toUpdate.forEach { conversationsDB.insertOrUpdate(it) }
 }
 
 fun Context.refreshConversationCategoryLabel(threadId: Long) {
@@ -1831,24 +1863,74 @@ fun Context.reclassifyAllCategories() {
     ensureBackgroundThread {
         try {
             val categories = try {
-                categoryDB.getAllCategories()
+                categoryDB.getAllCategories().sortedBy { it.id }
             } catch (e: Exception) {
+                android.util.Log.e("CategoryDebug", "reclassifyAllCategories failed to load categories", e)
                 emptyList()
             }
 
-            // Apply categories in stable order (by id) so priority is deterministic
-            categories.sortedBy { it.id }.forEach { cat ->
-                applyCategoryToExistingMessages(cat)
+            // Optimization: Process all categories in one single pass over messages
+            val allMessages = try {
+                messagesDB.getAll()
+            } catch (e: Exception) {
+                android.util.Log.e("CategoryDebug", "reclassifyAllCategories failed to load messages", e)
+                emptyList()
             }
 
-            // Notify UI after reclassification
+            if (categories.isEmpty()) {
+                val toUpdate = allMessages.filter { it.categoryId != 0L }
+                if (toUpdate.isNotEmpty()) {
+                    val affectedThreads = toUpdate.map { it.threadId }.toSet()
+                    toUpdate.chunked(1000).forEach { chunk ->
+                        messagesDB.insertMessages(*chunk.map { it.copy(categoryId = 0, categoryName = "") }.toTypedArray())
+                    }
+                    affectedThreads.forEach { refreshConversationCategoryLabel(it) }
+                }
+                return@ensureBackgroundThread
+            }
+
+            val messagesToUpdate = mutableListOf<org.fossify.messages.models.Message>()
+            val affectedThreadIds = HashSet<Long>()
+
+            allMessages.forEach { message ->
+                // Priority is determined by category ID (deterministic)
+                val matchingCategory = categories.firstOrNull { isMessageMatchingCategory(message, it) }
+                
+                val newId = matchingCategory?.id ?: 0L
+                val newName = matchingCategory?.name ?: ""
+
+                if (message.categoryId != newId || message.categoryName != newName) {
+                    messagesToUpdate.add(message.copy(categoryId = newId, categoryName = newName))
+                    affectedThreadIds.add(message.threadId)
+                }
+            }
+
+            if (messagesToUpdate.isNotEmpty()) {
+                messagesToUpdate.chunked(1000).forEach { chunk ->
+                    try {
+                        messagesDB.insertMessages(*chunk.toTypedArray())
+                    } catch (e: Exception) {
+                        android.util.Log.e("CategoryDebug", "reclassifyAllCategories batch update failed", e)
+                    }
+                }
+            }
+
+            affectedThreadIds.forEach { threadId ->
+                try {
+                    refreshConversationCategoryLabel(threadId)
+                } catch (e: Exception) {
+                    android.util.Log.e("CategoryDebug", "Failed to refresh label for thread $threadId", e)
+                }
+            }
+
+            // Notify UI
             try {
                 org.fossify.messages.helpers.refreshConversations()
                 org.fossify.messages.helpers.refreshMessages()
             } catch (_: Exception) {
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("CategoryDebug", "Global reclassify error", e)
         }
     }
 }

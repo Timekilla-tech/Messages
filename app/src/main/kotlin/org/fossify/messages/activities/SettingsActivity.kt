@@ -7,7 +7,6 @@ import org.fossify.commons.dialogs.ChangeDateTimeFormatDialog
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.dialogs.SecurityDialog
-import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisible
 import org.fossify.commons.extensions.beVisibleIf
@@ -207,7 +206,7 @@ class SettingsActivity : SimpleActivity() {
 
 
     private fun setupManageCategories() = binding.apply {
-        settingsManageCategories.text = addLockedLabelIfNeeded(R.string.manage_categories)
+        settingsManageCategories.text = getText(R.string.manage_categories)
         settingsManageCategoriesHolder.setOnClickListener {
             Intent(this@SettingsActivity, ManageCategoriesActivity::class.java).apply {
                 startActivity(this)

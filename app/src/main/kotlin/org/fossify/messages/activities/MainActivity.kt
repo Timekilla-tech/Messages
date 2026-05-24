@@ -14,7 +14,6 @@ import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
-import android.widget.EditText
 import android.view.Menu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -324,6 +323,7 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSavedViewsBottomBar() {
         val bar = binding.savedViewsBottomBar
+        bar.setBackgroundColor(getProperBackgroundColor())
         if (binding.selectionBottomBar?.visibility == android.view.View.GONE) {
             bar.beVisible()
         } else {
@@ -372,6 +372,7 @@ class MainActivity : SimpleActivity() {
         val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf(android.R.attr.state_selected), intArrayOf())
         val textColors = intArrayOf(getProperPrimaryColor(), getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
         bar.itemTextColor = android.content.res.ColorStateList(states, textColors)
+        bar.itemRippleColor = android.content.res.ColorStateList.valueOf(getProperPrimaryColor().adjustAlpha(0.12f))
 
         bar.setOnItemSelectedListener { item ->
             val viewIndex = item.itemId - savedViewMenuIdOffset
@@ -407,6 +408,7 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSelectionBottomBar() {
         val selectionBottomBar = binding.selectionBottomBar ?: return
+        selectionBottomBar.setBackgroundColor(getProperBackgroundColor())
 
         selectionBottomBar.setOnItemSelectedListener { item ->
             getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
@@ -906,6 +908,10 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showCreateSavedViewDialog() {
+        if (savedViewsStore.getViews().size >= 5) {
+            toast("Folder limit (4 custom folders) reached")
+            return
+        }
         showSavedViewEditorDialog(null)
     }
 
@@ -984,14 +990,27 @@ class MainActivity : SimpleActivity() {
 
         setupColorOptions()
 
-        AlertDialog.Builder(this)
+        if (isEditing) {
+            binding.folderDelete.beVisible()
+            binding.folderDelete.setTextColor(0xFFF44336.toInt())
+        }
+
+        val editorDialog = AlertDialog.Builder(this)
             .setTitle(title)
             .setView(binding.root)
             .setPositiveButton(org.fossify.commons.R.string.ok, null)
             .setNegativeButton(org.fossify.commons.R.string.cancel, null)
-            .create().apply {
-                show()
-                getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            .create()
+
+        if (isEditing) {
+            binding.folderDelete.setOnClickListener {
+                showDeleteSavedViewConfirmation(viewToEdit!!, editorDialog)
+            }
+        }
+
+        editorDialog.apply {
+            show()
+            getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                     val name = binding.folderName.text?.toString()?.trim().orEmpty()
                     if (name.isEmpty()) {
                         toast(R.string.view_name_cannot_be_empty)
@@ -1041,21 +1060,22 @@ class MainActivity : SimpleActivity() {
             .show()
     }
 
-    private fun showDeleteSavedViewConfirmation() {
-        if (!activeSavedView.isEditable || activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+    private fun showDeleteSavedViewConfirmation(viewToDelete: SavedView = activeSavedView, parentDialogToDismiss: AlertDialog? = null) {
+        if (!viewToDelete.isEditable || viewToDelete.id == SavedView.MAIN_VIEW_ID) {
             toast(R.string.main_view_immutable)
             return
         }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.delete_view)
-            .setMessage(getString(R.string.delete_view_confirmation, activeSavedView.title))
+            .setMessage(getString(R.string.delete_view_confirmation, viewToDelete.title))
             .setPositiveButton(org.fossify.commons.R.string.ok) { _, _ ->
-                val deletedId = activeSavedView.id
+                val deletedId = viewToDelete.id
                 val deleted = savedViewsStore.deleteView(deletedId)
                 if (!deleted) {
                     return@setPositiveButton
                 }
+                parentDialogToDismiss?.dismiss()
                 switchToSavedView(SavedView.MAIN_VIEW_ID)
             }
             .setNegativeButton(org.fossify.commons.R.string.cancel, null)

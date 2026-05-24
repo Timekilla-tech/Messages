@@ -216,7 +216,7 @@ abstract class MessagesDatabase : RoomDatabase() {
         private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.apply {
-                    // Add regex support to categories table
+                    // Add regex support to categorize table
                     execSQL("ALTER TABLE `categories` ADD COLUMN `keywords_is_regex` INTEGER NOT NULL DEFAULT 0")
                 }
             }

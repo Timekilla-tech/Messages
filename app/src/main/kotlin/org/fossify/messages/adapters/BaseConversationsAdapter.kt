@@ -287,11 +287,7 @@ abstract class BaseConversationsAdapter(
         container.removeAllViews()
         // Filter out any category names that no longer exist in the DB so deleted categories
         // don't continue to appear in the conversation list until DB rows are reconciled.
-        val existingCategoryKeys = try {
-            activity.getAllCategories().map { normalizeCategoryKey(it.name) }.toSet()
-        } catch (_: Exception) {
-            emptySet<String>()
-        }
+        val existingCategoryKeys = categoryColors.keys
 
         val visibleNames = names
             .filter { name -> existingCategoryKeys.isEmpty() || existingCategoryKeys.contains(normalizeCategoryKey(name)) }
@@ -300,15 +296,8 @@ abstract class BaseConversationsAdapter(
         visibleNames.forEach { name ->
             android.util.Log.d("CategoryDebug", "renderCategoryChips: adding chip for '$name'")
             val key = normalizeCategoryKey(name)
-            val color = categoryColors[key] ?: try {
-                // Attempt to resolve missing color from DB synchronously so the UI updates immediately
-                activity.getAllCategories().firstOrNull { normalizeCategoryKey(it.name) == key }?.color
-            } catch (_: Exception) {
-                null
-            } ?: properPrimaryColor
+            val color = categoryColors[key] ?: properPrimaryColor
 
-            // cache resolved color for future bindings
-            categoryColors[key] = color
             container.addView(createCategoryChip(name, color))
         }
 
