@@ -7,7 +7,7 @@
 \usepackage{csquotes}
 \usepackage{titlesec, xcolor, rotating, enumitem, longtable, array, graphicx, listings, amsmath, amssymb, float, url, hyperref}
 
-% Listings тохиргоо (Код хүрээнээс гарахгүй байх)
+% Listings тохиргоо
 \lstset{
     basicstyle=\ttfamily\small,
     breaklines=true,
@@ -17,16 +17,25 @@
     columns=fullflexible
 }
 
-% Өнгөний тодорхойлолт (Хар хуудас гарахаас сэргийлнэ)
+% Өнгөний тодорхойлолт
 \definecolor{Cover}{RGB}{255,255,255}
 \definecolor{Chapter}{RGB}{255,255,255}
 \definecolor{lightlightgray}{gray}{0.9}
 
 % Ном зүйн тохиргоо
-\usepackage[backend=biber,style=numeric,natbib=true,sorting=none,sortcites]{biblatex}
+\usepackage[backend=biber,style=numeric,natbib=true,sorting=none,sortcites,language=auto,autolang=other]{biblatex}
+\DeclareLanguageMapping{mongolian}{english}
 \addbibresource{references.bib}
 
-% Сургууль болон төслийн мэдээлэл (Metadata)
+% Missing Commands
+\newcommand{\authorshipname}{Зохиогчийн баталгаа}
+\newcommand{\abstractname}{Хураангуй}
+\newcommand{\abbrevname}{Товчилсон үгсийн жагсаалт}
+\newcommand{\constantsname}{Физик тогтмолууд}
+\newcommand{\symbolsname}{Тэмдэгтүүдийн жагсаалт}
+\newcommand{\acknowledgementname}{Талархал}
+
+% Сургууль болон төслийн мэдээлэл
 \thesistitle{Fossify Messages дээр суурилсан мессежийн аппликейшны UX сайжруулалт ба харилцан яриа ангилалтын системийн хөгжүүлэлт}
 \thesistype{Бакалаврын төгсөлтийн ажил}
 \university{Шинжлэх Ухаан Технологийн Их Сургууль}
@@ -63,8 +72,11 @@
     \include{Chapters/Chapter3}
 
 % Ном зүй (Ашигласан материал)
+    \cleardoublepage
+    \defformat
     \nocite{*}
-    \printbibliography[heading=bibliography,title={Ном зүй}]
+    \addchap{Ном зүй}
+    \printbibliography[heading=none]
 
 % Хавсралт
     \appendix
