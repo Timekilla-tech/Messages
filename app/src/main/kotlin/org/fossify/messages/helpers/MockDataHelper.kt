@@ -48,8 +48,8 @@ object MockDataHelper {
 
             val updatedCategories = categoryDao.getAllCategories()
             val random = Random()
-            val threadCount = 20
-            val messagesPerThread = 5
+            val threadCount = 1000
+            val messagesPerThread = 10
             val totalMessages = threadCount * messagesPerThread
             
             val messagesToInsert = mutableListOf<Message>()
@@ -102,7 +102,7 @@ object MockDataHelper {
                     )
 
                     messagesToInsert.add(Message(
-                        id = MOCK_ID_START + (i * 100) + j,
+                        id = MOCK_ID_START + (i * 1000L) + j,
                         body = body,
                         type = 1,
                         status = 1,
@@ -134,9 +134,13 @@ object MockDataHelper {
                 ))
             }
 
-            // Perform Batch Insertion
-            messagesDao.insertMessages(*messagesToInsert.toTypedArray())
-            conversationsToInsert.forEach { conversationsDao.insertOrUpdate(it) }
+            // Perform Batch Insertion in chunks to handle the massive 40,000 message volume
+            messagesToInsert.chunked(1000).forEach { chunk ->
+                messagesDao.insertMessages(*chunk.toTypedArray())
+            }
+            conversationsToInsert.chunked(100).forEach { chunk ->
+                chunk.forEach { conversationsDao.insertOrUpdate(it) }
+            }
 
             val duration = System.currentTimeMillis() - startTime
             context.toast("Injected $totalMessages messages in $duration ms")
@@ -164,7 +168,7 @@ object MockDataHelper {
 
             // Generate 100 random but valid regex patterns
             val regexList = mutableListOf<String>()
-            for (i in 1..100) {
+            for (i in 1..1000) {
                 val pattern = when (i % 3) {
                     0 -> "[a-z]{3}-$i"
                     1 -> "\\bstress$i\\b"
