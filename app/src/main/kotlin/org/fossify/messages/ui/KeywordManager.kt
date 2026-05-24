@@ -125,11 +125,20 @@ private fun KeywordManagerContent(
                         isRegex = false,
                         onRemove = { plainWords.removeAt(index) },
                         onEdit = { newValue, wasRegex ->
-                            plainWords.removeAt(index)
                             if (wasRegex) {
-                                addRegexPattern(newValue, regexPatterns)
+                                if (regexPatterns.size >= 100 && !regexPatterns.contains(newValue)) {
+                                    inputError = "Regex limit (100) reached"
+                                } else {
+                                    plainWords.removeAt(index)
+                                    addRegexPattern(newValue, regexPatterns)
+                                }
                             } else {
-                                addPlainWords(newValue, plainWords)
+                                if (plainWords.size >= 100 && !plainWords.contains(newValue)) {
+                                    inputError = "Keyword limit (100) reached"
+                                } else {
+                                    plainWords.removeAt(index)
+                                    addPlainWords(newValue, plainWords)
+                                }
                             }
                         },
                         textColor = textColor
@@ -142,11 +151,20 @@ private fun KeywordManagerContent(
                         isRegex = true,
                         onRemove = { regexPatterns.removeAt(index) },
                         onEdit = { newValue, wasRegex ->
-                            regexPatterns.removeAt(index)
                             if (wasRegex) {
-                                addRegexPattern(newValue, regexPatterns)
+                                if (regexPatterns.size >= 100 && !regexPatterns.contains(newValue)) {
+                                    inputError = "Regex limit (100) reached"
+                                } else {
+                                    regexPatterns.removeAt(index)
+                                    addRegexPattern(newValue, regexPatterns)
+                                }
                             } else {
-                                addPlainWords(newValue, plainWords)
+                                if (plainWords.size >= 100 && !plainWords.contains(newValue)) {
+                                    inputError = "Keyword limit (100) reached"
+                                } else {
+                                    regexPatterns.removeAt(index)
+                                    addPlainWords(newValue, plainWords)
+                                }
                             }
                         },
                         textColor = textColor
@@ -229,6 +247,10 @@ private fun processInput(
     onSuccess: () -> Unit
 ) {
     if (isRegex) {
+        if (regexPatterns.size >= 100) {
+            onError("Regex limit (100) reached")
+            return
+        }
         val error = addRegexPattern(input, regexPatterns)
         if (error != null) {
             onError(error)
@@ -236,6 +258,10 @@ private fun processInput(
             onSuccess()
         }
     } else {
+        if (plainWords.size >= 100) {
+            onError("Keyword limit (100) reached")
+            return
+        }
         val added = addPlainWords(input, plainWords)
         if (!added) {
             onDuplicate()

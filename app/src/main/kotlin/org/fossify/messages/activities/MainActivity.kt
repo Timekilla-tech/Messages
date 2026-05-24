@@ -908,6 +908,10 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showCreateSavedViewDialog() {
+        if (savedViewsStore.getViews().size >= 5) {
+            toast("Folder limit (4 custom folders) reached")
+            return
+        }
         showSavedViewEditorDialog(null)
     }
 

@@ -5,6 +5,7 @@ import org.fossify.commons.activities.BaseSimpleActivity
 import org.fossify.commons.extensions.*
 import org.fossify.messages.R
 import org.fossify.messages.databinding.DialogAddOrEditCategoryBinding
+import org.fossify.messages.extensions.categoryDB
 import org.fossify.messages.extensions.createCategory
 import org.fossify.messages.extensions.updateCategory
 import org.fossify.messages.models.Category
@@ -148,6 +149,11 @@ class AddOrEditCategoryDialog(
 
                         if (name.isEmpty()) {
                             activity.toast(R.string.category_name_cannot_be_empty)
+                            return@setOnClickListener
+                        }
+
+                        if (originalCategory == null && activity.categoryDB.getAllCategories().size >= colorOptions.size) {
+                            activity.toast("Maximum category limit reached")
                             return@setOnClickListener
                         }
 
