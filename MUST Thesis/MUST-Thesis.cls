@@ -187,6 +187,7 @@
 \titleformat{\chapter}[display]% команд + хэлбэр
 {%
 \pagecolor{Chapter}
+\color{white}
 	\normalfont
 	\Large
 	\filcenter
@@ -196,7 +197,7 @@
 	\vspace*{\fill}
 	\titlerule[1pt]%
 	\vspace{1pt}%
-	\titlerule
+	\color{white}\titlerule
 	\vspace{1pc}%
 	\LARGE\MakeUppercase{\chaptertitlename}~\thechapter%
 }% шошго
@@ -204,7 +205,7 @@
 	1pc
 }% зааглагч
 {
-	\titlerule
+	\color{white}\titlerule
 	\Huge
 } % өмнө нь
 [%
@@ -213,6 +214,7 @@
 	\clearpage
 	\addtocounter{page}{-1}
 \pagecolor{white}
+\color{black}
 ]% дараа нь
 
 }
