@@ -23,17 +23,26 @@
 \end{itemize}
 
 \section{Өгөгдлийн загварчлал}
-Room v13 схемд \texttt{plain\_keywords} болон \texttt{regex\_patterns} талбаруудыг нэмж оруулсан. Энэ нь шүүлтүүрийг илүү нарийвчлалтай болгосон.
-\begin{lstlisting}[language=Kotlin, caption=Category Entity-ийн бүтэц]
+Системийн өгөгдлийн бүтцийг Room v13 схемд шилжүүлж, шүүлтүүрийн чадамжийг нэмэгдүүлсэн. Өгөгдлийн сангийн хувилбаруудын өөрчлөлтийг дараах байдлаар дүгнэж болно:
+
+\begin{itemize}
+    \item \textbf{Room v11}: Ангиллын системийн хамгийн анхны хувилбар бөгөөд зөвхөн \texttt{id}, \texttt{name}, \texttt{color} гэсэн үндсэн мэдээллүүдийг хадгалдаг байсан. Энэ үед мессежүүдийг автоматаар ангилах шүүлтүүрийн логик хараахан нэмэгдээгүй байв.
+    \item \textbf{Room v12}: Ангилалд \texttt{keywords} болон \texttt{keyword\_is\_regex} гэсэн талбаруудыг нэмж, анхны автомат шүүлтүүрийн системийг нэвтрүүлсэн. Гэвч энэ нь хэрэглэгчийг зөвхөн нэг төрлийн (текст эсвэл Regex) шүүлтүүр ашиглахад хязгаарлаж байв.
+    \item \textbf{Room v13}: Шүүлтүүрийг илүү уян хатан болгохын тулд \texttt{plain\_keywords} (энгийн үгс) болон \texttt{regex\_patterns} (төвөгтэй илэрхийллүүд) гэсэн хоёр тусдаа талбарыг нэмж оруулсан. Ингэснээр нэг ангилалд энгийн үг болон Regex-ийг зэрэг ашиглах боломж бүрдсэн.
+\end{itemize}
+
+\begin{lstlisting}[language=Kotlin, caption=Category Entity-ийн шинэчлэгдсэн бүтэц (v13)]
 @Entity(tableName = "categories")
 data class Category(
     @PrimaryKey(autoGenerate = true) var id: Long = 0,
     var name: String,
     var color: Int,
-    var plainKeywords: String = "",
-    var regexPatterns: String = ""
+    var plainKeywords: String = "", // Шинээр нэмэгдсэн
+    var regexPatterns: String = ""  // Шинээр нэмэгдсэн
 )
 \end{lstlisting}
+
+Өгөгдлийн сангийн шилжилт (Migration)-ийн явцад хуучин \texttt{keywords} талбарт байсан өгөгдлийг алдалгүйгээр шинэ талбарууд руу хөрвүүлэх логикийг \texttt{Migration(12, 13)} хэсэгт хэрэгжүүлсэн.
 
 \section{Системийн хэрэглээний тохиолдол}
 Системийн үндсэн функцүүдийг хэрэглэгчийн зүгээс хэрхэн ашиглахыг дараах хэрэглээний тохиолдлуудаар (Use Cases) тодорхойлов.
@@ -44,6 +53,18 @@ data class Category(
 \textbf{KeywordManager}: Jetpack Compose ашиглан ``Keywords'' болон ``Regex'' хэсгийг нэгтгэсэн 1-field UI хөгжүүлсэн.
 
 \textbf{Folder Tinting}: Харилцан ярианы жагсаалтад тухайн хавтасны өнгийг row background-д (12\% opacity) оноодог.
+
+\section{Хөгжүүлэлтийн явц ба Git бүтэц}
+Төслийн хөгжүүлэлтийг системтэй, алдаа багатай гүйцэтгэхийн тулд Git-ийн ``Feature Branch'' стратегийг ашигласан. Энэ нь шинэ функц бүрийг тусдаа салбар (branch) дээр хөгжүүлж, туршсаны дараа үндсэн кодтой нэгтгэх боломжийг олгосон.
+
+\begin{itemize}
+    \item \textbf{feature/* салбарууд}: Функц бүрийг тусгаарлан хөгжүүлсэн (\texttt{feature/regex}, \texttt{feature/fold}, \texttt{feature/category} г.м).
+    \item \textbf{merged салбар}: Хөгжүүлж дууссан функцүүдийг нэгтгэж, хоорондын уялдааг шалгах орчин.
+    \item \textbf{test салбар}: Төхөөрөмж дээрх бодит туршилт болон нэгж тестүүдийг ажиллуулах салбар.
+    \item \textbf{main салбар}: Тогтвортой, алдаагүй ажиллагаа нь баталгаажсан эцсийн хувилбар.
+\end{itemize}
+
+Энэхүү бүтэц нь олон функц зэрэг хөгжүүлэгдэж буй үед кодын зөрчил (conflict) үүсэхээс сэргийлж, хувилбарын удирдлагыг илүү тодорхой болгосон.
 
 \section{Хяналтын үзлэгийн тайлан}
 \begin{longtable}{|l|l|p{8cm}|}
