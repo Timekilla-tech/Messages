@@ -7,7 +7,7 @@ import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.extensions.getAllCategories
 
 class SetCategoryDialog(
-    activity: SimpleActivity,
+    val activity: SimpleActivity,
     currentCategory: String = "",
     val callback: (category: String) -> Unit
 ) {
@@ -41,5 +41,3 @@ class SetCategoryDialog(
         }
     }
 }
-
-
