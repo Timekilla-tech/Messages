@@ -18,8 +18,8 @@
 }
 
 % Өнгөний тодорхойлолт
-\definecolor{Cover}{RGB}{0,0,0} % MUST Blue
-\definecolor{Chapter}{RGB}{0,0,0} % Dark Blue for Chapter pages
+\definecolor{Cover}{RGB}{255,255,255} % White
+\definecolor{Chapter}{RGB}{255,255,255} % White
 \definecolor{lightlightgray}{gray}{0.9}
 
 % Ном зүйн тохиргоо
@@ -36,7 +36,7 @@
 \newcommand{\acknowledgementname}{Талархал}
 
 % Сургууль болон төслийн мэдээлэл
-\thesistitle{Нээлттэй эхтэй Fossify Messages аппликейшнд суурилсан зурвас ангиллын ухаалаг систем ба нугалдаг дэлгэцийн оновчлолz}
+\thesistitle{Нээлттэй эхтэй Fossify Messages аппликейшнд суурилсан зурвас ангиллын ухаалаг систем ба нугалдаг дэлгэцийн оновчлол}
 \thesistype{Бакалаврын төгсөлтийн ажил}
 \university{Шинжлэх Ухаан Технологийн Их Сургууль}
 \faculty{Мэдээлэл, Холбооны Технологийн Сургууль}
@@ -44,7 +44,6 @@
 \authorlong{Гэрэлмаа Төртүшиг}
 \authorshort{Г.Төртүшиг}
 \supervisor{Магистр А.Отгонбаяр}
-\advisor{Магистр Ч.Даариймаа}
 \degreeind{D061301}
 \degree{Програм хангамжийн инженерчлэл}
 \keywords{Android, Kotlin, UX, Regex Filtering, Foldable Devices, Room DB}
@@ -69,11 +68,14 @@
     \pagestyle{thesis}
     \myformat
 
-% Бүлгүүд
-    \include{Chapters/Chapter1}
-    \include{Chapters/Chapter2}
-    \include{Chapters/Chapter3}
-    \include{Chapters/Conclusion}
+% Бүлгүүд (Restructured according to MUST Guidelines v1.5)
+    \include{Chapters/Chapter1} % Төслийн танилцуулга
+    \include{Chapters/Chapter2} % Холбоотой ажлууд (Related Work)
+    \include{Chapters/Chapter3} % Шаардлага ба төлөвлөлт (Requirements)
+    \include{Chapters/Chapter4} % Арга зүй ба системийн зохиомж (Design)
+    \include{Chapters/Chapter5} % Хэрэгжүүлэлт (Implementation)
+    \include{Chapters/Chapter6} % Туршилт ба үнэлгээ (Testing)
+    \include{Chapters/Conclusion} % Дүгнэлт
 
 % Ном зүй (Ашигласан материал)
     \cleardoublepage
