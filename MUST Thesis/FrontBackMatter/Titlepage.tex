@@ -1,9 +1,9 @@
 %-------------------------------------------------------------------------------
-%	TITLE PAGE (Colored Outer Cover)
+%	TITLE PAGE (White Cover)
 %-------------------------------------------------------------------------------
 \pagecolor{Cover}
 \begin{titlepage}
-\color{white}
+\color{black}
 \begin{center}
 
 {\scshape\LARGE \univname\par} % Их сургуулийн нэр
@@ -26,8 +26,8 @@
 
 \vfill
 
-\small {Улаанбаатар хот} \\
-    {\small 2026 он}\\ % Date
+\large {Улаанбаатар хот} \\
+    {\large 2026 он}\\ % Date
 \end{center}
 \end{titlepage}
 \pagecolor{white}
@@ -38,35 +38,39 @@
 %-------------------------------------------------------------------------------
 
 \begin{titlepage}
-    \begin{center}
+\begin{center}
 
-        {\scshape\LARGE \univname\par}
-        {\scshape\Large \facname\par}\vspace{0.5cm}
+{\scshape\LARGE \univname\par} % Их сургуулийн нэр
+{\scshape\Large \facname\par}\vspace{0.5cm} % Факүльтетийн нэр
 
-        \vspace{2cm}
+\vspace{2cm}
+\hfill \large{\deptname} \\
 
-        {\large \deptname \par}
+\vspace{2cm}
 
-        \vspace{2cm}
+{\huge \bfseries \ttitle\par}\vspace{1.5cm} % Тезисийн нэр
 
-        {\huge \bfseries \ttitle\par}\vspace{1.5cm}
+\begin{flushleft}
+\normalsize
+\hspace{2cm} Мэргэжлийн индекс: \degreeid \\
+\hspace{2cm} Мэргэжил: \degreename \\
+\end{flushleft}
 
-        \begin{flushleft}
-            \normalsize
-            \emph {Мэргэжлийн индекс:} \degreeid \\
-            \emph {Мэргэжил:} \degreename \\
-            \vspace{2cm}
-            \emph{Удирдагч:} {\supname} \\[5pt]
-            \emph{Зөвлөгч:} {\advicename} \\[5pt]
-            \emph{Гүйцэтгэгч:} {\shortname}
-        \end{flushleft}
+\vspace{2cm}
 
+\hfill
+\begin{minipage}[t] {0.5\textwidth}
+\begin{flushleft}
+\normalsize
+\emph{Удирдагч:} {\supname} \\% Удирдагчийн нэр
+\emph{Гүйцэтгэгч:} {\shortname} \\ % Зохиогчийн нэр
+\end{flushleft}
+\end{minipage}
 
+\vfill
 
-        \vspace{1.0cm}
+\large {Улаанбаатар хот} \\
+{\large 2026 он}\\ % Date
 
-        \small {Улаанбаатар хот} \\
-        {\small 2026 он}
-
-    \end{center}
+\end{center}
 \end{titlepage}

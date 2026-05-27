@@ -1,0 +1,290 @@
+classDiagram
+  %% ═══════════════════════════════════════════════════════
+  %% NEW CLASSES (not in first_fork)
+  %% ═══════════════════════════════════════════════════════
+
+  namespace NEW_UI_Compose {
+    class KeywordItem {
+      <<NEW>>
+      + value : String
+      + isRegex : Boolean
+      + serialize() String
+    }
+    class CategoryKeywords {
+      <<NEW - deprecated, replaced by KeywordItem>>
+      - plainWords : List~String~
+      - regexPatterns : List~String~
+    }
+    class KeywordManagerKt {
+      <<NEW Composable>>
+      + KeywordManager() void
+      + SimpleChip() void
+      + RegexChip() void
+      + KeywordSection() void
+      + KeywordChipEditable() void
+      + KeywordChip() void
+      + KeywordContextMenu() void
+      + KeywordEditDialog() void
+      - addPlainWords() Boolean
+      - addRegexPattern() String?
+    }
+  }
+
+  namespace NEW_Models {
+    class Category {
+      <<MODIFIED>>
+      + id : Long
+      + name : String
+      + color : Int
+      + icon : String
+      + description : String
+      + isDefault : Boolean
+      + keywords : String
+      + keywordIsRegex : Boolean
+      %% ── NEW fields ──
+      + plainKeywords : String
+      + regexPatterns : String
+    }
+    class SavedView {
+      <<NEW>>
+      + id : String
+      + type : SavedViewType
+      + title : String
+      + position : Int
+      + isEditable : Boolean
+      + config : SavedViewConfig
+      + iconResName : String?
+    }
+    class SavedViewConfig {
+      <<NEW>>
+      + folderId : Long?
+      + tags : Set~String~
+      + showArchived : Boolean
+      + unreadOnly : Boolean
+      + pinnedOnly : Boolean
+      + matchAllTags : Boolean
+    }
+    class SavedViewType {
+      <<NEW enum>>
+      MAIN
+      CUSTOM
+    }
+  }
+
+  namespace NEW_Modified_Models {
+    class Message {
+      <<MODIFIED>>
+      + id : Long
+      + body : String
+      + threadId : Long
+      %% ── NEW fields ──
+      + categoryName : String
+      + categoryId : Long
+    }
+    class Conversation {
+      <<MODIFIED>>
+      + threadId : Long
+      + snippet : String
+      %% ── NEW field ──
+      + category : String
+    }
+    class SearchResult {
+      <<MODIFIED>>
+      + messageId : Long
+      + title : String
+      %% ── NEW field ──
+      + category : String
+    }
+  }
+
+  namespace NEW_Helpers {
+    class SavedViewsStore {
+      <<NEW>>
+      - config : Config
+      + getViews() List~SavedView~
+      + getActiveViewOrMain() SavedView
+      + setActiveView() void
+      + createView() SavedView
+      + renameView() SavedView?
+      + deleteView() Boolean
+      + upsertView() void
+      + updateActiveViewConfig() SavedView
+    }
+    class ConversationAgeHeaderDecoration {
+      <<NEW>>
+      - activity : SimpleActivity
+      + getItemOffsets() void
+      + onDraw() void
+      - getBucket() ConversationAgeBucket
+    }
+    class FoldableHelper {
+      <<NEW>>
+      + getScreenDimensions() Pair
+      + detectScreenState() FoldStateInfo
+      + isUnfoldedState() Boolean
+      + getOptimalLayoutMetrics() LayoutMetrics
+    }
+  }
+
+  namespace NEW_DAOs {
+    class CategoryDao {
+      <<NEW interface>>
+      + getAllCategories() List~Category~
+      + getCategoryWithText() List~Category~
+      + getCategoryById() Category?
+      + insert() Long
+      + update() void
+      + deleteCategory() void
+    }
+  }
+
+  namespace NEW_Dialogs {
+    class AddOrEditCategoryDialog {
+      <<NEW>>
+      - originalCategory : Category?
+      - currentKeywords : List~KeywordItem~
+    }
+    class SetCategoryDialog {
+      <<NEW>>
+      - activity : SimpleActivity
+      - callback : Function1~String, Unit~
+    }
+  }
+
+  namespace NEW_Activities {
+    class ManageCategoriesActivity {
+      <<NEW>>
+      + updateCategories() void
+      + addOrEditCategory() void
+      + askConfirmDelete() void
+    }
+    class ConversationDetailFragment {
+      <<NEW - two-pane/foldable>>
+      + threadAdapter : ThreadAdapter
+    }
+  }
+
+  namespace NEW_Adapters {
+    class CategoryAdapter {
+      <<NEW>>
+      + updateItems() void
+      - setupView() void
+    }
+  }
+
+  namespace MODIFIED_ContextKt {
+    class ContextKt {
+      <<MODIFIED - category extensions added>>
+      %% ── NEW methods ──
+      + getAllCategories() List~Category~
+      + getCategoryById() Category?
+      + createCategory() void
+      + updateCategory() void
+      + deleteCategory() void
+      + isMessageMatchingCategory() Boolean
+      + withAutoCategory() Message
+      + filterMessagesByKeywords() List~Message~
+      + refreshConversationCategoryLabel() void
+      + reclassifyAllCategories() void
+      - applyCategoryToExistingMessages() void
+      - replaceCategoryNameInConversations() void
+      - removeCategoryNameFromConversations() void
+      + assignMessageToCategory() void
+      + getDefaultCategory() Category?
+      + getMessagesByCategory() List~Message~
+    }
+  }
+
+  namespace MODIFIED_MainActivity {
+    class MainActivity {
+      <<MODIFIED - SavedViews + swipe + age headers>>
+      %% ── NEW fields ──
+      - activeSavedView : SavedView
+      - savedViewsStore : SavedViewsStore
+      - activeTagFilters : Set~String~
+      - ageHeaderDecoration : ConversationAgeHeaderDecoration
+      - inboxSwipeHelper : ItemTouchHelper
+      %% ── NEW methods ──
+      + showTagFilterDialog() void
+      + showSavedViewPickerDialog() void
+      + switchToSavedView() void
+      + conversationMatchesActiveView() Boolean
+      - setupSavedViewsBottomBar() void
+    }
+  }
+
+  namespace MODIFIED_MessagesDB {
+    class MessagesDatabase {
+      <<MODIFIED version 11→12>>
+      %% ── NEW ──
+      + CategoryDao() CategoryDao
+      %% MIGRATION_10_11: categories table, category cols on messages+conversations
+      %% MIGRATION_11_12: keywords_is_regex column
+    }
+  }
+
+  namespace MODIFIED_Config {
+    class Config {
+      <<MODIFIED - SavedViews + swipe actions>>
+      %% ── NEW fields ──
+      + savedViewsJson : String
+      + lastSavedViewId : String
+      + inboxSwipeStartAction : Int
+      + inboxSwipeEndAction : Int
+    }
+  }
+
+  %% ═══════════════════════════════════════════════════════
+  %% RELATIONSHIPS
+  %% ═══════════════════════════════════════════════════════
+
+  %% Category system
+  Category "1" --> "*" Message : categorizes
+  Category "1" --> "*" Conversation : labels
+  CategoryDao --> Category : CRUD
+  ContextKt --> CategoryDao : uses
+  ContextKt --> Category : matching logic
+  ContextKt --> Message : withAutoCategory()
+  ContextKt --> Conversation : refreshCategoryLabel()
+
+  %% Keyword UI
+  KeywordManagerKt --> KeywordItem : manages list of
+  KeywordItem --* CategoryKeywords : replaces
+  AddOrEditCategoryDialog --> KeywordManagerKt : embeds ComposeView
+  AddOrEditCategoryDialog --> Category : create / update
+  AddOrEditCategoryDialog --> ContextKt : createCategory() / updateCategory()
+  SetCategoryDialog --> ContextKt : getAllCategories()
+  SetCategoryDialog --> Conversation : sets category string
+
+  %% SavedViews system
+  SavedView --> SavedViewType : type
+  SavedView --> SavedViewConfig : config
+  SavedViewsStore --> SavedView : manages
+  SavedViewsStore --> Config : persists to
+  MainActivity --> SavedViewsStore : uses
+  MainActivity --> SavedView : activeSavedView
+  MainActivity --> ConversationAgeHeaderDecoration : decorates list
+  Config --> SavedView : savedViewsJson storage
+
+  %% Database
+  MessagesDatabase --> CategoryDao : provides
+  MessagesDatabase --> Message : stores (with categoryName/categoryId)
+  MessagesDatabase --> Conversation : stores (with category)
+
+  %% Activities
+  ManageCategoriesActivity --> CategoryAdapter : displays
+  ManageCategoriesActivity --> AddOrEditCategoryDialog : launches
+  ManageCategoriesActivity --> ContextKt : deleteCategory()
+  CategoryAdapter --> Category : binds
+
+  %% Fragment (new two-pane)
+  ConversationDetailFragment --> ThreadAdapter : hosts
+  MainActivity --> ConversationDetailFragment : two-pane mode
+
+  %% Foldable
+  FoldableHelper --> ConversationDetailFragment : layout decisions
+
+  %% Message flow with auto-category
+  Message --> Category : categoryId / categoryName ref
+  Conversation --> Category : category string label ref
+
