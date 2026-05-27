@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -105,6 +106,22 @@ private fun KeywordManagerContent(
     var inputError by remember { mutableStateOf<String?>(null) }
     var duplicateWarning by remember { mutableStateOf(false) }
 
+    val regexLimitReached = stringResource(R.string.keyword_regex_limit_reached, 100)
+    val plainLimitReached = stringResource(R.string.keyword_plain_limit_reached, 100)
+    val addRegexPatternLabel = stringResource(R.string.keyword_add_regex_pattern)
+    val addPlainWordsLabel = stringResource(R.string.keyword_add_plain_words)
+    val alreadyExistsLabel = stringResource(R.string.keyword_already_exists)
+    val invalidRegexRejectedLabel = stringResource(R.string.keyword_invalid_regex_rejected)
+    val commaSeparatedLabel = stringResource(R.string.keyword_comma_separated_hint)
+    val toggleRegexLabel = stringResource(R.string.keyword_toggle_regex)
+    val addLabel = stringResource(R.string.keyword_add)
+
+    val invalidRegexDetailsFormat = stringResource(R.string.keyword_invalid_regex_details)
+
+    val formatInvalidRegex: (String) -> String = { detail ->
+        String.format(Locale.ROOT, invalidRegexDetailsFormat, detail)
+    }
+
     val secondaryTextColor = textColor.copy(alpha = 0.7f)
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -127,16 +144,16 @@ private fun KeywordManagerContent(
                         onEdit = { newValue, wasRegex ->
                             if (wasRegex) {
                                 if (regexPatterns.size >= 100 && !regexPatterns.contains(newValue)) {
-                                    inputError = "Regex limit (100) reached"
+                                    inputError = regexLimitReached
                                 } else {
-                                    plainWords.removeAt(index)
+                                    regexPatterns.removeAt(index)
                                     addRegexPattern(newValue, regexPatterns)
                                 }
                             } else {
                                 if (plainWords.size >= 100 && !plainWords.contains(newValue)) {
-                                    inputError = "Keyword limit (100) reached"
+                                    inputError = plainLimitReached
                                 } else {
-                                    plainWords.removeAt(index)
+                                    regexPatterns.removeAt(index)
                                     addPlainWords(newValue, plainWords)
                                 }
                             }
@@ -153,14 +170,14 @@ private fun KeywordManagerContent(
                         onEdit = { newValue, wasRegex ->
                             if (wasRegex) {
                                 if (regexPatterns.size >= 100 && !regexPatterns.contains(newValue)) {
-                                    inputError = "Regex limit (100) reached"
+                                    inputError = regexLimitReached
                                 } else {
                                     regexPatterns.removeAt(index)
                                     addRegexPattern(newValue, regexPatterns)
                                 }
                             } else {
                                 if (plainWords.size >= 100 && !plainWords.contains(newValue)) {
-                                    inputError = "Keyword limit (100) reached"
+                                    inputError = plainLimitReached
                                 } else {
                                     regexPatterns.removeAt(index)
                                     addPlainWords(newValue, plainWords)
@@ -184,23 +201,31 @@ private fun KeywordManagerContent(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            placeholder = { Text(if (isRegexMode) "Add regex pattern" else "Add plain word(s)", color = secondaryTextColor) },
+            placeholder = {
+                Text(
+                    if (isRegexMode) addRegexPatternLabel else addPlainWordsLabel,
+                    color = secondaryTextColor
+                )
+            },
             isError = inputError != null || duplicateWarning,
             textStyle = androidx.compose.ui.text.TextStyle(color = textColor),
             supportingText = {
                 if (inputError != null) {
                     Text(text = inputError!!, color = MaterialTheme.colorScheme.error)
                 } else if (duplicateWarning) {
-                    Text(text = "Already exists", color = MaterialTheme.colorScheme.error)
+                    Text(text = alreadyExistsLabel, color = MaterialTheme.colorScheme.error)
                 } else {
-                    Text(if (isRegexMode) "Invalid regex will be rejected" else "Comma-separated for multiple", color = secondaryTextColor)
+                    Text(
+                        if (isRegexMode) invalidRegexRejectedLabel else commaSeparatedLabel,
+                        color = secondaryTextColor
+                    )
                 }
             },
             leadingIcon = {
                 IconButton(onClick = { isRegexMode = !isRegexMode }) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_regex_vector),
-                        contentDescription = "Toggle Regex",
+                        contentDescription = toggleRegexLabel,
                         tint = if (isRegexMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }
@@ -209,7 +234,13 @@ private fun KeywordManagerContent(
                 IconButton(
                     onClick = {
                         processInput(
-                            pendingInput, isRegexMode, plainWords, regexPatterns,
+                            pendingInput,
+                            isRegexMode,
+                            plainWords,
+                            regexPatterns,
+                            regexLimitError = regexLimitReached,
+                            keywordLimitError = plainLimitReached,
+                            formatInvalidRegex = formatInvalidRegex,
                             onError = { inputError = it },
                             onDuplicate = { duplicateWarning = true },
                             onSuccess = { pendingInput = "" }
@@ -217,7 +248,7 @@ private fun KeywordManagerContent(
                     },
                     enabled = pendingInput.isNotBlank()
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add")
+                    Icon(Icons.Filled.Add, contentDescription = addLabel)
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -225,7 +256,13 @@ private fun KeywordManagerContent(
                 onDone = {
                     if (pendingInput.isNotBlank()) {
                         processInput(
-                            pendingInput, isRegexMode, plainWords, regexPatterns,
+                            pendingInput,
+                            isRegexMode,
+                            plainWords,
+                            regexPatterns,
+                            regexLimitError = regexLimitReached,
+                            keywordLimitError = plainLimitReached,
+                            formatInvalidRegex = formatInvalidRegex,
                             onError = { inputError = it },
                             onDuplicate = { duplicateWarning = true },
                             onSuccess = { pendingInput = "" }
@@ -242,24 +279,27 @@ private fun processInput(
     isRegex: Boolean,
     plainWords: MutableList<String>,
     regexPatterns: MutableList<String>,
+    regexLimitError: String,
+    keywordLimitError: String,
+    formatInvalidRegex: (String) -> String,
     onError: (String) -> Unit,
     onDuplicate: () -> Unit,
     onSuccess: () -> Unit
 ) {
     if (isRegex) {
         if (regexPatterns.size >= 100) {
-            onError("Regex limit (100) reached")
+            onError(regexLimitError)
             return
         }
         val error = addRegexPattern(input, regexPatterns)
         if (error != null) {
-            onError(error)
+            onError(formatInvalidRegex(error))
         } else {
             onSuccess()
         }
     } else {
         if (plainWords.size >= 100) {
-            onError("Keyword limit (100) reached")
+            onError(keywordLimitError)
             return
         }
         val added = addPlainWords(input, plainWords)
@@ -301,7 +341,7 @@ private fun KeywordChip(
             {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_regex_vector),
-                    contentDescription = "Regex",
+                    contentDescription = stringResource(R.string.keyword_regex_label),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -310,7 +350,7 @@ private fun KeywordChip(
         trailingIcon = {
             Icon(
                 Icons.Filled.Close,
-                contentDescription = "Remove",
+                contentDescription = stringResource(R.string.keyword_remove),
                 modifier = Modifier
                     .size(16.dp)
                     .clickable { onRemove() },
@@ -343,12 +383,16 @@ private fun EditKeywordDialog(
     var isRegex by remember { mutableStateOf(initialIsRegex) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    val invalidRegexLabel = stringResource(R.string.keyword_invalid_regex)
+    val saveLabel = stringResource(R.string.keyword_save)
+    val cancelLabel = stringResource(R.string.keyword_cancel)
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
         titleContentColor = textColor,
         textContentColor = textColor,
-        title = { Text("Edit Keyword") },
+        title = { Text(stringResource(R.string.keyword_edit_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -358,7 +402,12 @@ private fun EditKeywordDialog(
                         error = null
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Keyword/Pattern", color = textColor.copy(alpha = 0.7f)) },
+                    label = {
+                        Text(
+                            stringResource(R.string.keyword_label),
+                            color = textColor.copy(alpha = 0.7f)
+                        )
+                    },
                     textStyle = androidx.compose.ui.text.TextStyle(color = textColor),
                     isError = error != null,
                     supportingText = if (error != null) {
@@ -368,16 +417,24 @@ private fun EditKeywordDialog(
                         IconButton(onClick = { isRegex = !isRegex }) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_regex_vector),
-                                contentDescription = "Toggle Regex",
+                                contentDescription = stringResource(R.string.keyword_toggle_regex),
                                 tint = if (isRegex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                             )
                         }
                     }
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Regex mode: ", style = MaterialTheme.typography.bodyMedium, color = textColor)
                     Text(
-                        text = if (isRegex) "ON" else "OFF",
+                        stringResource(R.string.keyword_regex_mode),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textColor
+                    )
+                    Text(
+                        text = if (isRegex) {
+                            stringResource(R.string.keyword_regex_on)
+                        } else {
+                            stringResource(R.string.keyword_regex_off)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (isRegex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
@@ -392,16 +449,16 @@ private fun EditKeywordDialog(
                             Regex(text)
                             onConfirm(text, true)
                         } catch (_: Exception) {
-                            error = "Invalid regex"
+                            error = invalidRegexLabel
                         }
                     } else {
                         onConfirm(text, false)
                     }
                 }
-            ) { Text("Save") }
+            ) { Text(saveLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(cancelLabel) }
         }
     )
 }
@@ -431,6 +488,6 @@ private fun addRegexPattern(input: String, list: MutableList<String>): String? {
         }
         null
     } catch (e: Exception) {
-        "Invalid: ${e.message?.take(60)}"
+        e.message?.take(60) ?: ""
     }
 }
