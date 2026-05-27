@@ -1,0 +1,100 @@
+classDiagram
+  namespace NEW_UI_Compose {
+    class KeywordItem {
+      <<Шинээр үүсгэсэн>>
+      + value : String
+      + isRegex : Boolean
+      + serialize() String
+    }
+    class CategoryKeywords {
+      <<NEW - deprecated, replaced by KeywordItem>>
+      - plainWords : List~String~
+      - regexPatterns : List~String~
+    }
+    class KeywordManagerKt {
+      <<NEW Composable>>
+      + KeywordManager() void
+      + SimpleChip() void
+      + RegexChip() void
+      + KeywordSection() void
+      + KeywordChipEditable() void
+      + KeywordChip() void
+      + KeywordContextMenu() void
+      + KeywordEditDialog() void
+      - addPlainWords() Boolean
+      - addRegexPattern() String?
+    }
+  }
+
+  namespace NEW_Models {
+    class Category {
+      <<Өөрчилсөн>>
+      + id : Long
+      + name : String
+      + color : Int
+      + icon : String
+      + description : String
+      + isDefault : Boolean
+      + keywords : String
+      + keywordIsRegex : Boolean
+      %% ── NEW fields ──
+      + plainKeywords : String
+      + regexPatterns : String
+    }
+    class Conversation {
+      <<Өөрчилсөн>>
+      + threadId : Long
+      + snippet : String
+      %% ── NEW field ──
+      + category : String
+    }
+
+  }
+
+
+  namespace NEW_Dialogs {
+    class AddOrEditCategoryDialog {
+      <<Шинээр үүсгэсэн>>
+      - originalCategory : Category?
+      - currentKeywords : List~KeywordItem~
+    }
+    class SetCategoryDialog {
+      <<Шинээр үүсгэсэн>>
+      - activity : SimpleActivity
+      - callback : Function1~String, Unit~
+    }
+  }
+
+
+
+  namespace MODIFIED_ContextKt {
+    class ContextKt {
+      <<MODIFIED - category extensions added>>
+      %% ── NEW methods ──
+      + getAllCategories() List~Category~
+      + getCategoryById() Category?
+      + createCategory() void
+      + updateCategory() void
+      + deleteCategory() void
+      + isMessageMatchingCategory() Boolean
+      + withAutoCategory() Message
+      + filterMessagesByKeywords() List~Message~
+      + refreshConversationCategoryLabel() void
+      + reclassifyAllCategories() void
+      - applyCategoryToExistingMessages() void
+      - replaceCategoryNameInConversations() void
+      - removeCategoryNameFromConversations() void
+      + assignMessageToCategory() void
+      + getDefaultCategory() Category?
+      + getMessagesByCategory() List~Message~
+    }
+  }
+
+  %% Keyword UI
+  KeywordManagerKt --> KeywordItem : manages list of
+  KeywordItem --* CategoryKeywords : replaces
+  AddOrEditCategoryDialog --> KeywordManagerKt : embeds ComposeView
+  AddOrEditCategoryDialog --> Category : create / update
+  AddOrEditCategoryDialog --> ContextKt : createCategory() / updateCategory()
+  SetCategoryDialog --> ContextKt : getAllCategories()
+  SetCategoryDialog --> Conversation : sets category string

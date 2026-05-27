@@ -1,0 +1,115 @@
+classDiagram
+  %% ═══════════════════════════════════════════════════════
+  %% NEW CLASSES (not in first_fork)
+  %% ═══════════════════════════════════════════════════════
+  namespace NEW_Models {
+    class Category {
+      <<Өөрчилсөн>>
+      + id : Long
+      + name : String
+      + color : Int
+      + icon : String
+      + description : String
+      + isDefault : Boolean
+      + keywords : String
+      + keywordIsRegex : Boolean
+      %% ── NEW fields ──
+      + plainKeywords : String
+      + regexPatterns : String
+    }
+    class SavedView {
+      <<Шинээр үүсгэсэн>>
+      + id : String
+      + type : SavedViewType
+      + title : String
+      + position : Int
+      + isEditable : Boolean
+      + config : SavedViewConfig
+      + iconResName : String?
+    }
+    class SavedViewConfig {
+      <<Шинээр үүсгэсэн>>
+      + folderId : Long?
+      + tags : Set~String~
+      + showArchived : Boolean
+      + unreadOnly : Boolean
+      + pinnedOnly : Boolean
+      + matchAllTags : Boolean
+    }
+    class SavedViewType {
+      <<NEW enum>>
+      MAIN
+      CUSTOM
+    }
+  }
+
+
+
+  namespace NEW_Helpers {
+    class SavedViewsStore {
+      <<Шинээр үүсгэсэн>>
+      - config : Config
+      + getViews() List~SavedView~
+      + getActiveViewOrMain() SavedView
+      + setActiveView() void
+      + createView() SavedView
+      + renameView() SavedView?
+      + deleteView() Boolean
+      + upsertView() void
+      + updateActiveViewConfig() SavedView
+    }
+    class ConversationAgeHeaderDecoration {
+      <<Шинээр үүсгэсэн>>
+      - activity : SimpleActivity
+      + getItemOffsets() void
+      + onDraw() void
+      - getBucket() ConversationAgeBucket
+    }
+    class FoldableHelper {
+      <<Шинээр үүсгэсэн>>
+      + getScreenDimensions() Pair
+      + detectScreenState() FoldStateInfo
+      + isUnfoldedState() Boolean
+      + getOptimalLayoutMetrics() LayoutMetrics
+    }
+  }
+
+
+  namespace MODIFIED_MainActivity {
+    class MainActivity {
+      <<MODIFIED - SavedViews + swipe + age headers>>
+      %% ── NEW fields ──
+      - activeSavedView : SavedView
+      - savedViewsStore : SavedViewsStore
+      - activeTagFilters : Set~String~
+      - ageHeaderDecoration : ConversationAgeHeaderDecoration
+      - inboxSwipeHelper : ItemTouchHelper
+      %% ── NEW methods ──
+      + showTagFilterDialog() void
+      + showSavedViewPickerDialog() void
+      + switchToSavedView() void
+      + conversationMatchesActiveView() Boolean
+      - setupSavedViewsBottomBar() void
+    }
+  }
+  namespace MODIFIED_Config {
+    class Config {
+      <<MODIFIED - SavedViews + swipe actions>>
+      %% ── NEW fields ──
+      + savedViewsJson : String
+      + lastSavedViewId : String
+      + inboxSwipeStartAction : Int
+      + inboxSwipeEndAction : Int
+    }
+  }
+
+
+  %% SavedViews system
+  SavedView --> SavedViewType : type
+  SavedView --> SavedViewConfig : config
+  SavedViewsStore --> SavedView : manages
+  SavedViewsStore --> Config : persists to
+  MainActivity --> SavedViewsStore : uses
+  MainActivity --> SavedView : activeSavedView
+  MainActivity --> ConversationAgeHeaderDecoration : decorates list
+  Config --> SavedView : savedViewsJson storage

@@ -1,0 +1,81 @@
+classDiagram
+  namespace NEW_Models {
+    class Category {
+      <<Өөрчилсөн>>
+      + id : Long
+      + name : String
+      + color : Int
+      + icon : String
+      + description : String
+      + isDefault : Boolean
+      + keywords : String
+      + keywordIsRegex : Boolean
+      %% ── NEW fields ──
+      + plainKeywords : String
+      + regexPatterns : String
+    }
+  }
+
+  namespace NEW_Modified_Models {
+    class Message {
+      <<Өөрчилсөн>>
+      + id : Long
+      + body : String
+      + threadId : Long
+      %% ── NEW fields ──
+      + categoryName : String
+      + categoryId : Long
+    }
+    class Conversation {
+      <<Өөрчилсөн>>
+      + threadId : Long
+      + snippet : String
+      %% ── NEW field ──
+      + category : String
+    }
+
+  }
+
+
+  namespace NEW_DAOs {
+    class CategoryDao {
+      <<NEW interface>>
+      + getAllCategories() List~Category~
+      + getCategoryWithText() List~Category~
+      + getCategoryById() Category?
+      + insert() Long
+      + update() void
+      + deleteCategory() void
+    }
+  }
+
+
+  namespace MODIFIED_ContextKt {
+    class ContextKt {
+      <<MODIFIED - category extensions added>>
+      %% ── NEW methods ──
+      + getAllCategories() List~Category~
+      + getCategoryById() Category?
+      + createCategory() void
+      + updateCategory() void
+      + deleteCategory() void
+      + isMessageMatchingCategory() Boolean
+      + withAutoCategory() Message
+      + filterMessagesByKeywords() List~Message~
+      + refreshConversationCategoryLabel() void
+      + reclassifyAllCategories() void
+      - applyCategoryToExistingMessages() void
+      - replaceCategoryNameInConversations() void
+      - removeCategoryNameFromConversations() void
+      + assignMessageToCategory() void
+      + getDefaultCategory() Category?
+      + getMessagesByCategory() List~Message~
+    }
+  }
+  Category "1" --> "*" Message : categorizes
+  Category "1" --> "*" Conversation : labels
+  CategoryDao --> Category : CRUD
+  ContextKt --> CategoryDao : uses
+  ContextKt --> Category : matching logic
+  ContextKt --> Message : withAutoCategory()
+  ContextKt --> Conversation : refreshCategoryLabel()

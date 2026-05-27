@@ -1,0 +1,49 @@
+classDiagram
+namespace Models {
+    class Message {
+      <<Өөрчилсөн>>
+      + id : Long
+      + body : String
+      + threadId : Long
+      %% ── NEW fields ──
+      + categoryName : String
+      + categoryId : Long
+    }
+    class Conversation {
+      <<Өөрчилсөн>>
+      + threadId : Long
+      + snippet : String
+      %% ── NEW field ──
+      + category : String
+    }
+    class SearchResult {
+      <<Өөрчилсөн>>
+      + messageId : Long
+      + title : String
+      %% ── NEW field ──
+      + category : String
+    }
+  }
+  namespace DAOs {
+    class CategoryDao {
+      <<NEW interface>>
+      + getAllCategories() List~Category~
+      + getCategoryWithText() List~Category~
+      + getCategoryById() Category?
+      + insert() Long
+      + update() void
+      + deleteCategory() void
+    }
+  }
+  namespace MessagesDB {
+    class MessagesDatabase {
+      << version 10→13>>
+      %% ── NEW ──
+      + CategoryDao() CategoryDao
+      %% MIGRATION_10_11: categories table, category cols on messages+conversations
+      %% MIGRATION_11_12: keywords_is_regex column
+    }
+  }
+  MessagesDatabase --> CategoryDao : provides
+  MessagesDatabase --> Message : stores (with categoryName/categoryId)
+  MessagesDatabase --> Conversation : stores (with category)

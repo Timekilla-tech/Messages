@@ -1,0 +1,80 @@
+classDiagram
+  namespace NEW_Helpers {
+    class SavedViewsStore {
+      <<NEW>>
+      - config : Config
+      + getViews() List~SavedView~
+      + getActiveViewOrMain() SavedView
+      + setActiveView() void
+      + createView() SavedView
+      + renameView() SavedView?
+      + deleteView() Boolean
+      + upsertView() void
+      + updateActiveViewConfig() SavedView
+    }
+    class ConversationAgeHeaderDecoration {
+      <<NEW>>
+      - activity : SimpleActivity
+      + getItemOffsets() void
+      + onDraw() void
+      - getBucket() ConversationAgeBucket
+    }
+    class FoldableHelper {
+      <<NEW>>
+      + getScreenDimensions() Pair
+      + detectScreenState() FoldStateInfo
+      + isUnfoldedState() Boolean
+      + getOptimalLayoutMetrics() LayoutMetrics
+    }
+  }
+
+
+
+  namespace NEW_Activities {
+    class ManageCategoriesActivity {
+      <<NEW>>
+      + updateCategories() void
+      + addOrEditCategory() void
+      + askConfirmDelete() void
+    }
+    class ConversationDetailFragment {
+      <<NEW - two-pane/foldable>>
+      + threadAdapter : ThreadAdapter
+    }
+  }
+
+  namespace NEW_Activities {
+    class ManageCategoriesActivity {
+      <<NEW>>
+      + updateCategories() void
+      + addOrEditCategory() void
+      + askConfirmDelete() void
+    }
+    class ConversationDetailFragment {
+      <<NEW - two-pane/foldable>>
+      + threadAdapter : ThreadAdapter
+    }
+  }
+  namespace MODIFIED_MainActivity {
+    class MainActivity {
+      <<MODIFIED - SavedViews + swipe + age headers>>
+      %% ── NEW fields ──
+      - activeSavedView : SavedView
+      - savedViewsStore : SavedViewsStore
+      - activeTagFilters : Set~String~
+      - ageHeaderDecoration : ConversationAgeHeaderDecoration
+      - inboxSwipeHelper : ItemTouchHelper
+      %% ── NEW methods ──
+      + showTagFilterDialog() void
+      + showSavedViewPickerDialog() void
+      + switchToSavedView() void
+      + conversationMatchesActiveView() Boolean
+      - setupSavedViewsBottomBar() void
+    }
+  }
+
+  %% Fragment (new two-pane)
+  ConversationDetailFragment --> ThreadAdapter : hosts
+  MainActivity --> ConversationDetailFragment : two-pane mode
+  %% Foldable
+  FoldableHelper --> ConversationDetailFragment : layout decisions
