@@ -1,0 +1,51 @@
+\chapter{Туршилт ба үнэлгээ}
+
+\section{Туршилтын арга зүй}
+Програм хангамжийн найдвартай ажиллагааг баталгаажуулахын тулд нэгж туршилт (Unit Test), нэгтгэл туршилт (Integration Test) болон ачааллын туршилт (Stress Test) гэсэн гурван түвшинд шалгалтыг гүйцэтгэв. Туршилтыг Android-ийн стандарт \texttt{JUnit} болон \texttt{Robolectric} сангуудыг ашиглан автоматжуулсан байдлаар гүйцэтгэсэн.
+
+\section{Нэгж туршилтын үр дүн}
+Нийт 24 нэгж тест амжилттай хийгдэж, системийн цөм логикуудыг 100\% Pass үзүүлэлттэйгээр баталгаажуулсан. Үр дүнг Хүснэгт \ref{table:unit_tests}-д нэгтгэн харуулав.
+
+\begin{table}[H]
+\centering
+\caption{Нэгж туршилтын үр дүнгийн нэгтгэл}
+\label{table:unit_tests}
+\begin{tabular}{|l|c|c|l|}
+\hline
+\textbf{Туршилтын бүлэг} & \textbf{Тоо} & \textbf{Үр дүн} & \textbf{Шалгасан логик} \ \hline
+Category Matching & 13 & Pass & Regex болон энгийн үгээр шүүх \ \hline
+Keyword Parsing & 5 & Pass & Түлхүүр үгсийг цэвэрлэх, Regex шалгах \ \hline
+Foldable Helper & 4 & Pass & Дэлгэцийн төлөвийг зөв тодорхойлох \ \hline
+Age Buckets & 2 & Pass & Мессежийг хугацаагаар бүлэглэх \ \hline
+\textbf{Нийт} & \textbf{24} & \textbf{100\%} & \ \hline
+\end{tabular}
+\end{table}
+
+\section{Ачааллын туршилт (Stress Testing)}
+Regex шүүлтүүр болон Foldable Continuity-ийн гүйцэтгэлийг шалгах зорилгоор 40,000 харилцан яриа бүхий бааз дээр туршилт хийв.
+
+\begin{itemize}
+    \item \textbf{Тохиргоо}: 40,000 харилцан яриа, 1,000 түлхүүр үг, 1,000 Regex паттерн.
+    \item \textbf{Үр дүн}: Зурвас ангилах хурд дунджаар 15мс-ээс бага байсан бөгөөд дэлгэц нугалах үед интерфейс гацалтгүйгээр (smooth transition) шилжиж байв.
+    \item \textbf{Санах ойн ашиглалт}: Ачааллын үед санах ойн ашиглалт тогтвортой (leak-free) байсан.
+\end{itemize}
+
+\section{Requirement Traceability Matrix (RTM)}
+Үндсэн шаардлагууд туршилтаар хэрхэн баталгаажсаныг Хүснэгт \ref{table:rtm}-д харуулав.
+
+\begin{table}[H]
+\centering
+\caption{Шаардлагын мөшгөлтийн матриц (RTM)}
+\label{table:rtm}
+\begin{tabular}{|c|p{6cm}|c|c|}
+\hline
+\textbf{ID} & \textbf{Функционал шаардлага} & \textbf{Тест ID} & \textbf{Төлөв} \ \hline
+FR1 & Regex Pattern Matching & TC-001 & Pass \ \hline
+FR2 & Динамик хавтас (Folder) удирдлага & TC-002 & Pass \ \hline
+FR3 & Foldable төхөөрөмжийн дэмжлэг & TC-003 & Pass \ \hline
+FR4 & Шудрах (Swipe) үйлдлийн тохиргоо & TC-004 & Pass \ \hline
+\end{tabular}
+\end{table}
+
+\section{Эцсийн үнэлгээ}
+Туршилтын үр дүнгээс үзэхэд систем нь хэрэглэгчийн тодорхойлсон дүрмийн дагуу зурвасыг алдаагүй ангилж, их хэмжээний өгөгдөл болон Foldable төхөөрөмжийн динамик нөхцөлд найдвартай ажиллах чадамжтай болох нь батлагдлаа.

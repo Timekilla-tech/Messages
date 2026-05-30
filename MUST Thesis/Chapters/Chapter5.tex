@@ -1,0 +1,62 @@
+\chapter{Хэрэгжүүлэлт}
+
+\section{Хөгжүүлэлтийн орчин ба Технологийн стек}
+Програм хангамжийн хөгжүүлэлтийг орчин үеийн Android стандарт болон цэвэр кодын (Clean Code) зарчимд тулгуурлан гүйцэтгэв.
+
+\begin{itemize}
+    \item \textbf{Програмчлалын хэл}: Kotlin (Coroutines, Flow, Extensions).
+    \item \textbf{Хөгжүүлэлтийн орчин}: Android Studio Jellyfish (2023.3.1) +.
+    \item \textbf{UI Framework}: Jetpack Compose (KeywordManager) болон XML View System.
+    \item \textbf{Өгөгдлийн сан}: Room Persistence Library v13.
+    \item \textbf{Төлвийн удирдлага}: Lifecycle-aware ViewModels, EventBus.
+\end{itemize}
+
+\section{Гол алгоритмын хэрэгжүүлэлт}
+Системийн цөм логик болох Regex Filtering Engine-ийн ажиллах дарааллыг Псевдо кодоор (Зураг \ref{alg:filtering}) харуулав.
+
+\begin{figure}[H]
+\begin{lstlisting}[language=Python, caption=Regex Filtering Engine алгоритм (Pseudo-code)]
+# Зурвас ангилах алгоритм
+def match_category(message, categories):
+    body = message.body.lowercase()
+    sender = message.sender_id
+    
+    for cat in categories:
+        # 1. Энгийн тулхүүр угсийг шалгах (O(n))
+        for word in cat.plain_keywords:
+            if word in body or word in sender:
+                return cat.id
+        
+        # 2. Regex паттернуудийг шалгах
+        for pattern in cat.regex_patterns:
+            try:
+                if regex_match(pattern, body) or regex_match(pattern, sender):
+                    return cat.id
+            except RegexError:
+                continue # Буруу бичигдсэн паттернийг алгасах
+                
+    return DEFAULT_CATEGORY_ID
+\end{lstlisting}
+\label{alg:filtering}
+\end{figure}
+
+\section{Кодын бүтэц ба Паттернууд}
+Төслийн эх кодыг модульчлагдсан (Modular) байдлаар зохион байгуулсан. Үндсэн логикуудыг \texttt{Context} өргөтгөл функцүүд болгон тусгаарласан нь кодыг дахин ашиглах боломжийг нэмэгдүүлсэн.
+
+\begin{itemize}
+    \item \textbf{Repository Pattern}: Өгөгдлийн санд хандах үйлдлүүдийг \texttt{CategoryDao} болон \texttt{MessagesDatabase} ашиглан нэгтгэсэн.
+    \item \textbf{Dependency Injection}: Системийн байнгын ажиллагаатай объектуудыг (Database instance) синглтон (Singleton) хэлбэрээр удирдсан.
+    \item \textbf{Observer Pattern}: \texttt{SharedFlow} болон \texttt{EventBus} ашиглан өгөгдөл шинэчлэгдэх үед UI-г бодит хугацаанд (Reactive) шинэчлэх үйлдлийг хэрэгжүүлсэн.
+\end{itemize}
+
+\section{AI хэрэгслийн ашиглалт}
+ШУТИС, МХТС-ийн удирдамжийн дагуу төслийн хөгжүүлэлтийн шатанд хиймэл оюуны (AI) дараах хэрэгслүүдийг ашигласан байдлыг тайлагнаж байна.
+
+\begin{itemize}
+    \item \textbf{GitHub Copilot}: Нэг төрлийн үйлдлүүд бүхий Boilerplate кодуудыг бичих болон Unit test-ийн тохиолдол (test cases) боловсруулахад ашигласан.
+    \item \textbf{Google Gemini}: Regex шүүлтүүрийн алгоритмын логик алдааг (debugging) олж засварлах болон кодын оновчлол (refactoring) хийхэд туслах хэрэгсэл болгон ашигласан.
+    \item \textbf{Data Generation}: Туршилтад зориулсан 40,000+ мессеж бүхий баазыг үүсгэхдээ AI-ийн тусламжтайгаар хуурамч (Mock) өгөгдлийг бодит мэтээр үүсгэсэн.
+\end{itemize}
+
+\section{Нэвтрүүлэлт ба Байршуулалт}
+Програмыг хөгжүүлэлтийн явцад GitHub Actions ашиглан автоматжуулсан байдлаар (CI/CD) тест хийж, APK хувилбарыг үүсгэж байсан. Эцсийн хувилбарыг Google Play Store-ийн удирдамжийн дагуу Target SDK 34'' (Android 14) түвшинд бэлтгэж, бодит төхөөрөмж дээр суулган туршсан.
