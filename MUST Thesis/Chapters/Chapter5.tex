@@ -1,7 +1,7 @@
 \chapter{Хэрэгжүүлэлт}
 
 \section{Хөгжүүлэлтийн орчин ба Технологийн стек}
-Програм хангамжийн хөгжүүлэлтийг орчин үеийн Android стандарт болон цэвэр кодын (Clean Code) зарчимд тулгуурлан гүйцэтгэв.
+Програм хангамжийн хөгжүүлэлтийг орчин үеийн Android стандарт болон цэвэр кодын зарчимд тулгуурлан гүйцэтгэв.
 
 \begin{itemize}
     \item \textbf{Програмчлалын хэл}: Kotlin (Coroutines, Flow, Extensions).
@@ -12,10 +12,10 @@
 \end{itemize}
 
 \section{Гол алгоритмын хэрэгжүүлэлт}
-Системийн цөм логик болох Regex Filtering Engine-ийн ажиллах дарааллыг Псевдо кодоор (Зураг \ref{alg:filtering}) харуулав.
+Системийн цөм логик болох тогтмол илэрхийллийн шүүлтүүрийн хөдөлгүүрийн ажиллах дарааллыг псевдо кодоор (Зураг \ref{alg:filtering}) харуулав.
 
 \begin{figure}[H]
-\begin{lstlisting}[language=Python, caption=Regex Filtering Engine алгоритм (Pseudo-code)]
+\begin{lstlisting}[language=Python, caption=Тогтмол илэрхийллийн шүүлтүүрийн алгоритм (Псевдо код)]
 # Зурвас ангилах алгоритм
 def match_category(message, categories):
     body = message.body.lowercase()
@@ -27,12 +27,12 @@ def match_category(message, categories):
             if word in body or word in sender:
                 return cat.id
         
-        # 2. Regex паттернуудийг шалгах
-        for pattern in cat.regex_patterns:
+        # 2. Тогтмол илэрхийллийн загваруудыг шалгах
+        for pattern in cat.patterns:
             try:
-                if regex_match(pattern, body) or regex_match(pattern, sender):
+                if pattern_match(pattern, body) or pattern_match(pattern, sender):
                     return cat.id
-            except RegexError:
+            except PatternError:
                 continue # Буруу бичигдсэн паттернийг алгасах
                 
     return DEFAULT_CATEGORY_ID
@@ -54,7 +54,7 @@ def match_category(message, categories):
 
 \begin{itemize}
     \item \textbf{GitHub Copilot}: Нэг төрлийн үйлдлүүд бүхий Boilerplate кодуудыг бичих болон Unit test-ийн тохиолдол (test cases) боловсруулахад ашигласан.
-    \item \textbf{Google Gemini}: Regex шүүлтүүрийн алгоритмын логик алдааг (debugging) олж засварлах болон кодын оновчлол (refactoring) хийхэд туслах хэрэгсэл болгон ашигласан.
+    \item \textbf{Google Gemini}: Тогтмол илэрхийллийн шүүлтүүрийн алгоритмын логик алдааг (debugging) олж засварлах болон кодын оновчлол (refactoring) хийхэд туслах хэрэгсэл болгон ашигласан.
     \item \textbf{Data Generation}: Туршилтад зориулсан 40,000+ мессеж бүхий баазыг үүсгэхдээ AI-ийн тусламжтайгаар хуурамч (Mock) өгөгдлийг бодит мэтээр үүсгэсэн.
 \end{itemize}
 
