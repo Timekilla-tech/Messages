@@ -187,7 +187,7 @@
 \titleformat{\chapter}[display]% команд + хэлбэр
 {%
 \pagecolor{Chapter}
-\color{black}
+\color{white}
 	\normalfont
 	\Large
 	\filcenter
@@ -195,9 +195,9 @@
 } % формат
 {%
 	\vspace*{\fill}
-	\titlerule[1pt]%
+	\color{white}\titlerule[1pt]%
 	\vspace{1pt}%
-	\color{black}\titlerule
+	\color{white}\titlerule
 	\vspace{1pc}%
 	\LARGE\MakeUppercase{\chaptertitlename}~\thechapter%
 }% шошго
@@ -205,7 +205,7 @@
 	1pc
 }% зааглагч
 {
-	\color{black}\titlerule
+	\color{white}\titlerule
 	\Huge
 } % өмнө нь
 [%
