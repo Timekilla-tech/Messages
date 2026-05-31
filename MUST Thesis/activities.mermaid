@@ -14,30 +14,6 @@ classDiagram
       + plainKeywords : String
       + regexPatterns : String
     }
-    class SavedView {
-      <<NEW>>
-      + id : String
-      + type : SavedViewType
-      + title : String
-      + position : Int
-      + isEditable : Boolean
-      + config : SavedViewConfig
-      + iconResName : String?
-    }
-    class SavedViewConfig {
-      <<NEW>>
-      + folderId : Long?
-      + tags : Set~String~
-      + showArchived : Boolean
-      + unreadOnly : Boolean
-      + pinnedOnly : Boolean
-      + matchAllTags : Boolean
-    }
-    class SavedViewType {
-      <<NEW enum>>
-      MAIN
-      CUSTOM
-    }
   }
 
   namespace NEW_Modified_Models {
@@ -57,13 +33,6 @@ classDiagram
       %% ── NEW field ──
       + category : String
     }
-    class SearchResult {
-      <<MODIFIED>>
-      + messageId : Long
-      + title : String
-      %% ── NEW field ──
-      + category : String
-    }
   }
 
   namespace NEW_Dialogs {
@@ -71,11 +40,6 @@ classDiagram
       <<NEW>>
       - originalCategory : Category?
       - currentKeywords : List~KeywordItem~
-    }
-    class SetCategoryDialog {
-      <<NEW>>
-      - activity : SimpleActivity
-      - callback : Function1~String, Unit~
     }
   }
 
