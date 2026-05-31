@@ -36,4 +36,45 @@
     \item \textbf{III үе шат}: Нугалдаг төхөөрөмжийн дасан зохицох харагдац болон тасралтгүй байдлын логик.
     \item \textbf{IV үе шат}: Гүйцэтгэлийн оновчлол, тест ба чанарын баталгаажуулалт.
 \end{enumerate}
+\begin{itemize}
+\section{Суурь төслийн бүтэц (Fossify Messages)}
+
+    Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн сангуудын бүтэц нь Android хөгжүүлэлтийн стандарт болон Separation of Concerns (үүрэг хариуцлагыг тусгаарлах) зарчмыг баримталдаг. Таныг төслөө эхлэхээс өмнөх суурь (fundamental) сангуудын үүргийг доор дэлгэрэнгүй тайлбарлав.
+
+    \begin{itemize}
+        \item \textbf{activities/ (Presentation Layer)}: Энэ санд аппликейшны бүх дэлгэцүүд (UI screens) байрлана. Жишээ нь: \texttt{MainActivity} (мессежийн жагсаалт), \texttt{ThreadActivity} (тухайн хүнтэй харилцсан түүх), \texttt{SettingsActivity}. Android-ийн ажиллах үндсэн цэгүүд энд байна.
+
+        \item \textbf{adapters/ (UI Logic)}: Жагсаалттай ажилладаг классууд байрлана. \texttt{RecyclerView}-д өгөгдлийг (мессеж, харилцан яриа) хэрхэн харуулахыг зохицуулдаг. Жишээ нь: \texttt{ThreadAdapter} нь чат доторх мессеж бүрийн харагдах байдлыг удирддаг.
+
+        \item \textbf{App.kt (Global Configuration)}: Аппликейшн ажиллахад хамгийн түрүүнд дуудагддаг класс. Энд глобал тохиргоонууд, Dependency Injection (DI)-ийн эхлэл, эсвэл өгөгдлийн сангийн бэлтгэл ажил хийгддэг.
+
+        \item \textbf{databases/ (Data Layer)}: Room Persistence Library ашиглан локал өгөгдлийн сантай харьцах хэсэг. Энд \texttt{MessagesDatabase}, \texttt{ConversationsDao} зэрэг классууд байрлаж, SQLite-аас өгөгдөл унших, бичих үйлдлийг гүйцэтгэнэ.
+
+        \item \textbf{dialogs/ (Reusable UI)}: Хэрэглэгчээс баталгаажуулалт авах, текст оруулах зэрэг жижиг цонхнууд (Pop-ups) энд байна. Жишээ нь: Мессеж устгах үеийн "Are you sure?" цонх.
+
+        \item \textbf{extensions/ (Kotlin Power)}: Fossify төслүүдийн нэг онцлог бол Extension Functions маш их ашигладаг. Суурь классууд дээр (жишээ нь \texttt{Context}, \texttt{String}, \texttt{Long}) нэмэлт функц бичиж, кодыг илүү цэвэрхэн болгодог. Жишээ нь: \texttt{Long.formatDate()} гэх мэт.
+
+        \item \textbf{helpers/ (Utilities)}: Туслах функцүүд болон тогтмол утгууд (Constants) байрлана. Мөн Prefs буюу хэрэглэгчийн тохиргоог (\texttt{SharedPrefs}) удирдах классууд энд байна.
+
+        \item \textbf{interfaces/ (Abstraction)}: Классууд хоорондоо харилцах гүүр болох "Listener"-үүд байрлана. Жишээ нь: \texttt{RefreshMessagesListener} – өгөгдөл өөрчлөгдөхөд UI-г шинэчлэх үүрэгтэй.
+
+        \item \textbf{messaging/ (Core Logic)}: Мессеж илгээх, хүлээн авах, SMS/MMS-ийн төрлийг тодорхойлох зэрэг системийн хамгийн чухал логикууд энд байрладаг. Энэ бол апп-ын "зүрх" нь юм.
+
+        \item \textbf{models/ (Data Classes)}: Өгөгдлийн бүтэц буюу POJO классууд. Жишээ нь: \texttt{Message}, \texttt{Conversation}, \texttt{Contact} гэх мэт өгөгдлийн загварууд.
+
+        \item \textbf{receivers/ (Android Components)}: Android системээс ирж буй дохиог (Broadcast) барьж авах хэсэг. Хамгийн чухал нь \texttt{SmsReceiver} буюу шинэ мессеж ирэхэд түүнийг барьж аваад апп-д мэдэгдэх үүрэгтэй.
+
+        \item \textbf{services/ (Background Tasks)}: Ар талд (Background) ажиллах шаардлагатай ажлууд. Жишээ нь: Мессеж илгээх процесс дуустал ажиллах үйлчилгээ энд байна.
+
+        \item \textbf{ui/ (Custom UI)}: Апп-д ашиглагдаж буй тусгайлан загварчилсан (Custom) View-үүд байрлана. Жишээ нь: Өнгө сонгогч, тусгай товчлуур гэх мэт.
+    \end{itemize}
+
+    \paragraph{Төслийн өргөтгөлүүдийн байршил:}
+    Дээрх суурь бүтцэд хийсэн өргөтгөлүүд дараах сангуудад нэмэгдсэн:
+    \begin{itemize}
+        \item \textbf{Regex Filtering логик} – \texttt{messaging/} ба \texttt{extensions/} сангуудад нэмэгдсэн (жишээ нь \texttt{withAutoCategory()}, \texttt{isMessageMatchingCategory()}).
+        \item \textbf{Foldable device support} – \texttt{activities/} (\texttt{MainActivity} two-pane логик) болон \texttt{helpers/} (\texttt{FoldableHelper}) хэсэгт хийгдсэн.
+        \item \textbf{SavedViews (Folder) систем} – \texttt{models/} (\texttt{SavedView}, \texttt{SavedViewConfig}), \texttt{helpers/} (\texttt{SavedViewsStore}), \texttt{databases/} (Config өргөтгөл) зэрэгт шинээр нэмэгдсэн.
+        \item \textbf{Category ба Regex дүрмийн UI} – \texttt{activities/}, \texttt{dialogs/}, \texttt{ui/} (Compose KeywordManager) сангуудад хийгдсэн.
+    \end{itemize}
 Хөгжүүлэлтийн явцад Git-ийн Feature Branch'' стратегийг ашиглаж, долоо хоног бүр явцын түүхийг баталгаажуулсан.
