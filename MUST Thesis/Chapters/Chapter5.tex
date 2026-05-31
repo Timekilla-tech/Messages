@@ -11,6 +11,37 @@
     \item \textbf{Төлвийн удирдлага}: Lifecycle-aware ViewModels, EventBus.
 \end{itemize}
 
++\section{Хэрэглэгчийн интерфэйсийн хэрэгжүүлэлт}
++Энэхүү хэсэгт бодит хэрэгжүүлэлтийн UI дэлгэцүүдийг жишээ болгон үзүүлэв.
++
++\begin{figure}[H]
++    \centering
++    \includegraphics[width=0.6\textwidth]{../Chart/edit_view.jpg}
++    \caption{Зурвас засварлах дэлгэц}
++    \label{fig:ui_edit_view}
++\end{figure}
++
++\begin{figure}[H]
++    \centering
++    \includegraphics[width=0.6\textwidth]{../Chart/category_edit.jpg}
++    \caption{Ангиллын тохиргоо хийх дэлгэц}
++    \label{fig:ui_category_edit}
++\end{figure}
++
++\begin{figure}[H]
++    \centering
++    \includegraphics[width=0.6\textwidth]{../Chart/swipe.jpg}
++    \caption{Шудрах үйлдлийн интерфэйс}
++    \label{fig:ui_swipe}
++\end{figure}
++
++\begin{figure}[H]
++    \centering
++    \includegraphics[width=0.6\textwidth]{../Chart/unfold.png}
++    \caption{Нугалдаг төхөөрөмжийн хоёр баганат харагдац}
++    \label{fig:ui_unfold}
++\end{figure}
+
 \section{Гол алгоритмын хэрэгжүүлэлт}
 Системийн цөм логик болох тогтмол илэрхийллийн шүүлтүүрийн хөдөлгүүрийн ажиллах дарааллыг псевдо кодоор (Зураг \ref{alg:filtering}) харуулав.
 
@@ -40,7 +71,7 @@ def match_category(message, categories):
 \label{alg:filtering}
 \end{figure}
 
-\section{Кодын бүтэц ба Паттернууд}
+\section{Кодын бүтэц ба хэв загвар}
 Төслийн эх кодыг модульчлагдсан (Modular) байдлаар зохион байгуулсан. Үндсэн логикуудыг \texttt{Context} өргөтгөл функцүүд болгон тусгаарласан нь кодыг дахин ашиглах боломжийг нэмэгдүүлсэн.
 
 \begin{itemize}
