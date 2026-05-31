@@ -15,7 +15,7 @@ Jacoco хэрэгслээр кодын хамралтын шинжилгээ х�
 
 \begin{table}[H]
     \centering
-    \caption{Jacoco кодын хамралтын нэгтгэл}
+    \caption{Jacoco кодын хамралтын шинжилгээний нэгтгэл}
     \label{table:coverage}
     \resizebox{\textwidth}{!}{
         \begin{tabular}{|l|c|c|}
@@ -36,14 +36,14 @@ Jacoco хэрэгслээр кодын хамралтын шинжилгээ х�
     }
 \end{table}
 
-\textit{Тайлбар: Дээрх нийт хамралт нь суурь Fossify кодыг
+\textit{Тайлбар: Дээрх нийт төслийн хэмжээнд дэх хамралт нь суурь Fossify кодыг
 бүхэлд нь тооцсон тул бага харагдаж байна. Доорх хүснэгтэд
 төслийн хүрээнд хөгжүүлсэн цөм логикийн нарийвчилсан
 хамралтыг тусад нь харуулав.}
 
 \begin{table}[H]
     \centering
-    \caption{Цөм логикийн нарийвчилсан хамралт}
+    \caption{Цөм логикийн нарийвчилсан хамралтийн шинжилгээ}
     \label{table:coverage_detail}
     \resizebox{\textwidth}{!}{
         \begin{tabular}{|l|c|c|}
@@ -110,21 +110,30 @@ Jacoco хэрэгслээр кодын хамралтын шинжилгээ х�
     \item \textbf{Санах ойн ашиглалт}: Ачааллын үед санах ойн ашиглалт тогтвортой (leak-free) байсан.
 \end{itemize}
 
-\section{Requirement Traceability Matrix (RTM)}
-Үндсэн шаардлагууд туршилтаар хэрхэн баталгаажсаныг Хүснэгт \ref{table:rtm}-д харуулав.
+\section{Шаардлагын мөшгөлтийн матриц (Requirement Traceability Matrix)}
+Үндсэн функционал шаардлагууд туршилтаар хэрхэн баталгаажсаныг Хүснэгт \ref{table:rtm}-д нэгтгэн харуулав. Энэхүү матриц нь шаардлага бүрийг харгалзах туршилтын тохиолдолтой (Test Case) холбож, хэрэгжилтийг баталгаажуулдаг.
 
 \begin{table}[H]
-\centering
-\caption{Шаардлагын мөшгөлтийн матриц (RTM)}
-\label{table:rtm}
-\begin{tabular}{|c|p{6cm}|c|c|}
-\hline
-\textbf{ID} & \textbf{Функционал шаардлага} & \textbf{Тест ID} & \textbf{Төлөв} \ \hline
-FR1 & Тогтмол илэрхийлэлд суурилсан танилт & TC-001 & Pass \ \hline
-FR2 & Динамик хавтас удирдлага & TC-002 & Pass \ \hline
-FR3 & Нугалдаг төхөөрөмжийн дэмжлэг & TC-003 & Pass \ \hline
-FR4 & Шудрах үйлдлийн тохиргоо & TC-004 & Pass \ \hline
-\end{tabular}
+    \centering
+    \caption{Шаардлагын мөшгөлтийн матриц (RTM)}
+    \label{table:rtm}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|c|p{7cm}|c|c|}
+            \hline
+            \textbf{ID} & \textbf{Функционал шаардлага} & \textbf{Тест ID} & \textbf{Төлөв} \\
+            \hline
+            FR1 & Тогтмол илэрхийлэлд (Regex) суурилсан танилт & TC-001 & \checkmark Pass \\
+            \hline
+            FR2 & Хадгалсан харагдац (Хавтас) удирдлага & TC-002 & \checkmark Pass \\
+            \hline
+            FR3 & Нугалдаг төхөөрөмжийн (Foldable) дэмжлэг & TC-003 & \checkmark Pass \\
+            \hline
+            FR4 & Шудрах (Swipe) үйлдлийн тохиргоо & TC-004 & \checkmark Pass \\
+            \hline
+            FR5 & Хугацааны бүлэглэлт (Sticky Headers) & TC-005 & \checkmark Pass \\
+            \hline
+        \end{tabular}
+    }
 \end{table}
 \section{Нэвтрүүлэлт ба Байршуулалт (Deployment \& Production)}
 
@@ -158,27 +167,29 @@ sideload аргаар суулгаж туршилт хийв.
     \centering
     \caption{Бодит төхөөрөмж дээрх туршилтын үр дүн}
     \label{table:device_test}
-    \begin{tabular}{|l|l|l|c|}
-        \hline
-        \textbf{Төхөөрөмж} &
-        \textbf{Төрөл} &
-        \textbf{Android} &
-        \textbf{Үр дүн} \\
-        \hline
-        Samsung Galaxy Note20 Ultra &
-        Ердийн дэлгэц &
-        Android 13 &
-        Pass \\
-        \hline
-        Samsung Galaxy Z Fold3 &
-        Нугалдаг дэлгэц &
-        Android 15 &
-        Pass \\
-        \hline
-    \end{tabular}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|c|c|l|}
+            \hline
+            \textbf{Төхөөрөмж} &
+            \textbf{Төрөл} &
+            \textbf{Android} &
+            \textbf{Үр дүн} \\
+            \hline
+            Samsung Galaxy Note20 Ultra &
+            Ердийн дэлгэц &
+            Android 13 &
+            Pass \\
+            \hline
+            Samsung Galaxy Z Fold3 &
+            Нугалдаг дэлгэц &
+            Android 15 &
+            Pass \\
+            \hline
+        \end{tabular}
+    }
 \end{table}
 
-Нугалдаг төхөөрөмж болох Samsung Galaxy Z Fold3 дээр
+Нугалдаг дэлгэц бүхий төхөөрөмж болох Samsung Galaxy Z Fold3 дээр
 аппликейшн нээгдэх болон хаагдах үед хоёр баганат
 харагдац гацалтгүйгээр шилжиж байсныг бодит
 орчинд баталгаажуулав. Ердийн дэлгэцтэй
