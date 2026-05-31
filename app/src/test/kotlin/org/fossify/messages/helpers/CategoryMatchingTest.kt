@@ -9,14 +9,61 @@ class CategoryMatchingTest {
 
     private fun createCategory(
         regexPatterns: String = "",
+        plainKeywords: String = "",
         keywords: String = "",
         keywordIsRegex: Boolean = false
     ): Category = Category(
         id = 1, name = "Test", color = 0,
         regexPatterns = regexPatterns,
+        plainKeywords = plainKeywords,
         keywords = keywords,
         keywordIsRegex = keywordIsRegex
     )
+
+    // Plain Keywords matching
+    @Test fun plainKeywordsMatchesBody() {
+        val cat = createCategory(plainKeywords = "bank, alert, khan")
+        assertTrue(isMessageMatchingCategory("Khan bank alert: Your balance is low", "", cat))
+    }
+
+    @Test fun plainKeywordsMatchesSender() {
+        val cat = createCategory(plainKeywords = "150000, 1588")
+        assertTrue(isMessageMatchingCategory("any body", "150000", cat))
+    }
+
+    @Test fun plainKeywordsIsCaseInsensitive() {
+        val cat = createCategory(plainKeywords = "URGENT")
+        assertTrue(isMessageMatchingCategory("this is urgent", "", cat))
+    }
+
+    @Test fun plainKeywordsHandlesEmptyEntries() {
+        val cat = createCategory(plainKeywords = "a,,b")
+        assertTrue(isMessageMatchingCategory("contains a", "", cat))
+        assertTrue(isMessageMatchingCategory("contains b", "", cat))
+        // Should not match empty string unless body is empty (but we filter empty keywords)
+        assertFalse(isMessageMatchingCategory("nothing", "", cat))
+    }
+
+    // New Regex Patterns matching (Newline separated)
+    @Test fun regexPatternsMatchesMultipleLines() {
+        val cat = createCategory(regexPatterns = "^OTP: \\d{6}$\n^Code: [A-Z]{4}$")
+        assertTrue(isMessageMatchingCategory("OTP: 123456", "", cat))
+        assertTrue(isMessageMatchingCategory("Code: ABCD", "", cat))
+        assertFalse(isMessageMatchingCategory("OTP: 123", "", cat))
+    }
+
+    @Test fun plainKeywordsTakesPriorityOverRegex() {
+        // If both match, it should return true anyway, but this tests that if plainKeywords
+        // matches something different, it still works.
+        val cat = createCategory(plainKeywords = "Priority", regexPatterns = "^NeverMatch$")
+        assertTrue(isMessageMatchingCategory("Priority content", "", cat))
+    }
+
+    @Test fun regexPatternsTakesPriorityOverLegacyKeywords() {
+        val cat = createCategory(regexPatterns = "^RegexPriority$", keywords = "LegacyMatch")
+        assertTrue(isMessageMatchingCategory("RegexPriority", "", cat))
+        assertFalse(isMessageMatchingCategory("LegacyMatch", "", cat))
+    }
 
     // Body matching
     @Test fun regexMatchesBodyExact() {

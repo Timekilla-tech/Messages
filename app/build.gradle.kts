@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.detekt)
     id("org.jetbrains.kotlin.plugin.compose")
+    id("jacoco")
 }
 dependencies {
     implementation("androidx.window:window:1.2.0")
@@ -75,6 +76,8 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
         }
         release {
             isMinifyEnabled = true
@@ -139,11 +142,46 @@ android {
     }
 }
 
+tasks.withType<Test> {
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
 detekt {
     baseline = file("detekt-baseline.xml")
     config.setFrom("$rootDir/detekt.yml")
     buildUponDefaultConfig = true
     allRules = false
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testCoreDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    val fileFilter = listOf(
+        "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*",
+        "**/*Test*.*", "android/**/*.*", "**/*Fragment*.*", "**/*Activity*.*",
+        "**/*Adapter*.*", "**/*Dialog*.*", "**/*Receiver*.*", "**/*Service*.*",
+        "**/*App*.*"
+    )
+    
+    val debugTree = fileTree("${project.layout.buildDirectory.get()}/intermediates/built_in_kotlinc/coreDebug/compileCoreDebugKotlin/classes") {
+        exclude(fileFilter)
+    }
+    val mainSrc = "${project.projectDir}/src/main/kotlin"
+
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(project.layout.buildDirectory.get()) {
+        include("outputs/unit_test_code_coverage/coreDebugUnitTest/testCoreDebugUnitTest.exec")
+    })
 }
 
 dependencies {
