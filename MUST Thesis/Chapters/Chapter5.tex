@@ -128,9 +128,17 @@
         \caption{Баруун тийш шудрах үйлдэл}
     \end{minipage}
 \end{figure}
-\section{Суурь төслийн бүтэц (Fossify Messages)}
+\section{Төслийн суурь бүтэц (Fossify Messages)}
+Системийн үндсэн сангуудын зохион байгуулалтыг Зураг \ref{fig:file_structure} дээр харуулав.
 
-Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн сангуудын бүтэц нь Android хөгжүүлэлтийн стандарт болон Separation of Concerns (үүрэг хариуцлагыг тусгаарлах) зарчмыг баримталдаг. Таныг төслөө эхлэхээс өмнөх суурь (fundamental) сангуудын үүргийг доор дэлгэрэнгүй тайлбарлав.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{Figures/project_file_structure.png}
+    \caption{Төслийн сангуудын бүтэц}
+    \label{fig:file_structure}
+\end{figure}
+
+Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн сангуудын бүтэц нь Android хөгжүүлэлтийн стандарт болон Separation of Concerns (үүрэг хариуцлагыг тусгаарлах) зарчмыг баримталдаг. Үндсэн хавтаснуудын үүргийг доор дэлгэрэнгүй тайлбарлав.
 
 \begin{itemize}
     \item \textbf{activities/ (Presentation Layer)}: Энэ санд аппликейшны бүх дэлгэцүүд (UI screens) байрлана. Жишээ нь: \texttt{MainActivity} (мессежийн жагсаалт), \texttt{ThreadActivity} (тухайн хүнтэй харилцсан түүх), \texttt{SettingsActivity}. Android-ийн ажиллах үндсэн цэгүүд энд байна.
@@ -141,7 +149,7 @@ Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн санг
 
     \item \textbf{databases/ (Data Layer)}: Room Persistence Library ашиглан локал өгөгдлийн сантай харьцах хэсэг. Энд \texttt{MessagesDatabase}, \texttt{ConversationsDao} зэрэг классууд байрлаж, SQLite-аас өгөгдөл унших, бичих үйлдлийг гүйцэтгэнэ.
 
-    \item \textbf{dialogs/ (Reusable UI)}: Хэрэглэгчээс баталгаажуулалт авах, текст оруулах зэрэг жижиг цонхнууд (Pop-ups) энд байна. Жишээ нь: Мессеж устгах үеийн "Are you sure?" цонх.
+    \item \textbf{dialogs/ (Reusable UI)}: Хэрэглэгчээс баталгаажуулалт авах, текст оруулах зэрэг жижиг цонхнууд (Pop-ups) энд байна. Жишээ нь: Мессеж устгах үеийн "Энэ үйлдлийг хийхдээ итгэлтэй байна уу?" цонх.
 
     \item \textbf{extensions/ (Kotlin Power)}: Fossify төслүүдийн нэг онцлог бол Extension Functions маш их ашигладаг. Суурь классууд дээр (жишээ нь \texttt{Context}, \texttt{String}, \texttt{Long}) нэмэлт функц бичиж, кодыг илүү цэвэрхэн болгодог. Жишээ нь: \texttt{Long.formatDate()} гэх мэт.
 
