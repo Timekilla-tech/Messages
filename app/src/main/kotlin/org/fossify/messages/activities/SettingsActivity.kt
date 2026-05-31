@@ -3,13 +3,10 @@ package org.fossify.messages.activities
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
-import org.fossify.commons.activities.ManageBlockedNumbersActivity
 import org.fossify.commons.dialogs.ChangeDateTimeFormatDialog
 import org.fossify.commons.dialogs.ConfirmationDialog
-import org.fossify.commons.dialogs.FeatureLockedDialog
 import org.fossify.commons.dialogs.RadioGroupDialog
 import org.fossify.commons.dialogs.SecurityDialog
-import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisible
 import org.fossify.commons.extensions.beVisibleIf
@@ -48,6 +45,14 @@ import org.fossify.messages.helpers.LOCK_SCREEN_NOTHING
 import org.fossify.messages.helpers.LOCK_SCREEN_SENDER
 import org.fossify.messages.helpers.LOCK_SCREEN_SENDER_MESSAGE
 import org.fossify.messages.helpers.MessagesImporter
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_ARCHIVE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
+import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_AUTO
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_SINGLE
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_TWO_PANE
 import org.fossify.messages.helpers.refreshConversations
 import java.util.Locale
 import kotlin.system.exitProcess
@@ -98,14 +103,14 @@ class SettingsActivity : SimpleActivity() {
     override fun onResume() {
         super.onResume()
         setupTopAppBar(binding.settingsAppbar, NavigationIcon.Arrow)
-
+        setupManageCategories()
         setupCustomizeColors()
         setupCustomizeNotifications()
         setupUseEnglish()
         setupLanguage()
-        setupManageBlockedNumbers()
-        setupManageBlockedKeywords()
+        setupInboxSwipeActions()
         setupChangeDateTimeFormat()
+        setupScreenViewMode()
         setupFontSize()
         setupShowCharacterCounter()
         setupUseSimpleCharacters()
@@ -199,26 +204,70 @@ class SettingsActivity : SimpleActivity() {
         }
     }
 
-    private fun setupManageBlockedNumbers() = binding.apply {
-        settingsManageBlockedNumbers.text =
-            addLockedLabelIfNeeded(org.fossify.commons.R.string.manage_blocked_numbers)
-        settingsManageBlockedNumbersHolder.beVisible()
-        settingsManageBlockedNumbersHolder.setOnClickListener {
-            Intent(this@SettingsActivity, ManageBlockedNumbersActivity::class.java).apply {
+
+    private fun setupManageCategories() = binding.apply {
+        settingsManageCategories.text = getText(R.string.manage_categories)
+        settingsManageCategoriesHolder.setOnClickListener {
+            Intent(this@SettingsActivity, ManageCategoriesActivity::class.java).apply {
                 startActivity(this)
             }
         }
     }
 
-    private fun setupManageBlockedKeywords() = binding.apply {
-        settingsManageBlockedKeywords.text =
-            addLockedLabelIfNeeded(R.string.manage_blocked_keywords)
+    private fun setupInboxSwipeActions() = binding.apply {
+        settingsInboxSwipeStart.text = getInboxSwipeActionText(config.inboxSwipeStartAction)
+        settingsInboxSwipeEnd.text = getInboxSwipeActionText(config.inboxSwipeEndAction)
 
-        settingsManageBlockedKeywordsHolder.setOnClickListener {
-            Intent(this@SettingsActivity, ManageBlockedKeywordsActivity::class.java).apply {
-                startActivity(this)
-            }
+        settingsInboxSwipeStartHolder.setOnClickListener {
+            showInboxSwipeActionDialog(
+                currentValue = config.inboxSwipeStartAction,
+                onActionSelected = {
+                    config.inboxSwipeStartAction = it
+                    settingsInboxSwipeStart.text = getInboxSwipeActionText(it)
+                }
+            )
         }
+
+        settingsInboxSwipeEndHolder.setOnClickListener {
+            showInboxSwipeActionDialog(
+                currentValue = config.inboxSwipeEndAction,
+                onActionSelected = {
+                    config.inboxSwipeEndAction = it
+                    settingsInboxSwipeEnd.text = getInboxSwipeActionText(it)
+                }
+            )
+        }
+    }
+
+    private fun showInboxSwipeActionDialog(
+        currentValue: Int,
+        onActionSelected: (Int) -> Unit,
+    ) {
+        val items = arrayListOf(
+            RadioItem(INBOX_SWIPE_ACTION_ARCHIVE, getString(R.string.archive)),
+            RadioItem(
+                INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS,
+                getString(R.string.swipe_action_toggle_read_status)
+            ),
+            RadioItem(INBOX_SWIPE_ACTION_DELETE, getString(org.fossify.commons.R.string.delete)),
+            RadioItem(INBOX_SWIPE_ACTION_BLOCK, getString(R.string.swipe_action_block_number)),
+            RadioItem(INBOX_SWIPE_ACTION_NONE, getString(R.string.swipe_action_none)),
+        )
+
+        RadioGroupDialog(this, items, currentValue) {
+            onActionSelected(it as Int)
+        }
+    }
+
+    private fun getInboxSwipeActionText(action: Int): String {
+        val textRes = when (action) {
+            INBOX_SWIPE_ACTION_ARCHIVE -> R.string.archive
+            INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS -> R.string.swipe_action_toggle_read_status
+            INBOX_SWIPE_ACTION_DELETE -> org.fossify.commons.R.string.delete
+            INBOX_SWIPE_ACTION_BLOCK -> R.string.swipe_action_block_number
+            else -> R.string.swipe_action_none
+        }
+        return getString(textRes)
     }
 
     private fun setupChangeDateTimeFormat() = binding.apply {
@@ -228,6 +277,30 @@ class SettingsActivity : SimpleActivity() {
             }
         }
     }
+
+    private fun setupScreenViewMode() = binding.apply {
+        settingsScreenViewMode.text = getScreenViewModeText()
+        settingsScreenViewModeHolder.setOnClickListener {
+            val items = arrayListOf(
+                RadioItem(SCREEN_VIEW_MODE_AUTO, getString(R.string.screen_view_mode_auto)),
+                RadioItem(SCREEN_VIEW_MODE_SINGLE, getString(R.string.screen_view_mode_single)),
+                RadioItem(SCREEN_VIEW_MODE_TWO_PANE, getString(R.string.screen_view_mode_two_pane)),
+            )
+
+            RadioGroupDialog(this@SettingsActivity, items, config.screenViewMode) {
+                config.screenViewMode = it as Int
+                settingsScreenViewMode.text = getScreenViewModeText()
+            }
+        }
+    }
+
+    private fun getScreenViewModeText() = getString(
+        when (config.screenViewMode) {
+            SCREEN_VIEW_MODE_SINGLE -> R.string.screen_view_mode_single
+            SCREEN_VIEW_MODE_TWO_PANE -> R.string.screen_view_mode_two_pane
+            else -> R.string.screen_view_mode_auto
+        }
+    )
 
     private fun setupFontSize() = binding.apply {
         settingsFontSize.text = getFontSizeText()

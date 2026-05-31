@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dimension values optimized for large and foldable screens (API 13+) -->
+<resources>
+    <!-- Conversation list item padding - more spacious on larger screens -->
+    <dimen name="conversation_item_padding">16dp</dimen>
+
+    <!-- Category chip base size - easier to tap on tablets/folds -->
+    <dimen name="category_chip_height">32dp</dimen>
+    <dimen name="category_chip_padding">6dp</dimen>
+
+    <!-- Message bubble text size - better readability -->
+    <dimen name="message_text_size">16sp</dimen>
+
+    <!-- Conversation address text -->
+    <dimen name="conversation_address_text_size">15sp</dimen>
+
+    <!-- Bottom navigation bar - larger touch targets for foldable -->
+    <dimen name="bottom_nav_height">56dp</dimen>
+    <dimen name="bottom_nav_item_text_size">12sp</dimen>
+
+    <!-- FAB size - visible but not intrusive -->
+    <dimen name="fab_size">56dp</dimen>
+    <dimen name="fab_margin">16dp</dimen>
+
+    <!-- Dialog width constraints for foldable split-screen -->
+    <dimen name="dialog_min_width">280dp</dimen>
+    <dimen name="dialog_max_width">600dp</dimen>
+
+    <!-- Conversation list max width (for split-screen on unfolded state) -->
+    <dimen name="conversation_list_max_width">500dp</dimen>
+
+    <!-- Thread message area max width (for readability on large screens) -->
+    <dimen name="thread_message_max_width">600dp</dimen>
+
+    <!-- Search bar height - larger for easier interaction -->
+    <dimen name="search_bar_height">56dp</dimen>
+</resources>
+

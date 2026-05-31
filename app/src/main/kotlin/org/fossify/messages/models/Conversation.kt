@@ -36,7 +36,10 @@ data class Conversation(
                 old.isGroupConversation == new.isGroupConversation &&
                 old.phoneNumber == new.phoneNumber &&
                 old.unreadCount == new.unreadCount &&
-                old.category == new.category
+                old.category == new.category &&
+                old.isScheduled == new.isScheduled &&
+                old.usesCustomTitle == new.usesCustomTitle &&
+                old.isArchived == new.isArchived
         }
     }
 }

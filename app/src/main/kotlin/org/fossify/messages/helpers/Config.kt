@@ -1,7 +1,9 @@
 package org.fossify.messages.helpers
 
 import android.content.Context
+import com.google.gson.reflect.TypeToken
 import org.fossify.commons.helpers.BaseConfig
+import org.fossify.messages.extensions.gson.gson
 import org.fossify.messages.extensions.getDefaultKeyboardHeight
 import org.fossify.messages.models.Conversation
 
@@ -149,14 +151,6 @@ class Config(context: Context) : BaseConfig(context) {
         set(keepConversationsArchived) = prefs.edit()
             .putBoolean(KEEP_CONVERSATIONS_ARCHIVED, keepConversationsArchived).apply()
 
-    var savedViewsJson: String
-        get() = prefs.getString(SAVED_VIEWS_JSON, "")!!
-        set(savedViewsJson) = prefs.edit().putString(SAVED_VIEWS_JSON, savedViewsJson).apply()
-
-    var lastSavedViewId: String
-        get() = prefs.getString(LAST_SAVED_VIEW_ID, "main")!!
-        set(lastSavedViewId) = prefs.edit().putString(LAST_SAVED_VIEW_ID, lastSavedViewId).apply()
-
     var inboxSwipeStartAction: Int
         get() = sanitizeInboxSwipeAction(
             prefs.getInt(INBOX_SWIPE_START_ACTION, INBOX_SWIPE_ACTION_ARCHIVE)
@@ -171,6 +165,10 @@ class Config(context: Context) : BaseConfig(context) {
         set(action) = prefs.edit()
             .putInt(INBOX_SWIPE_END_ACTION, sanitizeInboxSwipeAction(action)).apply()
 
+    var screenViewMode: Int
+        get() = sanitizeScreenViewMode(prefs.getInt(SCREEN_VIEW_MODE, SCREEN_VIEW_MODE_AUTO))
+        set(screenViewMode) = prefs.edit().putInt(SCREEN_VIEW_MODE, sanitizeScreenViewMode(screenViewMode)).apply()
+
     private fun sanitizeInboxSwipeAction(action: Int): Int {
         return when (action) {
             INBOX_SWIPE_ACTION_NONE,
@@ -181,5 +179,68 @@ class Config(context: Context) : BaseConfig(context) {
 
             else -> INBOX_SWIPE_ACTION_NONE
         }
+    }
+
+    private fun sanitizeScreenViewMode(mode: Int): Int {
+        return when (mode) {
+            SCREEN_VIEW_MODE_AUTO,
+            SCREEN_VIEW_MODE_SINGLE,
+            SCREEN_VIEW_MODE_TWO_PANE -> mode
+
+            else -> SCREEN_VIEW_MODE_AUTO
+        }
+    }
+
+    var savedViewsJson: String
+        get() = prefs.getString(SAVED_VIEWS_JSON, "")!!
+        set(savedViewsJson) = prefs.edit().putString(SAVED_VIEWS_JSON, savedViewsJson).apply()
+
+    var lastSavedViewId: String
+        get() = prefs.getString(LAST_SAVED_VIEW_ID, "main")!!
+        set(lastSavedViewId) = prefs.edit().putString(LAST_SAVED_VIEW_ID, lastSavedViewId).apply()
+
+    private var conversationFolderMapJson: String
+        get() = prefs.getString("conversation_folders", "{}") ?: "{}"
+        set(value) = prefs.edit().putString("conversation_folders", value).apply()
+
+    private fun getConversationFolderMap(): Map<String, String> {
+        return try {
+            val type = object : TypeToken<Map<String, String>>() {}.type
+            gson.fromJson<Map<String, String>>(conversationFolderMapJson, type) ?: emptyMap()
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    fun setConversationFolder(threadId: Long, folderId: String?) {
+        val map = getConversationFolderMap().toMutableMap()
+        if (folderId == null) {
+            map.remove(threadId.toString())
+        } else {
+            map[threadId.toString()] = folderId
+        }
+        conversationFolderMapJson = gson.toJson(map)
+    }
+
+    fun getConversationFolder(threadId: Long): String? {
+        return getConversationFolderMap()[threadId.toString()]
+    }
+
+    fun setLastUsedFolderForConversation(threadId: Long, folderId: String) {
+        val map = getConversationFolderMap().toMutableMap()
+        map["last_used_$threadId"] = folderId
+        conversationFolderMapJson = gson.toJson(map)
+    }
+
+    fun getLastUsedFolderForConversation(threadId: Long): String? {
+        return getConversationFolderMap()["last_used_$threadId"]
+    }
+
+    fun setUserPrimaryFolderForConversation(threadId: Long, folderId: String) {
+        setConversationFolder(threadId, folderId)
+    }
+
+    fun getUserPrimaryFolderForConversation(threadId: Long): String? {
+        return getConversationFolder(threadId)
     }
 }

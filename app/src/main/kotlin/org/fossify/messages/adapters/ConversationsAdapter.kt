@@ -6,14 +6,15 @@ import android.view.Menu
 import androidx.recyclerview.widget.ItemTouchHelper
 import org.fossify.commons.dialogs.ConfirmationDialog
 import org.fossify.commons.extensions.addBlockedNumber
-import org.fossify.commons.extensions.addLockedLabelIfNeeded
 import org.fossify.commons.extensions.copyToClipboard
 import org.fossify.commons.extensions.launchActivityIntent
 import org.fossify.commons.extensions.notificationManager
+import org.fossify.commons.extensions.toast
 import org.fossify.commons.helpers.KEY_PHONE
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
 import org.fossify.messages.R
+import org.fossify.messages.activities.MainActivity
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.dialogs.DeleteConfirmationDialog
 import org.fossify.messages.dialogs.RenameConversationDialog
@@ -42,6 +43,35 @@ class ConversationsAdapter(
 ) : BaseConversationsAdapter(activity, recyclerView, onRefresh, itemClick) {
     override fun getActionMenuId() = R.menu.cab_conversations
 
+    fun getSelectedConversations() = getSelectedItems()
+
+    fun assignFolderToSelectedConversations(folderId: String) {
+        if (selectedKeys.isEmpty()) {
+            return
+        }
+
+        val selectedConversations = getSelectedItems()
+        ensureBackgroundThread {
+            selectedConversations.forEach { conversation ->
+                activity.config.setConversationFolder(conversation.threadId, folderId)
+            }
+
+            activity.runOnUiThread {
+                refreshConversationsAndFinishActMode()
+            }
+        }
+    }
+
+    override fun onActionModeCreated() {
+        super.onActionModeCreated()
+        (activity as? MainActivity)?.updateSelectionBottomBar(selectedKeys.size)
+    }
+
+    override fun onActionModeDestroyed() {
+        super.onActionModeDestroyed()
+        (activity as? MainActivity)?.updateSelectionBottomBar(0)
+    }
+
     override fun prepareActionMode(menu: Menu) {
         val selectedItems = getSelectedItems()
         val isSingleSelection = isOneItemSelected()
@@ -51,7 +81,7 @@ class ConversationsAdapter(
 
         menu.apply {
             findItem(R.id.cab_block_number).title =
-                activity.addLockedLabelIfNeeded(org.fossify.commons.R.string.block_number)
+                activity.getText(org.fossify.commons.R.string.block_number)
             findItem(R.id.cab_add_number_to_contact).isVisible =
                 isSingleSelection && !isGroupConversation
             findItem(R.id.cab_dial_number).isVisible =
@@ -66,6 +96,7 @@ class ConversationsAdapter(
             findItem(R.id.cab_archive).isVisible = archiveAvailable
             checkPinBtnVisibility(this)
         }
+        (activity as? MainActivity)?.updateSelectionBottomBar(selectedKeys.size)
     }
 
     override fun actionItemPressed(id: Int) {
@@ -84,12 +115,54 @@ class ConversationsAdapter(
             R.id.cab_conversation_details ->
                 activity.launchConversationDetails(getSelectedItems().first().threadId)
 
-            R.id.cab_mark_as_read -> markAsRead()
+            R.id.cab_mark_as_read -> {
+                val items = getSelectedItems()
+                if (items.any { !it.read }) {
+                    markAsRead()
+                } else {
+                    markAsUnread()
+                }
+            }
             R.id.cab_mark_as_unread -> markAsUnread()
-            R.id.cab_pin_conversation -> pinConversation(true)
+            R.id.cab_pin_conversation -> {
+                val pinnedConversations = activity.config.pinnedConversations
+                val allPinned = getSelectedItems().all { pinnedConversations.contains(it.threadId.toString()) }
+                pinConversation(!allPinned)
+            }
             R.id.cab_unpin_conversation -> pinConversation(false)
+            R.id.cab_set_category -> showFolderPickerDialog()
             R.id.cab_select_all -> selectAll()
         }
+    }
+
+    private fun showFolderPickerDialog() {
+        val folders = (activity as? MainActivity)?.savedViewsStore?.getViews()
+            ?.filter { it.id != org.fossify.messages.models.SavedView.MAIN_VIEW_ID } ?: return
+        
+        if (folders.isEmpty()) {
+            activity.toast(R.string.no_folders)
+            return
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(activity)
+            .setTitle(R.string.assign_folder)
+            .setItems(folders.map { it.title }.toTypedArray()) { _, which ->
+                val folder = folders[which]
+                assignFolderToSelectedConversations(folder.id)
+            }
+            .setNeutralButton(R.string.clear) { _, _ ->
+                val selectedConversations = getSelectedItems()
+                ensureBackgroundThread {
+                    selectedConversations.forEach {
+                        activity.config.setConversationFolder(it.threadId, null)
+                    }
+                    activity.runOnUiThread {
+                        refreshConversationsAndFinishActMode()
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     fun canHandleSwipe() = selectedKeys.isEmpty()
@@ -158,7 +231,6 @@ class ConversationsAdapter(
             }
         }
     }
-//TODO: устгах, архивлах, блоклох үйлдлийг чирж гүйцэтгэхээс өмнө үйлдлийг баталгаажуулах цонх гаргах
     private fun deleteConversationBySwipe(conversation: Conversation, position: Int) {
         // Reset swipe state immediately, then delete only after explicit confirmation.
         notifyItemChanged(position)
@@ -306,7 +378,7 @@ class ConversationsAdapter(
 
         val newList = try {
             currentList.toMutableList().apply { removeAll(conversationsToRemove) }
-        } catch (ignored: Exception) {
+        } catch (_: Exception) {
             currentList.toMutableList()
         }
 
@@ -337,7 +409,7 @@ class ConversationsAdapter(
 
         val newList = try {
             currentList.toMutableList().apply { removeAll(conversationsToRemove) }
-        } catch (ignored: Exception) {
+        } catch (_: Exception) {
             currentList.toMutableList()
         }
 

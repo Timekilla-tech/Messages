@@ -1,8 +1,8 @@
 package org.fossify.messages.adapters
 
 import android.annotation.SuppressLint
-import android.content.res.ColorStateList
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Parcelable
 import android.text.TextUtils
 import android.util.TypedValue
@@ -10,13 +10,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.qtalk.recyclerviewfastscroller.RecyclerViewFastScroller
 import org.fossify.commons.adapters.MyRecyclerViewListAdapter
+import org.fossify.commons.extensions.adjustAlpha
 import org.fossify.commons.extensions.applyColorFilter
+import org.fossify.commons.extensions.beGone
 import org.fossify.commons.extensions.beVisibleIf
 import org.fossify.commons.extensions.formatDateOrTime
 import org.fossify.commons.extensions.getContrastColor
@@ -26,7 +27,7 @@ import org.fossify.commons.helpers.FontHelper
 import org.fossify.commons.helpers.SimpleContactsHelper
 import org.fossify.commons.helpers.ensureBackgroundThread
 import org.fossify.commons.views.MyRecyclerView
-import org.fossify.messages.R
+import org.fossify.messages.activities.MainActivity
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.databinding.ItemConversationBinding
 import org.fossify.messages.extensions.config
@@ -172,6 +173,15 @@ abstract class BaseConversationsAdapter(
     private fun setupView(view: View, conversation: Conversation) {
         ItemConversationBinding.bind(view).apply {
             root.setupViewBackground(activity)
+
+            val tintColor = (activity as? MainActivity)?.getConversationRowTintColor(conversation)
+            if (tintColor == null) {
+                conversationTintOverlay.beGone()
+            } else {
+                conversationTintOverlay.setBackgroundColor(tintColor.adjustAlpha(0.12f))
+                conversationTintOverlay.beVisibleIf(true)
+            }
+
             val smsDraft = drafts[conversation.threadId]
             draftIndicator.beVisibleIf(!smsDraft.isNullOrEmpty())
             draftIndicator.setTextColor(properPrimaryColor)
@@ -246,6 +256,21 @@ abstract class BaseConversationsAdapter(
         }
     }
 
+    private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
+        view.apply {
+            beVisibleIf(isUnread)
+            if (isUnread) {
+                text = when {
+                    count > MAX_UNREAD_BADGE_COUNT -> "$MAX_UNREAD_BADGE_COUNT+"
+                    count == 0 -> ""
+                    else -> count.toString()
+                }
+                setTextColor(properPrimaryColor.getContrastColor())
+                background?.applyColorFilter(properPrimaryColor)
+            }
+        }
+    }
+
     private fun normalizeCategoryKey(name: String): String {
         return name.trim().lowercase(Locale.ROOT)
     }
@@ -260,9 +285,19 @@ abstract class BaseConversationsAdapter(
 
     private fun renderCategoryChips(container: LinearLayout, names: List<String>) {
         container.removeAllViews()
-        val visibleNames = names.take(MAX_VISIBLE_CATEGORY_CHIPS)
+        // Filter out any category names that no longer exist in the DB so deleted categories
+        // don't continue to appear in the conversation list until DB rows are reconciled.
+        val existingCategoryKeys = categoryColors.keys
+
+        val visibleNames = names
+            .filter { name -> existingCategoryKeys.isEmpty() || existingCategoryKeys.contains(normalizeCategoryKey(name)) }
+            .take(MAX_VISIBLE_CATEGORY_CHIPS)
+
         visibleNames.forEach { name ->
-            val color = categoryColors[normalizeCategoryKey(name)] ?: properPrimaryColor
+            android.util.Log.d("CategoryDebug", "renderCategoryChips: adding chip for '$name'")
+            val key = normalizeCategoryKey(name)
+            val color = categoryColors[key] ?: properPrimaryColor
+
             container.addView(createCategoryChip(name, color))
         }
 
@@ -283,10 +318,33 @@ abstract class BaseConversationsAdapter(
             isSingleLine = true
             ellipsize = TextUtils.TruncateAt.END
             setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-            setTextColor(color.getContrastColor())
+            // Make chip background a light variant and use a colored stroke so it visually matches
+            // the neutral "SuggestionChip" style used in Compose
             setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 0.7f)
-            background = AppCompatResources.getDrawable(activity, R.drawable.chip_rounded)
-            backgroundTintList = ColorStateList.valueOf(color)
+
+            // Lighten the color for the background (mix with white)
+            fun lighten(c: Int, factor: Float): Int {
+                val a = (c shr 24) and 0xff
+                val r = (c shr 16) and 0xff
+                val g = (c shr 8) and 0xff
+                val b = c and 0xff
+                val nr = (r + ((255 - r) * factor)).toInt().coerceIn(0, 255)
+                val ng = (g + ((255 - g) * factor)).toInt().coerceIn(0, 255)
+                val nb = (b + ((255 - b) * factor)).toInt().coerceIn(0, 255)
+                return (a shl 24) or (nr shl 16) or (ng shl 8) or nb
+            }
+
+            val backgroundColor = lighten(color, 0.82f)
+            val strokeWidth = (1.dp)
+            val drawable = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 12.dp.toFloat()
+                setColor(backgroundColor)
+                setStroke(strokeWidth, color)
+            }
+            background = drawable
+            // Use a readable contrast color for the label
+            setTextColor(color.getContrastColor())
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -302,21 +360,6 @@ abstract class BaseConversationsAdapter(
             toFloat(),
             activity.resources.displayMetrics
         ).toInt()
-
-    private fun setupBadgeCount(view: TextView, isUnread: Boolean, count: Int) {
-        view.apply {
-            beVisibleIf(isUnread)
-            if (isUnread) {
-                text = when {
-                    count > MAX_UNREAD_BADGE_COUNT -> "$MAX_UNREAD_BADGE_COUNT+"
-                    count == 0 -> ""
-                    else -> count.toString()
-                }
-                setTextColor(properPrimaryColor.getContrastColor())
-                background?.applyColorFilter(properPrimaryColor)
-            }
-        }
-    }
 
     override fun onChange(position: Int) = currentList.getOrNull(position)?.title ?: ""
 

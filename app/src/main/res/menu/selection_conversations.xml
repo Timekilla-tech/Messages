@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/cab_archive"
+        android:icon="@drawable/ic_archive_vector"
+        android:title="@string/archive"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/cab_set_category"
+        android:icon="@drawable/ic_filter_list_vector"
+        android:title="@string/set_category"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/cab_delete"
+        android:icon="@drawable/ic_delete_vector"
+        android:title="@string/delete"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/cab_mark_as_read"
+        android:icon="@drawable/ic_check_double_vector"
+        android:title="@string/mark_as_read"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/cab_pin_conversation"
+        android:icon="@drawable/ic_pin_vector"
+        android:title="@string/pin_conversation"
+        app:showAsAction="ifRoom" />
+</menu>

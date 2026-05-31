@@ -53,11 +53,17 @@ const val SAVED_VIEWS_JSON = "saved_views_json"
 const val LAST_SAVED_VIEW_ID = "last_saved_view_id"
 const val INBOX_SWIPE_START_ACTION = "inbox_swipe_start_action"
 const val INBOX_SWIPE_END_ACTION = "inbox_swipe_end_action"
+const val SCREEN_VIEW_MODE = "screen_view_mode"
+
 const val INBOX_SWIPE_ACTION_NONE = 0
 const val INBOX_SWIPE_ACTION_ARCHIVE = 1
 const val INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS = 2
 const val INBOX_SWIPE_ACTION_DELETE = 3
 const val INBOX_SWIPE_ACTION_BLOCK = 4
+
+const val SCREEN_VIEW_MODE_AUTO = 0
+const val SCREEN_VIEW_MODE_SINGLE = 1
+const val SCREEN_VIEW_MODE_TWO_PANE = 2
 
 private const val PATH = "org.fossify.org.fossify.messages.action."
 const val MARK_AS_READ = PATH + "mark_as_read"
@@ -111,11 +117,31 @@ const val BLOCKED_KEYWORDS_EXPORT_DELIMITER = ","
 const val BLOCKED_KEYWORDS_EXPORT_EXTENSION = ".txt"
 
 fun refreshMessages() {
-    EventBus.getDefault().post(Events.RefreshMessages())
+    try {
+        val bus = EventBus.getDefault()
+        if (bus.hasSubscriberForEvent(Events.RefreshMessages::class.java)) {
+            bus.post(Events.RefreshMessages())
+        } else {
+            android.util.Log.d("EventBus", "skip posting RefreshMessages - no subscribers")
+        }
+    } catch (e: Exception) {
+        // Defensive: don't crash callers if EventBus misbehaves
+        e.printStackTrace()
+    }
 }
 
 fun refreshConversations() {
-    EventBus.getDefault().post(Events.RefreshConversations())
+    try {
+        val bus = EventBus.getDefault()
+        if (bus.hasSubscriberForEvent(Events.RefreshConversations::class.java)) {
+            bus.post(Events.RefreshConversations())
+        } else {
+            android.util.Log.d("EventBus", "skip posting RefreshConversations - no subscribers")
+        }
+    } catch (e: Exception) {
+        // Defensive: don't crash callers if EventBus misbehaves
+        e.printStackTrace()
+    }
 }
 
 /** Not to be used with real messages persisted in the telephony db. This is for internal use only (e.g. scheduled messages, notification ids etc). */

@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_launcher_name">Messages_debug</string>
+    <string name="app_launcher_name">Мессеж_debug</string>
+    <string name="color_blue">Цэнхэр</string>
+    <string name="color_green">Ногоон</string>
+    <string name="color_orange">Улбар шар</string>
+    <string name="color_red">Улаан</string>
+    <string name="color_purple">Нил ягаан</string>
+    <string name="color_teal">Цэнхэр-ногоон</string>
+    <string name="color_pink">Ягаан</string>
+    <string name="color_indigo">Индиго</string>
+    <string name="color_brown">Бор</string>
+    <string name="color_gray">Саарал</string>
 </resources>

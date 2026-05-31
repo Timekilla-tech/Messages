@@ -359,6 +359,7 @@ class ThreadAdapter(
         scrollPosition: Int = -1,
         smoothScroll: Boolean = false
     ) {
+        updateCategoryColors()
         val latestMessages = newMessages.toMutableList()
         submitList(latestMessages) {
             if (scrollPosition != -1) {
@@ -573,7 +574,9 @@ class ThreadAdapter(
             return null
         }
 
-        return categoryColors[normalizeCategoryKey(categoryName)]
+        val key = normalizeCategoryKey(categoryName)
+        // Fast path: cached
+        return categoryColors[key]
     }
 
     private fun getAccessibleBubbleColors(baseColor: Int): Pair<Int, Int> {

@@ -10,13 +10,15 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.provider.Telephony
 import android.text.TextUtils
-import android.widget.EditText
 import android.view.Menu
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.view.updatePadding
@@ -82,6 +84,8 @@ import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_BLOCK
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_DELETE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_NONE
 import org.fossify.messages.helpers.INBOX_SWIPE_ACTION_TOGGLE_READ_STATUS
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_SINGLE
+import org.fossify.messages.helpers.SCREEN_VIEW_MODE_TWO_PANE
 import org.fossify.messages.helpers.SEARCHED_MESSAGE_ID
 import org.fossify.messages.helpers.SavedViewsStore
 import org.fossify.messages.helpers.THREAD_ID
@@ -93,6 +97,11 @@ import org.fossify.messages.models.Message
 import org.fossify.messages.models.SavedView
 import org.fossify.messages.models.SavedViewConfig
 import org.fossify.messages.models.SearchResult
+import androidx.lifecycle.lifecycleScope
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import androidx.window.layout.WindowLayoutInfo
+import kotlinx.coroutines.launch
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -101,7 +110,8 @@ import java.util.Locale
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
 
-    private val MAKE_DEFAULT_APP_REQUEST = 1
+    private val SAVED_SCROLL_POSITION = "saved_scroll_position"
+    private val SAVED_SEARCH_TEXT = "saved_search_text"
 
     private var storedTextColor = 0
     private var storedFontSize = 0
@@ -110,22 +120,52 @@ class MainActivity : SimpleActivity() {
     private var activeSavedView = SavedView.mainView()
     private var conversationsBaseBottomPadding = 0
     private var bus: EventBus? = null
-    private val savedViewsStore by lazy { SavedViewsStore(config) }
-    private val savedViewMenuIdOffset = 20_000
-    private val savedViewIconOptions = listOf(
-        SavedViewIconOption(SavedView.MAIN_VIEW_ICON, R.string.view_icon_home, R.drawable.ic_home_vector),
-        SavedViewIconOption(SavedView.DEFAULT_CUSTOM_VIEW_ICON, R.string.view_icon_filter, R.drawable.ic_filter_list_vector),
-        SavedViewIconOption("ic_archive_vector", R.string.view_icon_archive, R.drawable.ic_archive_vector),
-        SavedViewIconOption("ic_calendar_month_vector", R.string.view_icon_schedule, R.drawable.ic_calendar_month_vector),
-        SavedViewIconOption("ic_image_vector", R.string.view_icon_image, R.drawable.ic_image_vector),
-        SavedViewIconOption("ic_music_vector", R.string.view_icon_music, R.drawable.ic_music_vector),
-        SavedViewIconOption("ic_pin_vector", R.string.view_icon_pin, R.drawable.ic_pin_vector),
-    )
     private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
     private var inboxSwipeHelper: ItemTouchHelper? = null
+    val savedViewsStore by lazy { SavedViewsStore(config) }
+    private val savedViewMenuIdOffset = 20_000
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
+    private val defaultAppLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            askPermissions()
+        } else {
+            finish()
+        }
+    }
+
+    // Two-pane state (runtime adaptive using WindowManager / androidx.window)
+    private var isTwoPaneMode: Boolean = false
+    private var detailFragment: ConversationDetailFragment? = null
+    private var lastWindowLayoutInfo: WindowLayoutInfo? = null
+
+    private fun onWindowLayoutInfoChanged(info: WindowLayoutInfo) {
+        lastWindowLayoutInfo = info
+        updateTwoPaneMode()
+    }
+
+    private fun updateTwoPaneMode() {
+        val detailContainerExists = findViewById<android.view.View?>(R.id.thread_detail_container) != null
+        val foldingFeature = lastWindowLayoutInfo
+            ?.displayFeatures
+            ?.filterIsInstance<FoldingFeature>()
+            ?.firstOrNull()
+        val hasSeparatingFold = foldingFeature?.isSeparating == true
+
+        val shouldBeTwoPane = when (config.screenViewMode) {
+            SCREEN_VIEW_MODE_SINGLE -> false
+            SCREEN_VIEW_MODE_TWO_PANE -> detailContainerExists
+            else -> detailContainerExists || hasSeparatingFold
+        }
+
+        if (shouldBeTwoPane != isTwoPaneMode) {
+            isTwoPaneMode = shouldBeTwoPane
+        }
+
+        val detailContainer = findViewById<android.view.View?>(R.id.thread_detail_container)
+        detailContainer?.visibility = if (isTwoPaneMode) android.view.View.VISIBLE else android.view.View.GONE
+    }
     @SuppressLint("InlinedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,6 +180,23 @@ class MainActivity : SimpleActivity() {
         binding.conversationsList.post {
             conversationsBaseBottomPadding = binding.conversationsList.paddingBottom
             setupSavedViewsBottomBar()
+            setupSelectionBottomBar()
+            
+            // Restore scroll position if it was saved (e.g., during fold/unfold)
+            savedInstanceState?.getInt(SAVED_SCROLL_POSITION, -1)?.let { position ->
+                if (position >= 0) {
+                    binding.conversationsList.post {
+                        binding.conversationsList.scrollToPosition(position)
+                    }
+                }
+            }
+        }
+
+        // Restore search text if it was saved
+        savedInstanceState?.getString(SAVED_SEARCH_TEXT)?.let {
+            if (it.isNotEmpty()) {
+                lastSearchedText = it
+            }
         }
 
         checkAndDeleteOldRecycleBinMessages()
@@ -150,12 +207,27 @@ class MainActivity : SimpleActivity() {
         if (checkAppSideloading()) {
             return
         }
+
+        updateTwoPaneMode()
+
+        // Setup window layout tracking to adapt to foldable / large screens at runtime
+        try {
+            val tracker = WindowInfoTracker.getOrCreate(this)
+            lifecycleScope.launch {
+                tracker.windowLayoutInfo(this@MainActivity).collect { info ->
+                    onWindowLayoutInfoChanged(info)
+                }
+            }
+        } catch (_: Exception) {
+            // Window manager may not be available on older platforms - ignore silently
+        }
     }
 
     override fun onResume() {
         super.onResume()
         refreshActiveSavedViewState()
         updateMenuColors()
+        updateTwoPaneMode()
 
         getOrCreateConversationsAdapter().apply {
             if (storedTextColor != getProperTextColor()) {
@@ -203,7 +275,6 @@ class MainActivity : SimpleActivity() {
 
     private fun setupOptionsMenu() {
         binding.mainMenu.requireToolbar().inflateMenu(R.menu.menu_main)
-        binding.mainMenu.toggleHideOnScroll(true)
         binding.mainMenu.setupMenu()
 
         binding.mainMenu.onSearchClosedListener = {
@@ -252,18 +323,57 @@ class MainActivity : SimpleActivity() {
 
     private fun setupSavedViewsBottomBar() {
         val bar = binding.savedViewsBottomBar
+        bar.setBackgroundColor(getProperBackgroundColor())
+        if (binding.selectionBottomBar?.visibility == android.view.View.GONE) {
+            bar.beVisible()
+        } else {
+            bar.beGone()
+        }
+
         val views = savedViewsStore.getViews()
         val menu = bar.menu
         menu.clear()
 
         views.forEachIndexed { index, view ->
-            menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
-                .setIcon(resolveSavedViewIconRes(view))
+            val menuItem = menu.add(Menu.NONE, savedViewMenuIdOffset + index, index, view.title)
+            
+            val activeColor = view.config.color ?: getProperPrimaryColor()
+            val inactiveColor = (view.config.color ?: getProperTextColor()).adjustAlpha(0.3f)
+
+            val stateListDrawable = StateListDrawable().apply {
+                val openIconRes = if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_folder_open
+                val closedIconRes = if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_folder
+
+                val activeIcon = AppCompatResources.getDrawable(this@MainActivity, openIconRes)?.mutate()
+                activeIcon?.let {
+                    DrawableCompat.setTint(it, activeColor)
+                    addState(intArrayOf(android.R.attr.state_checked), it)
+                    addState(intArrayOf(android.R.attr.state_selected), it)
+                }
+
+                val inactiveIcon = AppCompatResources.getDrawable(this@MainActivity, closedIconRes)?.mutate()
+                inactiveIcon?.let {
+                    DrawableCompat.setTint(it, inactiveColor)
+                    addState(intArrayOf(), it)
+                }
+            }
+            menuItem.icon = stateListDrawable
         }
 
-        val selectedIndex = views.indexOfFirst { it.id == activeSavedView.id }.takeIf { it >= 0 } ?: 0
+        // Disable framework tinting to use our manual state list colors
+        bar.itemIconTintList = null
+
+        val activeId = activeSavedView.id
+        val selectedIndex = views.indexOfFirst { it.id == activeId }.takeIf { it >= 0 } ?: 0
         bar.setOnItemSelectedListener(null)
         bar.selectedItemId = savedViewMenuIdOffset + selectedIndex
+
+        // Ensure text color also reflects the selection state
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf(android.R.attr.state_selected), intArrayOf())
+        val textColors = intArrayOf(getProperPrimaryColor(), getProperPrimaryColor(), getProperTextColor().adjustAlpha(0.6f))
+        bar.itemTextColor = android.content.res.ColorStateList(states, textColors)
+        bar.itemRippleColor = android.content.res.ColorStateList.valueOf(getProperPrimaryColor().adjustAlpha(0.12f))
+
         bar.setOnItemSelectedListener { item ->
             val viewIndex = item.itemId - savedViewMenuIdOffset
             val selectedView = views.getOrNull(viewIndex) ?: return@setOnItemSelectedListener false
@@ -271,19 +381,119 @@ class MainActivity : SimpleActivity() {
             true
         }
 
-        bar.post { updateBottomBarDependentPadding() }
+        bar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomBarDependentPadding()
+        }
+        bar.post {
+            try {
+                val menuView = bar.getChildAt(0) as? android.view.ViewGroup
+                for (i in 0 until (menuView?.childCount ?: 0)) {
+                    val itemView = menuView?.getChildAt(i)
+                    itemView?.setOnLongClickListener {
+                        val clickedView = views.getOrNull(i)
+                        if (clickedView != null) {
+                            if (clickedView.id == SavedView.MAIN_VIEW_ID) {
+                                showCreateSavedViewDialog()
+                            } else {
+                                showEditSavedViewDialog(clickedView)
+                            }
+                            true
+                        } else false
+                    }
+                }
+            } catch (_: Exception) {}
+            updateBottomBarDependentPadding()
+        }
+    }
+
+    private fun setupSelectionBottomBar() {
+        val selectionBottomBar = binding.selectionBottomBar ?: return
+        selectionBottomBar.setBackgroundColor(getProperBackgroundColor())
+
+        selectionBottomBar.setOnItemSelectedListener { item ->
+            getOrCreateConversationsAdapter().actionItemPressed(item.itemId)
+            false
+        }
+
+        selectionBottomBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomBarDependentPadding()
+        }
+    }
+
+    fun updateSelectionBottomBar(selectedCount: Int) {
+        val isSelecting = selectedCount > 0
+        binding.selectionBottomBar?.beVisibleIf(isSelecting)
+        binding.savedViewsBottomBar.beGoneIf(isSelecting)
+        
+        if (isSelecting) {
+            val menu = binding.selectionBottomBar?.menu ?: return
+            val adapter = getOrCreateConversationsAdapter()
+            val selectedItems = adapter.getSelectedConversations()
+            
+            val archiveAvailable = config.isArchiveAvailable
+            val pinnedConversations = config.pinnedConversations
+
+            menu.findItem(R.id.cab_archive)?.isVisible = archiveAvailable
+            
+            val hasUnread = selectedItems.any { !it.read }
+            val readItem = menu.findItem(R.id.cab_mark_as_read)
+            if (readItem != null) {
+                if (hasUnread) {
+                    readItem.title = getString(R.string.mark_as_read)
+                    readItem.setIcon(R.drawable.ic_check_double_vector)
+                } else {
+                    readItem.title = getString(R.string.mark_as_unread)
+                    readItem.setIcon(R.drawable.ic_check_double_vector) 
+                }
+            }
+
+            val allPinned = selectedItems.all { pinnedConversations.contains(it.threadId.toString()) }
+            val pinItem = menu.findItem(R.id.cab_pin_conversation)
+            if (pinItem != null) {
+                if (allPinned) {
+                    pinItem.title = getString(R.string.unpin_conversation)
+                    pinItem.setIcon(R.drawable.ic_unpin_vector)
+                } else {
+                    pinItem.title = getString(R.string.pin_conversation)
+                    pinItem.setIcon(R.drawable.ic_pin_vector)
+                }
+            }
+        }
     }
 
     private fun updateBottomBarDependentPadding() {
-        val barHeight = binding.savedViewsBottomBar.height
-        if (conversationsBaseBottomPadding != 0) {
-            binding.conversationsList.updatePadding(bottom = conversationsBaseBottomPadding + barHeight)
+        val selectionBottomBar = binding.selectionBottomBar
+        val barHeight = if (selectionBottomBar?.visibility == android.view.View.VISIBLE) {
+            selectionBottomBar.height
+        } else {
+            binding.savedViewsBottomBar.height
+        }
+        if (barHeight == 0) {
+            return
         }
 
-        val fabLayoutParams = binding.conversationsFab.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
-        val defaultFabMargin = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.activity_margin)
-        fabLayoutParams.bottomMargin = defaultFabMargin + barHeight
-        binding.conversationsFab.layoutParams = fabLayoutParams
+        val updateLogic = {
+            if (conversationsBaseBottomPadding != 0) {
+                val newPadding = conversationsBaseBottomPadding + barHeight
+                if (binding.conversationsList.paddingBottom != newPadding) {
+                    binding.conversationsList.updatePadding(bottom = newPadding)
+                }
+            }
+
+            val fabLayoutParams = binding.conversationsFab.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
+            val defaultFabMargin = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.activity_margin)
+            val newBottomMargin = defaultFabMargin + barHeight
+            if (fabLayoutParams.bottomMargin != newBottomMargin) {
+                fabLayoutParams.bottomMargin = newBottomMargin
+                binding.conversationsFab.layoutParams = fabLayoutParams
+            }
+        }
+
+        if (binding.root.isInLayout) {
+            binding.root.post { updateLogic() }
+        } else {
+            updateLogic()
+        }
     }
 
     private fun switchToSavedView(viewId: String) {
@@ -292,33 +502,6 @@ class MainActivity : SimpleActivity() {
         reloadConversationsForCurrentFilter()
     }
 
-    private fun resolveSavedViewIconRes(view: SavedView): Int {
-        val iconName = view.iconResName?.trim().takeUnless { it.isNullOrEmpty() }
-            ?: if (view.id == SavedView.MAIN_VIEW_ID) SavedView.MAIN_VIEW_ICON else SavedView.DEFAULT_CUSTOM_VIEW_ICON
-
-        val mappedRes = savedViewIconOptions.firstOrNull { it.iconResName == iconName }?.drawableRes
-        if (mappedRes != null) {
-            return mappedRes
-        }
-
-        val dynamicRes = resources.getIdentifier(iconName, "drawable", packageName)
-        if (dynamicRes != 0) {
-            return dynamicRes
-        }
-
-        return if (view.id == SavedView.MAIN_VIEW_ID) R.drawable.ic_home_vector else R.drawable.ic_filter_list_vector
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
-        super.onActivityResult(requestCode, resultCode, resultData)
-        if (requestCode == MAKE_DEFAULT_APP_REQUEST) {
-            if (resultCode == RESULT_OK) {
-                askPermissions()
-            } else {
-                finish()
-            }
-        }
-    }
 
     private fun storeStateVariables() {
         storedTextColor = getProperTextColor()
@@ -337,7 +520,7 @@ class MainActivity : SimpleActivity() {
                     askPermissions()
                 } else {
                     val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS)
-                    startActivityForResult(intent, MAKE_DEFAULT_APP_REQUEST)
+                    defaultAppLauncher.launch(intent)
                 }
             } else {
                 toast(org.fossify.commons.R.string.unknown_error_occurred)
@@ -349,7 +532,7 @@ class MainActivity : SimpleActivity() {
             } else {
                 val intent = Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT)
                 intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, packageName)
-                startActivityForResult(intent, MAKE_DEFAULT_APP_REQUEST)
+                defaultAppLauncher.launch(intent)
             }
         }
     }
@@ -725,17 +908,133 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun showCreateSavedViewDialog() {
-        val baseConfig = activeSavedView.config
-        showSavedViewNameDialog(
-            title = getString(R.string.create_view),
-            initialValue = "",
-            confirmLabel = getString(org.fossify.commons.R.string.ok),
-        ) { viewName ->
-            showSavedViewIconPickerDialog(SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val createdView = savedViewsStore.createView(viewName, baseConfig, iconResName)
-                switchToSavedView(createdView.id)
+        if (savedViewsStore.getViews().size >= 5) {
+            toast("Folder limit (4 custom folders) reached")
+            return
+        }
+        showSavedViewEditorDialog(null)
+    }
+
+    private fun showEditSavedViewDialog(viewToEdit: SavedView = activeSavedView) {
+        if (!viewToEdit.isEditable || viewToEdit.id == SavedView.MAIN_VIEW_ID) {
+            toast(R.string.main_view_immutable)
+            return
+        }
+        showSavedViewEditorDialog(viewToEdit)
+    }
+
+    private fun showSavedViewEditorDialog(viewToEdit: SavedView?) {
+        val views = savedViewsStore.getViews()
+        val isEditing = viewToEdit != null
+        val title = if (isEditing) R.string.edit_view else R.string.create_view
+        
+        val binding = org.fossify.messages.databinding.DialogAddOrEditFolderBinding.inflate(layoutInflater)
+        val initialName = viewToEdit?.title ?: ""
+        binding.folderName.setText(initialName)
+        binding.folderName.setSelection(initialName.length)
+
+        // Setup position spinner
+        val maxPos = if (isEditing) views.size - 1 else views.size
+        val positions = (0..maxPos).map { it.toString() }
+        val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_item, positions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.folderPositionSpinner.adapter = adapter
+        
+        val initialPos = viewToEdit?.position ?: views.size
+        binding.folderPositionSpinner.setSelection(initialPos.coerceAtMost(maxPos))
+
+        // Setup color picker
+        var selectedColor = viewToEdit?.config?.color
+        val colorOptions = listOf(
+            null,
+            0xFF2196F3.toInt(),
+            0xFF4CAF50.toInt(),
+            0xFFFF9800.toInt(),
+            0xFFF44336.toInt(),
+            0xFF9C27B0.toInt(),
+            0xFF009688.toInt(),
+            0xFFE91E63.toInt()
+        )
+
+        fun setupColorOptions() {
+            binding.folderColorOptionsLayout.removeAllViews()
+            val circleSize = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.list_icon_size_small)
+            val margin = resources.getDimensionPixelSize(org.fossify.commons.R.dimen.small_margin)
+            
+            colorOptions.forEach { color ->
+                val view = android.view.View(this).apply {
+                    layoutParams = android.widget.LinearLayout.LayoutParams(circleSize, circleSize).apply {
+                        setMargins(0, 0, margin, 0)
+                    }
+                    val displayColor = color ?: getProperPrimaryColor()
+                    background = AppCompatResources.getDrawable(this@MainActivity, org.fossify.commons.R.drawable.circle_background)?.mutate()?.apply {
+                        DrawableCompat.setTint(this, displayColor)
+                    }
+                    
+                    if (selectedColor == color) {
+                        alpha = 1.0f
+                        elevation = 4f
+                    } else {
+                        alpha = 0.4f
+                        elevation = 0f
+                    }
+
+                    setOnClickListener {
+                        selectedColor = color
+                        setupColorOptions()
+                    }
+                }
+                binding.folderColorOptionsLayout.addView(view)
             }
         }
+
+        setupColorOptions()
+
+        if (isEditing) {
+            binding.folderDelete.beVisible()
+            binding.folderDelete.setTextColor(0xFFF44336.toInt())
+        }
+
+        val editorDialog = AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(binding.root)
+            .setPositiveButton(org.fossify.commons.R.string.ok, null)
+            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
+            .create()
+
+        if (isEditing) {
+            binding.folderDelete.setOnClickListener {
+                showDeleteSavedViewConfirmation(viewToEdit!!, editorDialog)
+            }
+        }
+
+        editorDialog.apply {
+            show()
+            getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val name = binding.folderName.text?.toString()?.trim().orEmpty()
+                    if (name.isEmpty()) {
+                        toast(R.string.view_name_cannot_be_empty)
+                        return@setOnClickListener
+                    }
+
+                    val position = binding.folderPositionSpinner.selectedItemPosition
+                    
+                    if (isEditing) {
+                        val updatedView = viewToEdit!!.copy(
+                            title = name,
+                            position = position,
+                            config = viewToEdit.config.copy(color = selectedColor)
+                        )
+                        savedViewsStore.upsertView(updatedView)
+                        switchToSavedView(updatedView.id)
+                    } else {
+                        val config = SavedViewConfig(color = selectedColor, tags = emptySet())
+                        val createdView = savedViewsStore.createView(name, config, "", position)
+                        switchToSavedView(createdView.id)
+                    }
+                    dismiss()
+                }
+            }
     }
 
     private fun showCurrentSavedViewActionsDialog() {
@@ -761,108 +1060,63 @@ class MainActivity : SimpleActivity() {
             .show()
     }
 
-    private fun showEditSavedViewDialog() {
-        showSavedViewNameDialog(
-            title = getString(R.string.edit_view),
-            initialValue = activeSavedView.title,
-            confirmLabel = getString(org.fossify.commons.R.string.ok),
-        ) { updatedName ->
-            showSavedViewIconPickerDialog(activeSavedView.iconResName ?: SavedView.DEFAULT_CUSTOM_VIEW_ICON) { iconResName ->
-                val updatedView = activeSavedView.copy(title = updatedName, iconResName = iconResName)
-                savedViewsStore.upsertView(updatedView)
-                switchToSavedView(updatedView.id)
-            }
-        }
-    }
-
-    private fun showDeleteSavedViewConfirmation() {
-        if (!activeSavedView.isEditable || activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+    private fun showDeleteSavedViewConfirmation(viewToDelete: SavedView = activeSavedView, parentDialogToDismiss: AlertDialog? = null) {
+        if (!viewToDelete.isEditable || viewToDelete.id == SavedView.MAIN_VIEW_ID) {
             toast(R.string.main_view_immutable)
             return
         }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.delete_view)
-            .setMessage(getString(R.string.delete_view_confirmation, activeSavedView.title))
+            .setMessage(getString(R.string.delete_view_confirmation, viewToDelete.title))
             .setPositiveButton(org.fossify.commons.R.string.ok) { _, _ ->
-                val deletedId = activeSavedView.id
+                val deletedId = viewToDelete.id
                 val deleted = savedViewsStore.deleteView(deletedId)
                 if (!deleted) {
                     return@setPositiveButton
                 }
+                parentDialogToDismiss?.dismiss()
                 switchToSavedView(SavedView.MAIN_VIEW_ID)
             }
             .setNegativeButton(org.fossify.commons.R.string.cancel, null)
             .show()
     }
 
-    private fun showSavedViewIconPickerDialog(currentIconResName: String, onConfirm: (String) -> Unit) {
-        val iconNames = savedViewIconOptions.map { getString(it.titleRes) }
-        val selectedIndex = savedViewIconOptions.indexOfFirst {
-            it.iconResName.equals(currentIconResName, ignoreCase = true)
-        }.takeIf { it >= 0 } ?: 0
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.choose_view_icon)
-            .setSingleChoiceItems(iconNames.toTypedArray(), selectedIndex) { dialog, which ->
-                onConfirm(savedViewIconOptions[which].iconResName)
-                dialog.dismiss()
-            }
-            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
-            .show()
-    }
-
-    private fun showSavedViewNameDialog(
-        title: String,
-        initialValue: String,
-        confirmLabel: String,
-        onConfirm: (String) -> Unit,
-    ) {
-        val input = EditText(this).apply {
-            setText(initialValue)
-            setSelection(text?.length ?: 0)
-            hint = getString(R.string.enter_view_name)
-            setSingleLine(true)
-        }
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(title)
-            .setView(input)
-            .setPositiveButton(confirmLabel, null)
-            .setNegativeButton(org.fossify.commons.R.string.cancel, null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val value = input.text?.toString()?.trim().orEmpty()
-                if (value.isEmpty()) {
-                    toast(R.string.view_name_cannot_be_empty)
-                    return@setOnClickListener
-                }
-
-                onConfirm(value)
-                dialog.dismiss()
-            }
-        }
-
-        dialog.show()
-    }
-
     private fun reloadConversationsForCurrentFilter() {
         ensureBackgroundThread {
-            val conversations = try {
-                conversationsDB.getNonArchived().toMutableList() as ArrayList<Conversation>
+            val nonArchived = try {
+                conversationsDB.getNonArchived()
             } catch (_: Exception) {
-                ArrayList()
+                emptyList()
+            }
+            
+            val archived = try {
+                conversationsDB.getAllArchived()
+            } catch (_: Exception) {
+                emptyList()
             }
 
+            val all = (nonArchived + archived).toMutableList() as ArrayList<Conversation>
+
             runOnUiThread {
-                setupConversations(conversations)
+                setupConversations(all)
             }
         }
     }
 
     private fun conversationMatchesActiveView(conversation: Conversation): Boolean {
+        val activeId = activeSavedView.id
+        if (activeId == SavedView.MAIN_VIEW_ID) {
+            return true
+        }
+
+        // 1. Manual Folder Assignment check
+        val manualFolderId = config.getConversationFolder(conversation.threadId)
+        if (manualFolderId != null) {
+            return manualFolderId == activeId
+        }
+
+        // 2. Filter-based matching
         val viewConfig = activeSavedView.config
 
         if (viewConfig.unreadOnly && conversation.read) {
@@ -879,7 +1133,7 @@ class MainActivity : SimpleActivity() {
             .toSet()
 
         if (selectedTags.isEmpty()) {
-            return true
+            return false
         }
 
         val conversationTags = conversation.category
@@ -893,6 +1147,73 @@ class MainActivity : SimpleActivity() {
         } else {
             selectedTags.any { it in conversationTags }
         }
+    }
+
+    private fun conversationMatchesSavedFolder(view: SavedView, conversation: Conversation): Boolean {
+        if (view.id == SavedView.MAIN_VIEW_ID) {
+            return false
+        }
+
+        val selectedTags = view.config.tags
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        if (selectedTags.isEmpty()) {
+            return false
+        }
+
+        val conversationTags = conversation.category
+            .split(",")
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+        return if (view.config.matchAllTags) {
+            selectedTags.all { it in conversationTags }
+        } else {
+            selectedTags.any { it in conversationTags }
+        }
+    }
+
+    private fun getPrimaryFolderForConversation(conversation: Conversation): SavedView? {
+        val folders = savedViewsStore.getViews()
+        
+        // 1. Check if user manually assigned a folder
+        config.getConversationFolder(conversation.threadId)?.let { folderId ->
+            folders.firstOrNull { it.id == folderId }?.let { return it }
+        }
+
+        // 2. Fallback to containing folders (via tags)
+        val containingFolders = folders.filter { view ->
+            conversationMatchesSavedFolder(view, conversation)
+        }
+
+        if (containingFolders.isEmpty()) {
+            return null
+        }
+
+        config.getLastUsedFolderForConversation(conversation.threadId)?.let { lastUsedId ->
+            containingFolders.firstOrNull { it.id == lastUsedId }?.let { return it }
+        }
+
+        return containingFolders.minByOrNull { it.title.lowercase(Locale.ROOT) }
+    }
+
+    fun getConversationRowTintColor(conversation: Conversation): Int? {
+        if (activeSavedView.id != SavedView.MAIN_VIEW_ID) {
+            return activeSavedView.config.color ?: getProperPrimaryColor()
+        }
+
+        return getPrimaryFolderForConversation(conversation)?.config?.color
+    }
+
+    private fun markConversationFolderAsLastUsed(conversation: Conversation) {
+        if (activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+            return
+        }
+
+        config.setLastUsedFolderForConversation(conversation.threadId, activeSavedView.id)
     }
 
     private fun syncTagFiltersFromActiveView() {
@@ -935,8 +1256,15 @@ class MainActivity : SimpleActivity() {
     private fun showOrHidePlaceholder(show: Boolean) {
         binding.conversationsFastscroller.beGoneIf(show)
         binding.noConversationsPlaceholder.beVisibleIf(show)
-        binding.noConversationsPlaceholder.text = getString(R.string.no_conversations_found)
-        binding.noConversationsPlaceholder2.beVisibleIf(show)
+        
+        val placeholderText = if (activeSavedView.id == SavedView.MAIN_VIEW_ID) {
+            getString(R.string.no_conversations_found)
+        } else {
+            getString(org.fossify.commons.R.string.no_items_found)
+        }
+        
+        binding.noConversationsPlaceholder.text = placeholderText
+        binding.noConversationsPlaceholder2.beVisibleIf(show && activeSavedView.id == SavedView.MAIN_VIEW_ID)
     }
 
     private fun fadeOutSearch() {
@@ -955,11 +1283,27 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun handleConversationClick(any: Any) {
-        Intent(this, ThreadActivity::class.java).apply {
-            val conversation = any as Conversation
-            putExtra(THREAD_ID, conversation.threadId)
-            putExtra(THREAD_TITLE, conversation.title)
-            startActivity(this)
+        val conversation = any as Conversation
+        markConversationFolderAsLastUsed(conversation)
+        if (isTwoPaneMode) {
+            // show conversation detail in right pane when two-pane is active
+            if (detailFragment != null && detailFragment?.isAdded == true) {
+                // Reuse existing fragment and update it
+                detailFragment?.updateThread(conversation.threadId, conversation.title)
+            } else {
+                // Create a new fragment and show it
+                detailFragment = ConversationDetailFragment.newInstance(conversation.threadId, conversation.title)
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.thread_detail_container, detailFragment!!)
+                    .setReorderingAllowed(true)
+                    .commit()
+            }
+        } else {
+            Intent(this, ThreadActivity::class.java).apply {
+                putExtra(THREAD_ID, conversation.threadId)
+                putExtra(THREAD_TITLE, conversation.title)
+                startActivity(this)
+            }
         }
     }
 
@@ -1212,6 +1556,7 @@ class MainActivity : SimpleActivity() {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun refreshConversations(@Suppress("unused") event: Events.RefreshConversations) {
+        android.util.Log.d("CategoryDebug", "MainActivity: received RefreshConversations event -> initMessenger")
         initMessenger()
     }
 
@@ -1221,9 +1566,4 @@ class MainActivity : SimpleActivity() {
         }
     }
 
-    private data class SavedViewIconOption(
-        val iconResName: String,
-        val titleRes: Int,
-        val drawableRes: Int,
-    )
 }

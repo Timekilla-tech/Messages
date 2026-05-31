@@ -37,7 +37,6 @@ class SmsStatusDeliveredReceiver : SendStatusReceiver() {
                     }
 
                     2 -> {
-                        // TODO: Need to check whether SC still trying to deliver the SMS to destination and will send the report again?
                         Sms.STATUS_PENDING
                     }
 

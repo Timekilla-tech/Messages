@@ -12,6 +12,7 @@ data class SavedViewConfig(
     val unreadOnly: Boolean = false,
     val pinnedOnly: Boolean = false,
     val matchAllTags: Boolean = false,
+    val color: Int? = null,
 )
 
 data class SavedView(
