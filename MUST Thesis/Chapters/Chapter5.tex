@@ -1,93 +1,103 @@
 \chapter{Хэрэгжүүлэлт}
 
-\section{Хөгжүүлэлтийн орчин ба Технологийн стек}
-Програм хангамжийн хөгжүүлэлтийг орчин үеийн Android стандарт болон цэвэр кодын зарчимд тулгуурлан гүйцэтгэв.
+\section{Програм хангамжийн хөгжүүлэлт}
+Системийн хэрэгжүүлэлтийг Android стандарт болон цэвэр кодын зарчимд тулгуурлан гүйцэтгэв. Үндсэн интерфейс болон үйлдлүүдийн хэрэгжилтийг дараах хэсгүүдэд хуваан харуулав.
 
-\begin{itemize}
-    \item \textbf{Програмчлалын хэл}: Kotlin (Coroutines, Flow, Extensions).
-    \item \textbf{Хөгжүүлэлтийн орчин}: Android Studio Jellyfish (2023.3.1) +.
-    \item \textbf{UI Framework}: Jetpack Compose (KeywordManager) болон XML View System.
-    \item \textbf{Өгөгдлийн сан}: Room Persistence Library v13.
-    \item \textbf{Төлвийн удирдлага}: Lifecycle-aware ViewModels, EventBus.
-\end{itemize}
-
-+\section{Хэрэглэгчийн интерфэйсийн хэрэгжүүлэлт}
-+Энэхүү хэсэгт бодит хэрэгжүүлэлтийн UI дэлгэцүүдийг жишээ болгон үзүүлэв.
-+
-+\begin{figure}[H]
-+    \centering
-+    \includegraphics[width=0.6\textwidth]{../Chart/edit_view.jpg}
-+    \caption{Зурвас засварлах дэлгэц}
-+    \label{fig:ui_edit_view}
-+\end{figure}
-+
-+\begin{figure}[H]
-+    \centering
-+    \includegraphics[width=0.6\textwidth]{../Chart/category_edit.jpg}
-+    \caption{Ангиллын тохиргоо хийх дэлгэц}
-+    \label{fig:ui_category_edit}
-+\end{figure}
-+
-+\begin{figure}[H]
-+    \centering
-+    \includegraphics[width=0.6\textwidth]{../Chart/swipe.jpg}
-+    \caption{Шудрах үйлдлийн интерфэйс}
-+    \label{fig:ui_swipe}
-+\end{figure}
-+
-+\begin{figure}[H]
-+    \centering
-+    \includegraphics[width=0.6\textwidth]{../Chart/unfold.png}
-+    \caption{Нугалдаг төхөөрөмжийн хоёр баганат харагдац}
-+    \label{fig:ui_unfold}
-+\end{figure}
-
-\section{Гол алгоритмын хэрэгжүүлэлт}
-Системийн цөм логик болох тогтмол илэрхийллийн шүүлтүүрийн хөдөлгүүрийн ажиллах дарааллыг псевдо кодоор (Зураг \ref{alg:filtering}) харуулав.
+\subsection{Үндсэн интерфейс}
+Хэрэглэгчийн интерфейсийг Material Design 3 стандартын дагуу оновчилж, нэг гараар ашиглахад тохиромжтой доод навигацийн цэс болон харилцан ярианы нэгдсэн харагдацыг хэрэгжүүлсэн.
 
 \begin{figure}[H]
-\begin{lstlisting}[language=Python, caption=Тогтмол илэрхийллийн шүүлтүүрийн алгоритм (Псевдо код)]
-# Зурвас ангилах алгоритм
-def match_category(message, categories):
-    body = message.body.lowercase()
-    sender = message.sender_id
-    
-    for cat in categories:
-        # 1. Энгийн тулхүүр угсийг шалгах (O(n))
-        for word in cat.plain_keywords:
-            if word in body or word in sender:
-                return cat.id
-        
-        # 2. Тогтмол илэрхийллийн загваруудыг шалгах
-        for pattern in cat.patterns:
-            try:
-                if pattern_match(pattern, body) or pattern_match(pattern, sender):
-                    return cat.id
-            except PatternError:
-                continue # Буруу бичигдсэн паттернийг алгасах
-                
-    return DEFAULT_CATEGORY_ID
-\end{lstlisting}
-\label{alg:filtering}
+    \centering
+    \includegraphics[width=0.4\textwidth]{Chart/unfolder_main_screen.png}
+    \caption{Аппликейшны үндсэн дэлгэц}
+    \label{fig:main_screen}
 \end{figure}
 
-\section{Кодын бүтэц ба хэв загвар}
-Төслийн эх кодыг модульчлагдсан (Modular) байдлаар зохион байгуулсан. Үндсэн логикуудыг \texttt{Context} өргөтгөл функцүүд болгон тусгаарласан нь кодыг дахин ашиглах боломжийг нэмэгдүүлсэн.
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/bottom_bar.jpg}
+        \caption{Доод навигацийн цэс}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/all_message_view.jpg}
+        \caption{Нийт харилцан ярианы жагсаалт}
+    \end{minipage}
+\end{figure}
 
-\begin{itemize}
-    \item \textbf{Repository Pattern}: Өгөгдлийн санд хандах үйлдлүүдийг \texttt{CategoryDao} болон \texttt{MessagesDatabase} ашиглан нэгтгэсэн.
-    \item \textbf{Dependency Injection}: Системийн байнгын ажиллагаатай объектуудыг (Database instance) синглтон (Singleton) хэлбэрээр удирдсан.
-    \item \textbf{Observer Pattern}: \texttt{SharedFlow} болон \texttt{EventBus} ашиглан өгөгдөл шинэчлэгдэх үед UI-г бодит хугацаанд (Reactive) шинэчлэх үйлдлийг хэрэгжүүлсэн.
-\end{itemize}
+\subsection{Ангилал ба тогтмол илэрхийллийн хэрэгжилт}
+Зурвасуудыг автоматаар ангилахын тулд тогтмол илэрхийлэл болон түлхүүр үгсийг удирдах модулийг хэрэгжүүлсэн.
 
-\section{AI хэрэгслийн ашиглалт}
-ШУТИС, МХТС-ийн удирдамжийн дагуу төслийн хөгжүүлэлтийн шатанд хиймэл оюуны (AI) дараах хэрэгслүүдийг ашигласан байдлыг тайлагнаж байна.
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/edit_category_panel.jpg}
+        \caption{Ангилал засах самбар}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/edit_category_view.jpg}
+        \caption{Ангиллын тохиргоо}
+    \end{minipage}
+\end{figure}
 
-\begin{itemize}
-    \item \textbf{GitHub Copilot}: Нэг төрлийн үйлдлүүд бүхий Boilerplate кодуудыг бичих болон Unit test-ийн тохиолдол (test cases) боловсруулахад ашигласан.
-    \item \textbf{Google Gemini}: Тогтмол илэрхийллийн шүүлтүүрийн алгоритмын логик алдааг (debugging) олж засварлах болон кодын оновчлол (refactoring) хийхэд туслах хэрэгсэл болгон ашигласан.
-    \item \textbf{Data Generation}: Туршилтад зориулсан 40,000+ мессеж бүхий баазыг үүсгэхдээ AI-ийн тусламжтайгаар хуурамч (Mock) өгөгдлийг бодит мэтээр үүсгэсэн.
-\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{Chart/filter_tag_panel.jpg}
+    \caption{Шүүлтүүр болон шошгоны удирдлагын хэсэг}
+    \label{fig:filter_panel}
+\end{figure}
 
-\section{Нэвтрүүлэлт ба Байршуулалт}
-Програмыг хөгжүүлэлтийн явцад GitHub Actions ашиглан автоматжуулсан байдлаар (CI/CD) тест хийж, APK хувилбарыг үүсгэж байсан. Эцсийн хувилбарыг Google Play Store-ийн удирдамжийн дагуу Target SDK 34'' (Android 14) түвшинд бэлтгэж, бодит төхөөрөмж дээр суулган туршсан.
+\subsection{Хадгалсан харагдац буюу Хавтаслах систем}
+Хэрэглэгч өөрийн хүссэнээр хавтас үүсгэж, харилцан яриаг тусгаарлах боломжийг бүрдүүлсэн. Хавтас бүрт өнгө оноож, өөрийн гэсэн харагдац (Saved View) үүсгэх боломжтой.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/create_folder_panel.jpg}
+        \caption{Шинэ хавтас үүсгэх}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/edit_folder_panel.jpg}
+        \caption{Хавтас засах самбар}
+    \end{minipage}
+\end{figure}
+
+\subsection{Хэрэглэгчийн туршлага ба шудрах үйлдэл}
+Шудрах үйлдлийг хэрэглэгч өөрийн хэрэгцээнд тааруулан тохируулах боломжтой бөгөөд харилцан ярианы доторх харагдацыг илүү цэгцтэй болгосон.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/swipe_choose.jpg}
+        \caption{Шудрах үйлдэл сонгох}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/single_conversation_view.jpg}
+        \caption{Харилцан ярианы дэлгэрэнгүй харагдац}
+    \end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/swipe_left.jpg}
+        \caption{Зүүн тийш шудрах үйлдэл}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{Chart/swipe_right.jpg}
+        \caption{Баруун тийш шудрах үйлдэл}
+    \end{minipage}
+\end{figure}
+
+\section{Хэрэгжүүлэлтийн онцлог}
+Төслийн хүрээнд Jetpack Compose ашиглан динамик интерфейсүүдийг хэрэгжүүлсэн нь системийн уян хатан байдлыг нэмэгдүүлсэн. Мөн өгөгдлийн сангийн шилжилт болон нугалдаг төхөөрөмжийн тасралтгүй байдлыг кодын түвшинд бүрэн шийдсэн.
