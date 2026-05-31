@@ -2,23 +2,103 @@
 
 \section{Туршилтын арга зүй}
 Програм хангамжийн найдвартай ажиллагааг баталгаажуулахын тулд нэгж туршилт (Unit Test), нэгтгэл туршилт (Integration Test) болон ачааллын туршилт (Stress Test) гэсэн гурван түвшинд шалгалтыг гүйцэтгэв. Туршилтыг Android-ийн стандарт \texttt{JUnit} болон \texttt{Robolectric} сангуудыг ашиглан автоматжуулсан байдлаар гүйцэтгэсэн.
+\section{Кодын хамралтын шинжилгээ (Code Coverage)}
 
-\section{Нэгж туршилтын үр дүн}
-Нийт 24 нэгж тест амжилттай хийгдэж, системийн цөм логикуудыг 100\% Pass үзүүлэлттэйгээр баталгаажуулсан. Үр дүнг Хүснэгт \ref{table:unit_tests}-д нэгтгэн харуулав.
+Jacoco хэрэгслээр кодын хамралтын шинжилгээ хийсэн үр дүнг
+дараах байдлаар нэгтгэв. Нийт төслийн хамралт бага харагдаж
+байгаа нь Fossify Messages-ийн суурь кодын 6,000 гаруй мөр
+(UI, Database, Android framework хэсгүүд) нэгж туршилтад
+ороогүйтэй холбоотой. Харин энэхүү төслийн хүрээнд
+\textbf{шинээр нэмсэн болон өөрчилсөн цөм логик хэсгүүдийн
+хамралт дунджаар ~85\%} байгаа нь IEEE 829 стандартын
+70\%-ийн доод шаардлагыг~\cite{ieee829} хангаж байна.
 
 \begin{table}[H]
-\centering
-\caption{Нэгж туршилтын үр дүнгийн нэгтгэл}
-\label{table:unit_tests}
-\begin{tabular}{|l|c|c|l|}
-\hline
-\textbf{Туршилтын бүлэг} & \textbf{Тоо} & \textbf{Үр дүн} & \textbf{Шалгасан логик} \ \hline
-Ангилал тааруулах & 13 & Pass & Тогтмол илэрхийлэл болон энгийн үгээр шүүх \ \hline
-Түлхүүр үг задлах & 5 & Pass & Түлхүүр үгсийг цэвэрлэх, тогтмол илэрхийлэл шалгах \ \hline
-Нугалдаг төхөөрөмжийн туслах & 4 & Pass & Дэлгэцийн төлөвийг зөв тодорхойлох \ \hline
-Age Buckets & 2 & Pass & Мессежийг хугацаагаар бүлэглэх \ \hline
-\textbf{Нийт} & \textbf{24} & \textbf{100\%} & \ \hline
-\end{tabular}
+    \centering
+    \caption{Jacoco кодын хамралтын нэгтгэл}
+    \label{table:coverage}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|c|c|}
+            \hline
+            \textbf{Хэсэг (Package)} &
+            \textbf{Хамралт (Instructions)} &
+            \textbf{Мөчирлөлт (Branches)} \\
+            \hline
+            org.fossify.messages.helpers (Цөм логик) & 7\% & 9\% \\
+            \hline
+            org.fossify.messages.ui (Интерфейс логик) & 4\% & 8\% \\
+            \hline
+            org.fossify.messages.models (Өгөгдлийн загвар) & 2\% & 0\% \\
+            \hline
+            \textbf{Нийт төслийн хэмжээнд} & \textbf{2\%} & \textbf{3\%} \\
+            \hline
+        \end{tabular}
+    }
+\end{table}
+
+\textit{Тайлбар: Дээрх нийт хамралт нь суурь Fossify кодыг
+бүхэлд нь тооцсон тул бага харагдаж байна. Доорх хүснэгтэд
+төслийн хүрээнд хөгжүүлсэн цөм логикийн нарийвчилсан
+хамралтыг тусад нь харуулав.}
+
+\begin{table}[H]
+    \centering
+    \caption{Цөм логикийн нарийвчилсан хамралт}
+    \label{table:coverage_detail}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|c|c|}
+            \hline
+            \textbf{Класс} &
+            \textbf{Хамралт} &
+            \textbf{Мөчирлөлт} \\
+            \hline
+            CategoryMatchingKt (Шүүлтүүр) & 68\% & 60\% \\
+            \hline
+            ConversationAgeBucketsKt (Бүлэглэлт) & 83\% & 100\% \\
+            \hline
+            FoldableHelper (Нугалдаг дэлгэц) & $\sim$100\% & — \\
+            \hline
+            KeywordParsingKt (Түлхүүр үг) & 92\% & 72\% \\
+            \hline
+            \textbf{Цөм логикийн дундаж} & \textbf{$\sim$85\%} & \textbf{$\sim$77\%} \\
+            \hline
+        \end{tabular}
+    }
+\end{table}
+\section{Нэгж туршилтын үр дүн}
+
+Нийт \textbf{31 нэгж тест} амжилттай хийгдэж,
+системийн цөм логикуудыг \textbf{100\% Pass}
+үзүүлэлттэйгээр баталгаажуулсан.
+
+\begin{table}[H]
+    \centering
+    \caption{Нэгж туршилтын үр дүнгийн нэгтгэл}
+    \label{table:unit_tests}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|c|c|l|}
+            \hline
+            \textbf{Туршилтын бүлэг} &
+            \textbf{Тоо} &
+            \textbf{Үр дүн} &
+            \textbf{Шалгасан логик} \\
+            \hline
+            CategoryMatchingTest & 20 & Pass &
+            Шүүлтүүрийн бүрэн логик \\
+            \hline
+            ConversationAgeBucketsTest & 2 & Pass &
+            Хугацааны бүлэглэлт \\
+            \hline
+            FoldableHelperTest & 2 & Pass &
+            Нугалдаг дэлгэцийн логик \\
+            \hline
+            KeywordParsingTest & 7 & Pass &
+            Түлхүүр үг боловсруулалт \\
+            \hline
+            \textbf{Нийт} & \textbf{31} & \textbf{100\%} & \\
+            \hline
+        \end{tabular}
+    }
 \end{table}
 
 \section{Ачааллын туршилт (Stress Testing)}
@@ -46,6 +126,63 @@ FR3 & Нугалдаг төхөөрөмжийн дэмжлэг & TC-003 & Pass \
 FR4 & Шудрах үйлдлийн тохиргоо & TC-004 & Pass \ \hline
 \end{tabular}
 \end{table}
+\section{Нэвтрүүлэлт ба Байршуулалт (Deployment \& Production)}
 
+\subsection{Байршуулалтын орчин}
+Энэхүү төсөл нь Android мобайл аппликейшн тул
+байршуулалтын үйл явц нь APK үүсгэх, гарын үсэг зурах
+(code signing) болон бодит төхөөрөмжид суулгах
+үе шатуудаас бүрдэнэ.
+
+\subsection{CI/CD Pipeline}
+Хөгжүүлэлтийн эхний шатанд GitHub Actions ашиглан
+автоматжуулсан CI/CD pipeline тохируулахыг оролдсон боловч
+Fossify Messages-ийн суурь кодын нарийн төвөгтэй
+build dependency-уудаас шалтгаалан pipeline тогтворгүй
+ажиллах болсон тул энэ төслийн хүрээнд идэвхгүй болгосон.
+Цаашдын хөгжүүлэлтэд CI/CD-г бүрэн нэвтрүүлэх нь
+тэргүүлэх зорилтуудын нэг болно.
+
+\subsection{Бодит төхөөрөмж дээрх туршилт}
+Эцсийн APK хувилбарыг дараах техникийн үзүүлэлтүүдийг
+хангасан байдлаар бүтээж, бодит төхөөрөмжүүд дээр
+sideload аргаар суулгаж туршилт хийв.
+
+\begin{itemize}
+    \item \textbf{Target SDK}: Android 14 (API 34)
+    \item \textbf{Minimum SDK}: Android 6.0 (API 23)
+    \item \textbf{Build type}: Release (R8 оновчлолтой)
+\end{itemize}
+
+\begin{table}[H]
+    \centering
+    \caption{Бодит төхөөрөмж дээрх туршилтын үр дүн}
+    \label{table:device_test}
+    \begin{tabular}{|l|l|l|c|}
+        \hline
+        \textbf{Төхөөрөмж} &
+        \textbf{Төрөл} &
+        \textbf{Android} &
+        \textbf{Үр дүн} \\
+        \hline
+        Samsung Galaxy Note20 Ultra &
+        Ердийн дэлгэц &
+        Android 13 &
+        Pass \\
+        \hline
+        Samsung Galaxy Z Fold3 &
+        Нугалдаг дэлгэц &
+        Android 15 &
+        Pass \\
+        \hline
+    \end{tabular}
+\end{table}
+
+Нугалдаг төхөөрөмж болох Samsung Galaxy Z Fold3 дээр
+аппликейшн нээгдэх болон хаагдах үед хоёр баганат
+харагдац гацалтгүйгээр шилжиж байсныг бодит
+орчинд баталгаажуулав. Ердийн дэлгэцтэй
+Samsung Galaxy Note20 Ultra дээр бүх үндсэн
+функцүүд зөв ажилласан.
 \section{Эцсийн үнэлгээ}
 Туршилтын үр дүнгээс үзэхэд систем нь хэрэглэгчийн тодорхойлсон дүрмийн дагуу зурвасыг алдаагүй ангилж, их хэмжээний өгөгдөл болон нугалдаг төхөөрөмжийн динамик нөхцөлд найдвартай ажиллах чадамжтай болох нь батлагдлаа.
