@@ -191,7 +191,7 @@
 	\normalfont
 	\Large
 	\filcenter
-	\bffamily
+	\bfseries
 } % формат
 {%
 	\vspace*{\fill}

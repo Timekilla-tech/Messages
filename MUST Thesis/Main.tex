@@ -43,6 +43,7 @@
 \newcommand{\constantsname}{Физик тогтмолууд}
 \newcommand{\symbolsname}{Тэмдэгтүүдийн жагсаалт}
 \newcommand{\acknowledgementname}{Талархал}
+\newcommand{\addressname}{\par\deptname\par}
 
 % Сургууль болон төслийн мэдээлэл
 \thesistitle{Нээлттэй эхтэй Fossify Messages аппликейшнд суурилсан зурвас ангиллын ухаалаг систем ба нугалдаг дэлгэцийн оновчлол}
@@ -60,6 +61,7 @@
 \begin{document}
     \frontmatter
     \pagestyle{plain}
+    \setcounter{tocdepth}{1}
 
 % Нүүр хуудас болон бусад хуудсуудыг оруулах
     \include{FrontBackMatter/Titlepage}
@@ -77,10 +79,9 @@
     \pagestyle{thesis}
     \myformat
 
-% Бүлгүүд (Restructured according to MUST Guidelines v1.5)
-    \include{Chapters/Chapter1} % Төслийн танилцуулга
-    \include{Chapters/Chapter2} % Холбоотой ажлууд (Related Work)
-    \include{Chapters/Chapter3} % Шаардлага ба төлөвлөлт (Requirements)
+% Бүлгүүд
+    \include{Chapters/Chapter1} % Төслийн танилцуулга + системийн онол арга зүйн судалгаа
+    \include{Chapters/Chapter3} % Системийн шаардлага ба шинжилгээ
     \include{Chapters/Chapter4} % Арга зүй ба системийн зохиомж (Design)
     \include{Chapters/Chapter5} % Хэрэгжүүлэлт (Implementation)
     \include{Chapters/Chapter6} % Туршилт ба үнэлгээ (Testing)

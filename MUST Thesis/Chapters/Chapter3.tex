@@ -1,6 +1,6 @@
-\chapter{Шаардлага ба төлөвлөлт}
+\chapter{Системийн шаардлага ба шинжилгээ}
 
-\section{Функционал шаардлага (Functional Requirements)}
+\section{Функцийн шаардлага}
 Системийн гүйцэтгэх үндсэн үйлдлүүдийг SRS стандартын дагуу \cite{ieee1998srs} дараах байдлаар тодорхойлов.
 \begin{enumerate}[label=FR\arabic*.]
     \item \textbf{Тогтмол илэрхийлэлд суурилсан танилт}: Хэрэглэгчийн тохируулсан тогтмол илэрхийлэл ашиглан ирж буй зурвасыг автоматаар таньж, ангилах.
@@ -10,7 +10,7 @@
     \item \textbf{Хугацааны бүлэглэлт}: Inbox дахь зурвасуудыг Өнөөдөр'', Өчигдөр'', Энэ сар'' гэсэн гарчиг дор автоматаар бүлэглэх.
 \end{enumerate}
 
-\section{Функционал бус шаардлага (Non-Functional Requirements)}
+\section{Функцийн бус шаардлага}
 Системийн чанар болон найдвартай ажиллагааг хангах дараах шаардлагуудыг тавьсан:
 \begin{itemize}
     \item \textbf{Гүйцэтгэл}: 1,000-аас дээш харилцан яриатай үед жагсаалт секундэд 60 frame хурдтай (smooth scroll) ажиллах.
@@ -19,7 +19,7 @@
     \item \textbf{Уян хатан байдал}: Шүүлтүүрийн дүрмийг хэрэглэгч хүссэн үедээ өөрчлөхөд систем бодит хугацаанд хариу үзүүлэх.
 \end{itemize}
 
-\section{Ажлын хүрээ (Scope Statement)}
+\section{Ажлын хүрээ}
 Төслийн ажлын хүрээг \cite{clegg1994case} MoSCoW аргачлалаар эрэмбэлж тодорхойлов.
 \begin{itemize}
     \item \textbf{Must-Have}: Тогтмол илэрхийллийн хөдөлгүүр, Room өгөгдлийн сангийн шилжилт, динамик хавтаслах систем.
@@ -28,7 +28,7 @@
     \item \textbf{Won't-Have}: Cloud Backup, RCS (Rich Communication Services) дэмжлэг.
 \end{itemize}
 
-\section{Хөгжүүлэлтийн төлөвлөгөө (Development Plan)}
+\section{Хөгжүүлэлтийн төлөвлөгөө}
 Хөгжүүлэлтийн ажлыг Iterative (Давталттай) аргачлалаар гүйцэтгэсэн бөгөөд доорх үе шатуудад хуваав:
 \begin{enumerate}
     \item \textbf{I үе шат}: Суурь өгөгдлийн сангийн өргөтгөл болон тогтмол илэрхийллийн шүүлтүүрийн алгоритм хөгжүүлэлт.
@@ -36,18 +36,29 @@
     \item \textbf{III үе шат}: Нугалдаг төхөөрөмжийн дасан зохицох харагдац болон тасралтгүй байдлын логик.
     \item \textbf{IV үе шат}: Гүйцэтгэлийн оновчлол, тест ба чанарын баталгаажуулалт.
 \end{enumerate}
-\begin{itemize}
-\section{Хэрэглээний тохиолдлын шинжилгээ (Use Case Analysis)} Системийн функционал шаардлагуудыг хэрэглэгчийн үйлдэл бүрээр нарийвчлан тодорхойлохын тулд хэрэглээний тохиолдлын диаграммыг (Зураг \ref{fig:usecase_diag}) боловсруулав. Энэхүү диаграмм нь хэрэглэгч болон системийн хоорондын харилцан үйлчлэлийг ерөнхий байдлаар харуулна.
-\begin{figure}[H] \centering \includegraphics[width=0.85\textwidth]{Diagrams/usecase_diagram.drawio} \caption{Системийн хэрэглээний тохиолдлын диаграмм} \label{fig:usecase_diag} \end{figure}
-    Дээрх диаграммд тусгагдсан үндсэн үйлдлүүдийн ажлын урсгал болон нөхцөлүүдийг дараах хүснэгтүүдээр дэлгэрэнгүй тайлбарлав.
+
+\section{Хэрэглээний тохиолдлын шинжилгээ}
+Системийн функционал шаардлагуудыг хэрэглэгчийн үйлдэл бүрээр нарийвчлан тодорхойлохын тулд хэрэглээний тохиолдлын диаграммыг (Зураг \ref{fig:usecase_diag}) боловсруулав. Энэхүү диаграмм нь хэрэглэгч болон системийн хоорондын харилцан үйлчлэлийг ерөнхий байдлаар харуулна.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/usecase_diagram.drawio}
+    \caption{Системийн хэрэглээний тохиолдлын диаграмм}
+    \label{fig:usecase_diag}
+\end{figure}
+
+Дээрх диаграммд тусгагдсан үндсэн үйлдлүүдийн ажлын урсгал болон нөхцөлүүдийг дараах хүснэгтүүдээр дэлгэрэнгүй тайлбарлав.
 
 \input{table/UseCases.tex}
-    \paragraph{Төслийн өргөтгөлүүдийн байршил:}
-    Дээрх суурь бүтцэд хийсэн өргөтгөлүүд дараах сангуудад нэмэгдсэн:
-    \begin{itemize}
-        \item \textbf{Regex Filtering логик} – \texttt{messaging/} ба \texttt{extensions/} сангуудад нэмэгдсэн (жишээ нь \texttt{withAutoCategory()}, \texttt{isMessageMatchingCategory()}).
-        \item \textbf{Foldable device support} – \texttt{activities/} (\texttt{MainActivity} two-pane логик) болон \texttt{helpers/} (\texttt{FoldableHelper}) хэсэгт хийгдсэн.
-        \item \textbf{SavedViews (Folder) систем} – \texttt{models/} (\texttt{SavedView}, \texttt{SavedViewConfig}), \texttt{helpers/} (\texttt{SavedViewsStore}), \texttt{databases/} (Config өргөтгөл) зэрэгт шинээр нэмэгдсэн.
-        \item \textbf{Category ба Regex дүрмийн UI} – \texttt{activities/}, \texttt{dialogs/}, \texttt{ui/} (Compose KeywordManager) сангуудад хийгдсэн.
-    \end{itemize}
+
+\paragraph{Төслийн өргөтгөлүүдийн байршил:}
+Дээрх суурь бүтцэд хийсэн өргөтгөлүүд дараах сангуудад нэмэгдсэн:
+\begin{itemize}
+    \item \textbf{Regex Filtering логик} – \texttt{messaging/} ба \texttt{extensions/} сангуудад нэмэгдсэн (жишээ нь \texttt{withAutoCategory()}, \texttt{isMessageMatchingCategory()}).
+    \item \textbf{Foldable device support} – \texttt{activities/} (\texttt{MainActivity} two-pane логик) болон \texttt{helpers/} (\texttt{FoldableHelper}) хэсэгт хийгдсэн.
+    \item \textbf{SavedViews (Folder) систем} – \texttt{models/} (\texttt{SavedView}, \texttt{SavedViewConfig}), \texttt{helpers/} (\texttt{SavedViewsStore}), \texttt{databases/} (Config өргөтгөл) зэрэгт шинээр нэмэгдсэн.
+    \item \textbf{Category ба Regex дүрмийн UI} – \texttt{activities/}, \texttt{dialogs/}, \texttt{ui/} (Compose KeywordManager) сангуудад хийгдсэн.
+\end{itemize}
+
 Хөгжүүлэлтийн явцад Git-ийн Feature Branch'' стратегийг \cite{vincent_git} ашиглаж, долоо хоног бүр явцын түүхийг баталгаажуулсан.
+
