@@ -1,64 +1,238 @@
-\chapter{Системийн шаардлага ба шинжилгээ}
+\chapter{Үр дүн ба үнэлгээ}
 
-\section{Функцийн шаардлага}
-Системийн гүйцэтгэх үндсэн үйлдлүүдийг SRS стандартын дагуу \cite{ieee1998srs} дараах байдлаар тодорхойлов.
-\begin{enumerate}[label=FR\arabic*.]
-    \item \textbf{Тогтмол илэрхийлэлд суурилсан танилт}: Хэрэглэгчийн тохируулсан тогтмол илэрхийлэл ашиглан ирж буй зурвасыг автоматаар таньж, ангилах.
-    \item \textbf{Харилцан ярианы ангиллын шошголол}: Харилцан яриа бүрт тухайн зурваст тохирох өнгөт шошго оноож, харагдах байдлыг ялгах.
-    \item \textbf{Дасан зохицох хэрэглэгчийн харилцах цонхны дэмжлэг}: Нугалдаг төхөөрөмж нээгдэх үед хэрэглэгчийн харилцах цонхыг хоёр баганат харагдац руу гацалтгүйгээр шилжүүлэх.
-    \item \textbf{Шудрах үйлдлийн тохиргоо}: Харилцан яриаг баруун, зүүн тийш шудрах үйлдлээр устгах, архивлах зэрэг үйлдлийг хурдан гүйцэтгэх.
-    \item \textbf{Хугацааны бүлэглэлт}: Inbox дахь зурвасуудыг Өнөөдөр'', Өчигдөр'', Энэ сар'' гэсэн гарчиг дор автоматаар бүлэглэх.
-\end{enumerate}
-
-\section{Функцийн бус шаардлага}
-Системийн чанар болон найдвартай ажиллагааг хангах дараах шаардлагуудыг тавьсан:
+\section{Хэрэгжилэлтийн үр дүн}
+Энэхүү төслийн хүрээнд Fossify Messages аппликейшнд суурилан дараах үндсэн үр дүнг гарган авлаа:
 \begin{itemize}
-    \item \textbf{Гүйцэтгэл}: 1,000-аас дээш харилцан яриатай үед жагсаалт секундэд 60 frame хурдтай (smooth scroll) ажиллах.
-    \item \textbf{Аюулгүй байдал}: Зурвасын агуулгыг гадагш дамжуулахгүй, бүх шүүлтүүрийг локал төхөөрөмж дээр (On-device) ажиллуулах.
-    \item \textbf{Найдвартай байдал}: Room өгөгдлийн сангийн \cite{room_guide} шилжилт хийх үед хэрэглэгчийн өмнөх өгөгдөл алдагдахгүй байх.
-    \item \textbf{Уян хатан байдал}: Шүүлтүүрийн дүрмийг хэрэглэгч хүссэн үедээ өөрчлөхөд систем бодит хугацаанд хариу үзүүлэх.
+    \item \textbf{Тогтмол илэрхийлэлд суурилсан ангилал}: Хэрэглэгчийн тодорхойлсон Regex болон түлхүүр үгэнд үндэслэн зурвасыг автоматаар ангилах боломжтой болсон.
+    \item \textbf{Хавтас болон шошгын дэмжлэг}: Ангиллын дагуу харилцан ярианд өнгөт шошго, хавтас оноох механизм хэрэгжсэн.
+    \item \textbf{Нугалдаг төхөөрөмжийн дэмжлэг}: Дэлгэцийн төлөв өөрчлөгдөхөд хоёр баганат харагдац тасралтгүй ажиллах нөхцөл бүрдсэн.
+    \item \textbf{Хугацааны бүлэглэлт}: Inbox дахь харилцан яриануудыг хугацаагаар нь бүлэглэн харуулах боломж нэмэгдсэн.
 \end{itemize}
 
-\section{Ажлын хүрээ}
-Төслийн ажлын хүрээг \cite{clegg1994case} MoSCoW аргачлалаар эрэмбэлж тодорхойлов.
-\begin{itemize}
-    \item \textbf{Must-Have}: Тогтмол илэрхийллийн хөдөлгүүр, Room өгөгдлийн сангийн шилжилт, динамик хавтаслах систем.
-    \item \textbf{Should-Have}: Нугалдаг төхөөрөмжийн хоёр баганат харагдацын тасралтгүй байдал, шудрах үйлдэл, зурваснуудыг насаар бүлэглэх.
-    \item \textbf{Could-Have}: Зурвасын агуулгад тулгуурласан ухаалаг мэдэгдэл (Smart Notifications).
-    \item \textbf{Won't-Have}: Cloud Backup, RCS (Rich Communication Services) дэмжлэг.
-\end{itemize}
-
-\section{Хөгжүүлэлтийн төлөвлөгөө}
-Хөгжүүлэлтийн ажлыг Iterative (Давталттай) аргачлалаар гүйцэтгэсэн бөгөөд доорх үе шатуудад хуваав:
-\begin{enumerate}
-    \item \textbf{I үе шат}: Суурь өгөгдлийн сангийн өргөтгөл болон тогтмол илэрхийллийн шүүлтүүрийн алгоритм хөгжүүлэлт.
-    \item \textbf{II үе шат}: Хавтас удирдлагын систем болон шудрах үйлдлүүдийн UI хөгжүүлэлт.
-    \item \textbf{III үе шат}: Нугалдаг төхөөрөмжийн дасан зохицох харагдац болон тасралтгүй байдлын логик.
-    \item \textbf{IV үе шат}: Гүйцэтгэлийн оновчлол, тест ба чанарын баталгаажуулалт.
-\end{enumerate}
-
-\section{Хэрэглээний тохиолдлын шинжилгээ}
-Системийн функционал шаардлагуудыг хэрэглэгчийн үйлдэл бүрээр нарийвчлан тодорхойлохын тулд хэрэглээний тохиолдлын диаграммыг (Зураг \ref{fig:usecase_diag}) боловсруулав. Энэхүү диаграмм нь хэрэглэгч болон системийн хоорондын харилцан үйлчлэлийг ерөнхий байдлаар харуулна.
+\subsection{Хэрэглэгчийн харилцах цонхны хэрэгжилт}
+Хэрэглэгчийн харагдацийг Material Design 3 стандартын дагуу оновчилж, нэг гараар ашиглахад тохиромжтой доод навигацийн цэс болон харилцан ярианы нэгдсэн харагдацыг хэрэгжүүлсэн. Өргөн дэлгэц бүхий (Samsung ZFold3) ухаалаг утас дээр хос баганат харагдац нь Зураг \ref{fig:unfolder_main_screen} дээр харагдаж байна. Харин ердийн дэлгэцтэй (Samsung Note20 Ultra) ухаалаг утас дээр нэг баганат харагдац нь Зураг \ref{fig:all_message_view} дээр харагдаж байна. Дэлгэцийн доод хэсэгт хэрэглэгчийн үүсгэсэн хавтаснууд болон нийт харилцан ярианы жагсаалтад хандах боломжтой доод навигацийн цэс байрлах бөгөөд харилцан яриан дээр удаан дарж сонгох горимын идэвхжүүлснээр хавтаснуудын харагдац нь Зураг \ref{fig:bottom_bar} -т харагдаж байгаачлан зурвасын тохиргоо болон солигдоно
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{Diagrams/usecase_diagram.drawio}
-    \caption{Системийн хэрэглээний тохиолдлын диаграмм}
-    \label{fig:usecase_diag}
+    \label{fig:unfolder_main_screen}
+    \includegraphics[width=0.4\textwidth]{Chart/unfolder_main_screen.png}
+    \caption{Аппликейшны үндсэн дэлгэц}
 \end{figure}
 
-Дээрх диаграммд тусгагдсан үндсэн үйлдлүүдийн ажлын урсгал болон нөхцөлүүдийг дараах хүснэгтүүдээр дэлгэрэнгүй тайлбарлав.
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:bottom_bar}
+        \includegraphics[width=0.9\textwidth]{Chart/bottom_bar}
+        \caption{Доод навигацийн цэс}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:all_message_view}
+        \includegraphics[width=0.9\textwidth]{Chart/all_message_view}
+        \caption{Нийт харилцан ярианы жагсаалт}
+    \end{minipage}
+\end{figure}
 
-\input{table/UseCases.tex}
+\subsection{Ангилал ба тогтмол илэрхийллийн хэрэгжилт}
+Зурвасуудыг автоматаар ангилахын тулд тогтмол илэрхийлэл болон түлхүүр үгсийг удирдах модулийг хэрэгжүүлсэн. Зураг \ref{fig:edit_category_view} -т хэрэглэгчийн үүсгэсэн ангиллын жагсаалт харагдах бөгөөд ангиллын нэр, өнгө болон тухайн ангилалд хэдэн тооны түлхүүр үг болон тогтмол илэрхийлэл холбогдсон байгааг харуулж байна. Баруун дээд буланд байрлах "+" ангилал үүсгэх цонх нээгдэх бөгөөд ангиллын нэр дээр дарж тухайн ангиллын тохиргооны цонх (зураг \ref{fig:edit_category_panel}) харагдана. Ангиллын тохиргооны цонхонд тухайн ангилалд холбогдсон түлхүүр үг болон тогтмол илэрхийллийн жагсаалт харагдах бөгөөд шинэ түлхүүр үг болон тогтмол илэрхийлэл нэмэх, эсвэл байгаа зүйлсийг засах боломжтой. Ангиллын тохиргооны цонхны доод хэсэгт тухайн ангиллыг устгах товч байрлах бөгөөд устгах үйлдэл нь баталгаажуулалттайгаар хийгдэх болно. Ангилал үүсгэх болон засах үйлдэлийн харагдац нь ижилхэн.
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:edit_category_panel}
+        \includegraphics[width=0.9\textwidth]{Chart/edit_category_panel}
+        \caption{Ангилал засах самбар}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:edit_category_view}
+        \includegraphics[width=0.9\textwidth]{Chart/edit_category_view}
+        \caption{Ангиллын тохиргоо}
+    \end{minipage}
+\end{figure}
+\subsection{Хавтаслах систем}
+Хэрэглэгч өөрийн хүссэнээр хавтас үүсгэж, харилцан яриаг тусгаарлах боломжийг бүрдүүлсэн. Хавтас бүрт өнгө оноож, өөрийн гэсэн харагдац (Saved View) үүсгэх боломжтой. Зураг \ref{fig:filter_panel} -т шүүлтүүр болон шошгоны удирдлагын хэсэг харагдаж байна. Хэрэглэгч шүүлтүүр болон шошгоны тохиргоогоор харилцан яриаг ангилж, тусгаарлах боломжтойгоос гадна нэг болон хэд хэдэн харилцан яриаг сонгож дэлгэцний доод хэсэгт гарч ирэх (Зураг \ref{fig:bottom_bar}) хавтас оноох товчийг дарснаар гарч ирсэн хавтасны жагсаалтаас өөрийн оноохыг хүссэн хавтасандаа онооно. Зураг \ref{fig:create_folder_panel} -т шинэ хавтас үүсгэх цонх харагдаж байна. Хэрэглэгч хавтасны нэрийг оруулж, өнгө сонгох боломжтой. Зураг \ref{fig:edit_folder_panel} -т хавтас засах цонх харагдаж байна. Хавтас засварлах болон үүсгэх цонх нь тухайн хавтасыг устгах сонголтоороо ялгаатай. Хэрэглэгчийн үүсгэсэн болон засварлах үедээ хавтасны жагсаалтын байрлалыг сонгох боломжтой бөгөөд үндсэн харагдац(бүх зурвас)-ын баруун талд байрлана.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{Chart/filter_tag_panel}
+    \caption{Шүүлтүүр болон шошгоны удирдлагын хэсэг}
+    \label{fig:filter_panel}
+\end{figure}
 
-\paragraph{Төслийн өргөтгөлүүдийн байршил:}
-Дээрх суурь бүтцэд хийсэн өргөтгөлүүд дараах сангуудад нэмэгдсэн:
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:create_folder_panel}
+        \includegraphics[width=0.9\textwidth]{Chart/create_folder_panel}
+        \caption{Шинэ хавтас үүсгэх}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:edit_folder_panel}
+        \includegraphics[width=0.9\textwidth]{Chart/edit_folder_panel}
+        \caption{Хавтас засах самбар}
+    \end{minipage}
+\end{figure}
+\subsection{Шудрах үйлдэл}
+Шудрах үйлдлийг хэрэглэгч өөрийн хэрэгцээнд тааруулан тохируулах боломжтой бөгөөд харилцан ярианд хийгддэг үндсэн үйлдлүүд болох устгах, харилцагчыг хориглох, архивлах, ушсан төлвийг өөрчлөх зэрэг үйлдлүүдийг шудрах үйлдэлд холбож өгснөөс гадна тухайн чиглэл рүү шудрах үйлдлийг идэвхгүй болгох боломжтой. Зураг \ref{fig:swipe_choose} -т шудрах үйлдлийг тохируулах хэсэг харагдаж байна. Зураг \ref{fig:swipe_left} -т зүүн тийш шудрах үйлдэл, зураг \ref{fig:swipe_right} -т баруун тийш шудрах үйлдэл хийх үед гарч ирэх үйлдлийн зураг харагдаж байна.
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:swipe_choose}
+        \includegraphics[width=0.9\textwidth]{Chart/swipe_choose}
+        \caption{Шудрах үйлдэл сонгох}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:single_conversation_view}
+        \includegraphics[width=0.9\textwidth]{Chart/single_conversation_view}
+        \caption{Харилцан ярианы дэлгэрэнгүй харагдац}
+    \end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:swipe_left}
+        \includegraphics[width=0.9\textwidth]{Chart/swipe_left}
+        \caption{Зүүн тийш шудрах үйлдэл}
+    \end{minipage}\hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \label{fig:swipe_right}
+        \includegraphics[width=0.9\textwidth]{Chart/swipe_right}
+        \caption{Баруун тийш шудрах үйлдэл}
+    \end{minipage}
+\end{figure}
+
+\section{Үнэлгээ ба туршилтын нэгтгэл}
+Системийн хэрэгжүүлэлтийг нэгж туршилт, нэгтгэл туршилт болон бодит төхөөрөмж дээрх туршилтаар үнэлэв.
+
+\subsection{Кодын хамралтын шинжилгээ}
+Jacoco хэрэгслээр кодын хамралтын шинжилгээ хийсэн үр дүнгээр шинээр нэмсэн болон өөрчилсөн цөм логик хэсгүүдийн хамралт дунджаар ойролцоогоор 85\% хүрсэн байна. Төслийн хэмжээнд кодын хамралт бага байсан бөгөөд энэ нь суурь Fossify кодыг бүхэлд нь тооцсон учраас юм. Доорх хүснэгтэд төслийн хүрээнд хөгжүүлсэн цөм логикийн нарийвчилсан хамралтыг тусад нь харуулав.
+\begin{table}[H]
+    \centering
+    \caption{Цөм логикийн кодын хамралтын шинжилгээ}
+    \label{table:coverage_detail}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|c|c|}
+            \hline
+            \textbf{Класс} &
+            \textbf{Хамралт} &
+            \textbf{Мөчирлөлт} \\
+            \hline
+            CategoryMatchingKt (Шүүлтүүр) & 68\% & 60\% \\
+            \hline
+            ConversationAgeBucketsKt (Бүлэглэлт) & 83\% & 100\% \\
+            \hline
+            FoldableHelper (Нугалдаг дэлгэц) & $\sim$100\% & — \\
+            \hline
+            KeywordParsingKt (Түлхүүр үг) & 92\% & 72\% \\
+            \hline
+            \textbf{Цөм логикийн дундаж} & \textbf{$\sim$85\%} & \textbf{$\sim$77\%} \\
+            \hline
+        \end{tabular}
+    }
+\end{table}
+
+\subsection{Нэгж туршилтын үр дүн}
+Нийт 31 нэгж тест амжилттай хийгдэж, системийн цөм логикуудыг 100\% Pass үзүүлэлттэйгээр баталгаажуулсан.
+
+\begin{table}[H]
+    \centering
+    \caption{Нэгж туршилтын үр дүнгийн нэгтгэл}
+    \label{table:unit_tests}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|c|c|l|}
+            \hline
+            \textbf{Туршилтын бүлэг} &
+            \textbf{Тоо} &
+            \textbf{Үр дүн} &
+            \textbf{Шалгасан логик} \\
+            \hline
+            CategoryMatchingTest & 20 & Pass &
+            Шүүлтүүрийн бүрэн логик \\
+            \hline
+            ConversationAgeBucketsTest & 2 & Pass &
+            Хугацааны бүлэглэлт \\
+            \hline
+            FoldableHelperTest & 2 & Pass &
+            Нугалдаг дэлгэцийн логик \\
+            \hline
+            KeywordParsingTest & 7 & Pass &
+            Түлхүүр үг боловсруулалт \\
+            \hline
+            \textbf{Нийт} & \textbf{31} & \textbf{100\%} & \\
+            \hline
+        \end{tabular}
+    }
+\end{table}
+
+\subsection{Ачааллын туршилт}
+Тогтмол илэрхийллийн шүүлтүүр болон нугалдаг төхөөрөмжийн тасралтгүй байдлын гүйцэтгэлийг шалгах зорилгоор 40,000 харилцан яриа бүхий бааз дээр туршилт хийсэн.
 \begin{itemize}
-    \item \textbf{Regex Filtering логик} – \texttt{messaging/} ба \texttt{extensions/} сангуудад нэмэгдсэн (жишээ нь \texttt{withAutoCategory()}, \texttt{isMessageMatchingCategory()}).
-    \item \textbf{Foldable device support} – \texttt{activities/} (\texttt{MainActivity} two-pane логик) болон \texttt{helpers/} (\texttt{FoldableHelper}) хэсэгт хийгдсэн.
-    \item \textbf{SavedViews (Folder) систем} – \texttt{models/} (\texttt{SavedView}, \texttt{SavedViewConfig}), \texttt{helpers/} (\texttt{SavedViewsStore}), \texttt{databases/} (Config өргөтгөл) зэрэгт шинээр нэмэгдсэн.
-    \item \textbf{Category ба Regex дүрмийн UI} – \texttt{activities/}, \texttt{dialogs/}, \texttt{ui/} (Compose KeywordManager) сангуудад хийгдсэн.
+    \item \textbf{Тохиргоо}: 40,000 харилцан яриа, 1,000 түлхүүр үг, 1,000 тогтмол илэрхийллийн загвар.
+    \item \textbf{Үр дүн}: Зурвас ангилах дунджаар  15мс-ээс бага байсан бөгөөд дэлгэц нугалах үед хэрэглэгчийн харилцах цонх гацалтгүйгээр шилжиж байв.
+    \item \textbf{Санах ойн ашиглалт}: Ачааллын үед санах ойн ашиглалт тогтвортой байсан.
 \end{itemize}
 
-Хөгжүүлэлтийн явцад Git-ийн Feature Branch'' стратегийг \cite{vincent_git} ашиглаж, долоо хоног бүр явцын түүхийг баталгаажуулсан.
+\subsection{Бодит төхөөрөмж дээрх туршилт}
+Эцсийн APK хувилбарыг бодит төхөөрөмжүүд дээр sideload аргаар суулгаж туршилт хийв.
+
+\begin{table}[H]
+    \centering
+    \caption{Бодит төхөөрөмж дээрх туршилтын үр дүн}
+    \label{table:device_test}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|c|c|l|}
+            \hline
+            \textbf{Төхөөрөмж} &
+            \textbf{Төрөл} &
+            \textbf{Android} &
+            \textbf{Үр дүн} \\
+            \hline
+            Samsung Galaxy Note20 Ultra &
+            Ердийн дэлгэц &
+            Android 13 &
+            Хэвийн ажиллагаа \\
+            \hline
+            Samsung Galaxy Z Fold3 &
+            Нугалдаг дэлгэц &
+            Android 15 &
+            Хэвийн ажиллагаа \\
+            \hline
+        \end{tabular}
+    }
+\end{table}
+
+\section{Зорилгын биелэлт}
+Төслийн эхэнд тодорхойлсон зорилтуудын биелэлтийг дараах байдлаар нэгтгэв:
+\begin{table}[H]
+    \centering
+    \caption{Зорилгын биелэлтийн нэгтгэл}
+    \label{table:goal_summary}
+    \resizebox{\textwidth}{!}{
+        \begin{tabular}{|l|p{8cm}|c|}
+            \hline
+            \textbf{Зорилго} & \textbf{Хүрсэн үр дүн} & \textbf{Биелэлт} \\
+            \hline
+            Тогтмол илэрхийлэлд суурилсан ангилал & Автомат ангиллын үндсэн логик хэрэгжсэн & \checkmark \\
+            \hline
+            Нугалдаг төхөөрөмжийн дэмжлэг & Хоёр баганат харагдацын тасралтгүй байдал хангагдсан & \checkmark \\
+            \hline
+            Локал өгөгдлийн хамгаалалт & Шүүлтүүрүүд төхөөрөмж дээр локал ажилласан & \checkmark \\
+            \hline
+            Тестийн баталгаажуулалт & 31 тест амжилттай болсон & \checkmark \\
+            \hline
+        \end{tabular}
+    }
+\end{table}
+
+\section{Дүгнэлт}
+Хийгдсэн үр дүнгээс харахад төслийн гол шаардлагууд биелж, мессеж ангилах, хавтаслах, foldable дэлгэцийн дэмжлэг болон локал өгөгдлийн хамгаалалтын шийдлүүд амжилттай хэрэгжсэн байна. Цаашид гүйцэтгэлийн нэмэлт оновчлол болон системийн илүү өргөн хэрэглээний интеграцчиллыг сайжруулах боломжтой.
 
