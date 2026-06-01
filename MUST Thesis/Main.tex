@@ -33,6 +33,7 @@
 
 % Ном зүйн тохиргоо
 \usepackage[backend=biber,style=numeric,natbib=true,sorting=none,sortcites,language=auto,autolang=other]{biblatex}
+\usepackage{color}
 \DeclareLanguageMapping{mongolian}{english}
 \addbibresource{references.bib}
 
@@ -80,13 +81,10 @@
     \myformat
 
 % Бүлгүүд
-    \include{Chapters/Chapter1} % Төслийн танилцуулга + системийн онол арга зүйн судалгаа
-    \include{Chapters/Chapter3} % Системийн шаардлага ба шинжилгээ
-    \include{Chapters/Chapter4} % Арга зүй ба системийн зохиомж (Design)
-    \include{Chapters/Chapter5} % Хэрэгжүүлэлт (Implementation)
-    \include{Chapters/Chapter6} % Туршилт ба үнэлгээ (Testing)
-    \include{Chapters/Conclusion} % Дүгнэлт
-
+    \include{Chapters/Chapter1} % Төслийн үндэслэл ба онол арга зүйн судалгаа
+    \include{Chapters/Chapter2} % Арга зүй ба системийн зохиомж
+    \include{Chapters/Chapter3} % Үр дүн ба үнэлгээ
+    \include{Chapters/Conclusion} % Дүгнэлт ба цаашдын ажил
 % Ном зүй (Ашигласан материал)
     \cleardoublepage
     \defformat
