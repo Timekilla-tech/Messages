@@ -1,39 +1,194 @@
-\chapter{Холбогдох ажлууд}
+\chapter{Арга зүй ба системийн зохиомж}
 
-\section{Ижил төстэй системүүдийн судалгаа}
-Өнөөгийн зах зээл дээрх мессежийн аппликейшнүүд нь хэрэглэгчийн туршлагыг (UX) сайжруулахын тулд төрөл бүрийн шүүлтүүр болон хэрэглэгчийн харилцах цонхны шийдлүүдийг ашиглаж байна. Судалгааны хүрээнд дараах 4 гол системийг сонгон авч шинжлэв.
-
-\begin{itemize}
-    \item \textbf{Google Messages}: Android-ийн үндсэн систем бөгөөд спам шүүлтүүрийн ``Machine Learning'' алгоритм сайтай боловч хэрэглэгч өөрөө шүүлтүүрийн дүрмийг (Regex) гараар тохируулах боломжгүй.
-    \item \textbf{Samsung Messages}: Samsung төхөөрөмжүүдийн нугалдаг төхөөрөмжүүдийн хэрэглэгчийн харилцах цонхыг (Two-pane layout) хамгийн сайн хэрэгжүүлсэн хувилбар. Гэвч зөвхөн Samsung-ийн экосистемд хаалттай ажилладаг.
-    \item \textbf{Pulse SMS}: Олон төхөөрөмж дээр синхрончлох болон хавтаслах системтэй боловч автомат ангилал нь зөвхөн энгийн түлхүүр үгээр хязгаарлагддаг.
-    \item \textbf{Textra SMS}: Хэрэглэгчийн харилцах цонхны өнгө, дизайны өргөн сонголттой боловч орчин үеийн нугалдаг дэлгэцийн (Adaptive UI) оновчлол сул байна.
-\end{itemize}
-
-\section{Системүүдийн харьцуулсан шинжилгээ}
-Дээрх системүүдийн функционал болон хэрэглэгчийн харилцах цонхны боломжуудыг өөрийн хөгжүүлж буй системтэй Хүснэгт \ref{table:comparison}-д харьцуулан харуулав.
-
-\begin{table}[H]
-\centering
-\caption{Ижил төстэй системүүдийн харьцуулалт}
-\label{table:comparison}
-\begin{tabular}{|l|c|c|c|c|c|}
-\hline
-\textbf{Үзүүлэлтүүд} & \textbf{Google} & \textbf{Samsung} & \textbf{Pulse} & \textbf{Textra} & \textbf{Fossify (Enhanced)} \\ \hline
-Regex Matching & \xmark & \xmark & \xmark & \xmark & \cmark \\ \hline
-Two-pane Layout & \cmark & \cmark & \cmark & \xmark & \cmark \\ \hline
-Open Source & \xmark & \xmark & \xmark & \xmark & \cmark \\ \hline
-Custom Folders & \xmark & \xmark & \cmark & \xmark & \cmark \\ \hline
-Swipe Actions & \cmark & \cmark & \cmark & \cmark & \cmark \\ \hline
-\end{tabular}
-\end{table}
-
-\section{Судалгааны үр дүн ба Зөрүүний шинжилгээ (Gap Analysis)}
-Харьцуулсан шинжилгээнээс үзэхэд дараах дүгнэлтүүд гарч байна:
+% ============================================================
+% Section 1: Хөгжүүлэлтийн төлөвлөгөө
+% ============================================================
+\section{Хөгжүүлэлтийн төлөвлөгөө}
+Хөгжүүлэлтийн ажлыг Iterative (Давталттай) аргачлалаар гүйцэтгэсэн бөгөөд доорх үе шатуудад хуваав:
 \begin{enumerate}
-    \item \textbf{Шүүлтүүрийн дутагдал}: Одоогийн системүүд спамыг автоматаар хаадаг боловч хэрэглэгч өөрийн хүссэнээр (жишээ нь: банкны гүйлгээг ``Finance'' хавтсанд) Regex ашиглан нарийн ангилах боломж хязгаарлагдмал байна.
-    \item \textbf{Хэрэглэгчийн харилцах цонхны үл нийцэл}: Google болон Samsung-аас бусад аппликейшнүүд нугалдаг дэлгэцийн ``State Continuity'' болон ``Large Screen'' оновчлолыг орхигдуулсан байна.
-    \item \textbf{Нээлттэй эхийн хэрэгцээ}: Хэрэглэгчийн хувийн зурваст ханддаг систем нь ``Open Source'' байх нь аюулгүй байдал болон хяналтын хувьд чухал ач холбогдолтой юм.
+    \item \textbf{I үе шат}: Суурь өгөгдлийн сангийн өргөтгөл болон тогтмол илэрхийллийн шүүлтүүрийн алгоритм хөгжүүлэлт.
+    \item \textbf{II үе шат}: Хавтас удирдлагын систем болон шудрах үйлдлүүдийн UI хөгжүүлэлт.
+    \item \textbf{III үе шат}: Нугалдаг төхөөрөмжийн дасан зохицох харагдац болон тасралтгүй байдлын логик.
+    \item \textbf{IV үе шат}: Гүйцэтгэлийн оновчлол, тест ба чанарын баталгаажуулалт.
 \end{enumerate}
 
-Энэхүү төслөөр Fossify Messages-ийн нээлттэй эх дээр тулгуурлан тогтмол илэрхийлэл ашигласан шүүлтүүр болон нугалдаг дэлгэцийн оновчлолыг нэгтгэж, зах зээлд байгаа эдгээр дутагдалтай талуудыг (Gap) шийдвэрлэхийг зорьж байна.
+Хөгжүүлэлтийн явцад Git-ийн ``Feature Branch'' стратегийг~\cite{vincent_git} ашиглаж, долоо хоног бүр явцын түүхийг баталгаажуулсан.
+
+% ============================================================
+% Section 2: Хэрэглээний тохиолдлын шинжилгээ
+% ============================================================
+\section{Хэрэглээний тохиолдлын шинжилгээ}
+Системийн функционал шаардлагуудыг хэрэглэгчийн үйлдэл бүрээр нарийвчлан тодорхойлохын тулд хэрэглээний тохиолдлын диаграммыг (Зураг~\ref{fig:usecase_diag}) боловсруулав.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/usecase_diagram}
+    \caption{Системийн хэрэглээний тохиолдлын диаграмм}
+    \label{fig:usecase_diag}
+\end{figure}
+
+Дээрх диаграммд тусгагдсан үндсэн үйлдлүүдийн ажлын урсгал болон нөхцөлүүдийг дараах хүснэгтүүдээр дэлгэрэнгүй тайлбарлав.
+
+\input{table/UseCases.tex}
+
+% ============================================================
+% Section 3: Системийн архитектур
+% ============================================================
+\section{Системийн архитектур}
+Системийн ерөнхий архитектурыг Зураг\ref{fig:architecture} уламжлалт 3 давхаргат (3-Layer Architecture) бүтцээр зохиомжилсон бөгөөд энэ нь өгөгдлийн, логик болон хэрэглэгчийн харилцах цонхны хэсгүүдийг бие даан хөгжүүлэх, турших боломжийг олгосон.
+
+\begin{itemize}
+    \item \textbf{Өгөгдлийн давхарга (Data Layer)}: Room Persistence Library ашиглан локал SQLite баазад зурвас, харилцан яриа болон ангиллын мэдээллийг хадгална.
+    \item \textbf{Бизнес логикийн давхарга (Domain Layer)}: Тогтмол илэрхийллийн шүүлтүүрийн хөдөлгүүр болон хавтаслах системийн цөм логик байрлана.
+    \item \textbf{Танилцуулга давхарга (Presentation Layer)}: XML View систем болон Jetpack Compose ашиглан хэрэглэгчийн харилцах цонхыг бүрдүүлнэ.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.55\textwidth]{architecture}
+    \caption{Системийн ерөнхий бүтэц (Architecture Diagram)}
+    \label{fig:architecture}
+\end{figure}
+
+% ============================================================
+% Section 4: Өгөгдлийн сангийн зохиомж
+% ============================================================
+\section{Өгөгдлийн сангийн зохиомж}
+Өгөгдлийн сангийн гол бүтэц, хүснэгт хоорондын холбоосыг ER диаграммаар Зураг~\ref{fig:erd} дээр үзүүлэв.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.55\textwidth]{erd}
+    \caption{Өгөгдлийн сангийн ерөнхий бүтэц (ER Diagram)}
+    \label{fig:erd}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Categories}: Ангиллын нэр, өнгө, дүрмийн тохиргоо хадгална.
+    \item \textbf{Rules}: Түлхүүр үг болон тогтмол илэрхийллийн дүрэм, ангилалтай холбогдоно.
+    \item \textbf{Харилцан яриа}: Харилцан ярианы ерөнхий мэдээлэл, ангиллын холбоос.
+    \item \textbf{Messages}: Бодит зурвасын агуулга, илгээгч, огноо, харилцан ярианд хамаарал.
+\end{itemize}
+
+\subsection{Өгөгдлийн сангийн шинэчлэл (Migration)}
+Төслийн хүрээнд \texttt{MessagesDatabase}-ийн хувилбарыг 10-аас 11 болгон ахиулж, дараах өөрчлөлтүүдийг хийсэн:
+\begin{itemize}
+    \item \textbf{MIGRATION 10--11}: \texttt{categories} хүснэгтийг шинээр үүсгэж, \texttt{messages} болон \texttt{conversations} хүснэгтүүдэд ангиллын мэдээллийг хадгалах (\texttt{category}, \texttt{categoryId}) талбаруудыг нэмсэн.
+    \item \textbf{MIGRATION 11-12}: Түлхүүр үг нь тогтмол илэрхийлэл (Regex) эсэхийг тодорхойлох \texttt{keywords\_is\_regex} баганыг нэмж, шүүлтийн логикийг өргөтгөсөн.
+    \item \textbf{MIGRATION 12--13}: Шүүлтүүрийн логикийг илүү нарийвчлалтай болгох зорилгоор \texttt{categories} хүснэгтэд \texttt{plain\_keywords} болон \texttt{regex\_patterns} багануудыг шинээр нэмж, "Dual-mode" шүүлтийг зэрэг ажиллуулах нөхцөлийг бүрдүүлсэн.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Diagrams/class/database}
+    \caption{Өгөгдлийн сангийн бүтэц болон DAO-ийн класс диаграмм}
+    \label{fig:db_schema}
+\end{figure}
+
+% ============================================================
+% Section 5: Нарийвчилсан зохиомж ба логик дараалал
+% ============================================================
+\section{Нарийвчилсан зохиомж ба Логик дараалал}
+Системийн хамгийн чухал процесс болох ``Зурвас автоматаар ангилах'' логикийг UML Sequence диаграммаар (Зураг~\ref{fig:seq_diag}) харуулав.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/sequence/category_sequence}
+    \caption{Ангилал шинээр үүсгэх (Sequence Diagram)}
+    \label{fig:seq_diag}
+\end{figure}
+
+Хавтас үүсгэх болон хадгалах логикийг дарааллын диаграммаар (Зураг~\ref{fig:seq_category}) харуулав.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/sequence/assign_folder_sequence.png}
+    \caption{Хавтас үүсгэх болон хадгалах дараалал (Sequence Diagram)}
+    \label{fig:seq_category}
+\end{figure}
+
+Мөн тогтмол илэрхийллийн шүүлтүүрийн ажиллах дотоод дарааллыг Үйл ажиллагааны диаграммаар (Зураг~\ref{fig:act_diag}) дүрслэв.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/sequence/long_press_sequence_diagram}
+    \caption{Удаан дарж гарч ирэх туслах цэсний логик}
+    \label{fig:act_diag}
+\end{figure}
+
+% ============================================================
+% Section 6: Класс диаграммууд
+% ============================================================
+\section{Системийн класс диаграммууд}
+
+\subsection{Activity болон UI логикийн бүтэц}
+Аппликейшны дэлгэцүүд болон тэдгээрийн хоорондын харилцан хамаарал, удирдлагын логикийг Зураг~\ref{fig:class_activity}-д үзүүлэв.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/class/activity}
+    \caption{Үндсэн Activity, Fragment болон UI логикийн класс диаграмм}
+    \label{fig:class_activity}
+\end{figure}
+
+\noindent \textbf{Гол классуудын үүрэг:}
+\begin{itemize}
+    \item \textbf{ManageCategoriesActivity}: Ангиллын жагсаалтыг шинэчлэх (\texttt{updateCategories}), засах цонх дуудах (\texttt{addOrEditCategory}) үйлдлүүдийг удирдана.
+    \item \textbf{MainActivity}: Хадгалсан харагдацуудыг (SavedViewsStore), хугацааны бүлэглэлт (AgeHeaderDecoration), шудрах үйлдэл (inboxSwipeHelper) зэрэг шинэ боломжуудыг нэгтгэсэн.
+    \item \textbf{ContextKt}: Системийн бизнес логикийн гол цөм бөгөөд \texttt{withAutoCategory()}, \texttt{refreshConversationCategoryLabel()}, \texttt{filterMessagesByKeywords()} зэрэг өргөтгөл функцүүдийг агуулна.
+\end{itemize}
+
+\subsection{Ангилал болон шүүлтүүрийн системийн бүтэц}
+Зурвас таних, ангилал үүсгэх болон өгөгдлийн сангийн харилцан хамаарлыг Зураг~\ref{fig:class_category}-д үзүүлэв.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/class/category}
+    \caption{Ангилал болон шүүлтүүрийн нарийвчилсан класс диаграмм}
+    \label{fig:class_category}
+\end{figure}
+
+\noindent \textbf{Бүрэлдэхүүн хэсгүүдийн тайлбар:}
+\begin{itemize}
+    \item \textbf{CategoryDao}: Ангиллын жагсаалт авах (\texttt{getAllCategories}), түлхүүр үгээр хайх (\texttt{getCategoryWithText}) болон CRUD үйлдлүүдийг гүйцэтгэнэ.
+    \item \textbf{Category загвар}: \texttt{plainKeywords} болон \texttt{regexPatterns} талбаруудыг ашиглан ``Dual-mode'' шүүлтүүрийг дэмжинэ.
+    \item \textbf{Message загвар}: \texttt{categoryId} болон \texttt{categoryName} талбараар дамжуулан \texttt{Category} загвартай холбогдоно.
+\end{itemize}
+
+\subsection{Түлхүүр үгсийн удирдлагын систем ба Compose зохиомж}
+Ангиллын дүрмүүдийг удирдах хэрэглэгчийн харилцах цонхны бүтцийг Зураг~\ref{fig:class_ui}-д үзүүлэв.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Diagrams/class/keyboard_ui}
+    \caption{Түлхүүр үг удирдах хэрэглэгчийн харилцах цонх болон Compose компонентуудын класс диаграмм}
+    \label{fig:class_ui}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{KeywordManagerKt}: Түлхүүр үгсийн удирдлагын үндсэн Composable класс. Чип хэлбэртэй харагдацууд (\texttt{SimpleChip}, \texttt{RegexChip}), засах цонх болон контекст цэсийг агуулна.
+    \item \textbf{AddOrEditCategoryDialog}: Уламжлалт View систем болон Compose-ийг нэгтгэсэн гүүр. \texttt{createCategory()} болон \texttt{updateCategory()} функцүүдийг дуудаж өгөгдлийг хадгална.
+\end{itemize}
+
+% ============================================================
+% Section 7: UI/UX зохиомж
+% ============================================================
+\section{Хэрэглэгчийн харилцах цонхны зохиомж}
+Хэрэглэгчийн харилцах цонхыг Material Design 3 стандартын~\cite{material_design} дагуу зохиомжилсон.
+\begin{itemize}
+    \item \textbf{Adaptive Layout}: Нугалдаг төхөөрөмж нээгдэх үед WindowInfoTracker ашиглан дэлгэцийн талбайг мэдэрч, хоёр баганат харагдац руу автоматаар шилжинэ.
+    \item \textbf{Хадгалсан харагдац}: Хавтас тус бүрт өөрийн гэсэн өнгө оноож, харилцан ярианы жагсаалтыг тухайн өнгөөр харуулна.
+    \item \textbf{Keyword Manager}: Тогтмол илэрхийлэл болон түлхүүр үгсийг нэг дороос удирдах боломжтой интерактив цонхыг Jetpack Compose-оор хэрэгжүүлсэн.
+\end{itemize}
+
+Доод цэсийг эрхий хурууны идэвхтэй бүсэд байрлуулах нь нэг гараар ашиглах эргономикийг сайжруулж \cite{hurff2016thumb}, шудрах үйлдлүүдээр архивлах, уншсан төлөв солих, хавтас оноох зэрэг үйлдлийг нэг алхамд гүйцэтгэх боломж бүрдүүлсэн.
+
+% ============================================================
+% Section 8: Аюулгүй байдлын зохиомж
+% ============================================================
+\section{Аюулгүй байдлын зохиомж}
+Хэрэглэгчийн хувийн зурвасын нууцлалыг хангах үүднээс дараах арга хэмжээнүүдийг зохиомжид тусгав:
+\begin{itemize}
+    \item \textbf{On-device Filtering}: Зурвасыг ангилах бүх процесс зөвхөн төхөөрөмж дээр локал байдлаар хийгдэх бөгөөд гадны сервер рүү өгөгдөл дамжуулахгүй.
+    \item \textbf{Local-first Database}: Өгөгдлийн сан нь Android-ийн App Sandbox \cite{room_guide} дотор тусгаарлагдсан тул бусад аппликейшн шууд хандах боломжгүй.
+\end{itemize}
