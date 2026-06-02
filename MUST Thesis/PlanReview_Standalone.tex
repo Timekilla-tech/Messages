@@ -1,5 +1,5 @@
 \documentclass[12pt, oneside, english, onehalfspacing, nolistspacing, headsepline]{MUST-Thesis}
-\deptchair{А. Хүдэр \\ \small Доктор (Ph.D), Дэд профессор}
+
 % Required Packages
 \usepackage[utf8]{inputenc}
 \usepackage[T2A]{fontenc}
@@ -30,6 +30,7 @@
 \definecolor{CadetBlue}{cmyk}{0.62,0.57,0.23,0}
 \definecolor{Cover}{RGB}{102,255,255}
 \definecolor{Chapter}{RGB}{255,220,180}
+
 % Ном зүйн тохиргоо
 \usepackage[backend=biber,style=numeric,natbib=true,sorting=none,sortcites,language=auto,autolang=other]{biblatex}
 \usepackage{color}
@@ -53,46 +54,17 @@
 \department{Компьютерын ухааны тэнхим}
 \authorlong{Гэрэлмаа Төртүшиг}
 \authorshort{Г.Төртүшиг}
-\supervisor{Магистр (M.Sc) А.Отгонбаяр}
+\supervisor{Багш M.Sc. А.Отгонбаяр}
+\reader{Ахлах багш. PhD. Ч.Цэнд-Аюуш}
+\deptchair{Дэд Проф. Ph.D. А.Хүдэр}
 \degreeind{D061301}
 \degree{Програм хангамжийн инженерчлэл}
 \keywords{Android, Kotlin, UX, Regex Filtering, Foldable Devices, Room DB}
 
 \begin{document}
-    \frontmatter
     \pagestyle{plain}
-    \setcounter{tocdepth}{1}
 
-% Нүүр хуудас болон бусад хуудсуудыг оруулах
-    \include{FrontBackMatter/Titlepage}
-    \include{FrontBackMatter/Declaration}
-    \include{FrontBackMatter/Quotation}
-    \include{FrontBackMatter/Acknowledgments}
-    \include{FrontBackMatter/Abstract}
-    \include{FrontBackMatter/Abbreviations}
-
-    \tableofcontents
-    \listoffigures
-    \listoftables
-
-    \mainmatter
-    \pagestyle{thesis}
-    \myformat
-
-% Бүлгүүд
-    \include{Chapters/Chapter1} % Төслийн үндэслэл ба онол арга зүйн судалгаа
-    \include{Chapters/Chapter2} % Арга зүй ба системийн зохиомж
-    \include{Chapters/Chapter3} % Үр дүн ба үнэлгээ
-    \include{Chapters/Conclusion} % Дүгнэлт ба цаашдын ажил
-% Ном зүй (Ашигласан материал)
-    \cleardoublepage
-    \defformat
-    \nocite{*}
-    \addchap{Ном зүй}
-    \printbibliography[heading=none]
-
-% Хавсралт
-    \appendix
-    \include{Appendices/AppendixA}
+    % Include the content of Plan-Review.tex directly
+    \include{FrontBackMatter/Plan-Review}
 
 \end{document}
