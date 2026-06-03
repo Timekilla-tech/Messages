@@ -158,8 +158,8 @@ abstract class BaseConversationsAdapter(
     override fun onViewRecycled(holder: ViewHolder) {
         super.onViewRecycled(holder)
         if (!activity.isDestroyed && !activity.isFinishing) {
-            val itemView = ItemConversationBinding.bind(holder.itemView)
-            Glide.with(activity).clear(itemView.conversationImage)
+            val binding = ItemConversationBinding.bind(holder.itemView)
+            Glide.with(activity).clear(binding.conversationImage)
         }
     }
 
@@ -171,7 +171,8 @@ abstract class BaseConversationsAdapter(
     }
 
     private fun setupView(view: View, conversation: Conversation) {
-        ItemConversationBinding.bind(view).apply {
+        val binding = ItemConversationBinding.bind(view)
+        binding.apply {
             root.setupViewBackground(activity)
 
             val tintColor = (activity as? MainActivity)?.getConversationRowTintColor(conversation)
@@ -199,13 +200,8 @@ abstract class BaseConversationsAdapter(
             }
 
             val categoryNames = parseCategoryNames(conversation.category)
-            if (categoryNames.isNotEmpty()) {
-                renderCategoryChips(categoryLabels, categoryNames)
-                categoryLabels.visibility = View.VISIBLE
-            } else {
-                categoryLabels.removeAllViews()
-                categoryLabels.visibility = View.GONE
-            }
+            renderCategoryChips(categoryLabels, categoryNames)
+            categoryLabels.beVisibleIf(categoryNames.isNotEmpty())
 
             conversationBodyShort.apply {
                 text = smsDraft ?: conversation.snippet
@@ -284,7 +280,6 @@ abstract class BaseConversationsAdapter(
     }
 
     private fun renderCategoryChips(container: LinearLayout, names: List<String>) {
-        container.removeAllViews()
         // Filter out any category names that no longer exist in the DB so deleted categories
         // don't continue to appear in the conversation list until DB rows are reconciled.
         val existingCategoryKeys = categoryColors.keys
@@ -293,49 +288,62 @@ abstract class BaseConversationsAdapter(
             .filter { name -> existingCategoryKeys.isEmpty() || existingCategoryKeys.contains(normalizeCategoryKey(name)) }
             .take(MAX_VISIBLE_CATEGORY_CHIPS)
 
-        visibleNames.forEach { name ->
-            android.util.Log.d("CategoryDebug", "renderCategoryChips: adding chip for '$name'")
-            val key = normalizeCategoryKey(name)
-            val color = categoryColors[key] ?: properPrimaryColor
+        val totalToDisplay = if (names.size > visibleNames.size) visibleNames.size + 1 else visibleNames.size
 
-            container.addView(createCategoryChip(name, color))
+        // Reuse existing views or create new ones if needed
+        for (i in 0 until totalToDisplay) {
+            val textView = if (i < container.childCount) {
+                container.getChildAt(i) as TextView
+            } else {
+                TextView(activity).also {
+                    it.setupChipFixedProperties()
+                    container.addView(it)
+                }
+            }
+
+            textView.visibility = View.VISIBLE
+            if (i < visibleNames.size) {
+                val name = visibleNames[i]
+                val key = normalizeCategoryKey(name)
+                val color = categoryColors[key] ?: properPrimaryColor
+                updateCategoryChip(textView, name, color)
+            } else {
+                // Display the "+X" chip
+                val hiddenCount = names.size - visibleNames.size
+                updateCategoryChip(textView, "+$hiddenCount", properPrimaryColor)
+            }
         }
 
-        val hiddenCount = names.size - visibleNames.size
-        if (hiddenCount > 0) {
-            container.addView(createCategoryChip("+$hiddenCount", properPrimaryColor))
+        // Hide any remaining chips that are no longer needed
+        for (i in totalToDisplay until container.childCount) {
+            container.getChildAt(i).visibility = View.GONE
         }
     }
 
-    private fun createCategoryChip(textValue: String, color: Int): TextView {
+    private fun TextView.setupChipFixedProperties() {
         val horizontalPadding = 8.dp
         val verticalPadding = 2.dp
         val marginEnd = 4.dp
+        
+        maxWidth = 140.dp
+        isSingleLine = true
+        ellipsize = TextUtils.TruncateAt.END
+        setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            rightMargin = marginEnd
+        }
+    }
 
-        return TextView(activity).apply {
+    private fun updateCategoryChip(textView: TextView, textValue: String, color: Int) {
+        textView.apply {
             text = textValue
-            maxWidth = 140.dp
-            isSingleLine = true
-            ellipsize = TextUtils.TruncateAt.END
-            setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-            // Make chip background a light variant and use a colored stroke so it visually matches
-            // the neutral "SuggestionChip" style used in Compose
             setTextSize(TypedValue.COMPLEX_UNIT_PX, fontSize * 0.7f)
 
-            // Lighten the color for the background (mix with white)
-            fun lighten(c: Int, factor: Float): Int {
-                val a = (c shr 24) and 0xff
-                val r = (c shr 16) and 0xff
-                val g = (c shr 8) and 0xff
-                val b = c and 0xff
-                val nr = (r + ((255 - r) * factor)).toInt().coerceIn(0, 255)
-                val ng = (g + ((255 - g) * factor)).toInt().coerceIn(0, 255)
-                val nb = (b + ((255 - b) * factor)).toInt().coerceIn(0, 255)
-                return (a shl 24) or (nr shl 16) or (ng shl 8) or nb
-            }
-
-            val backgroundColor = lighten(color, 0.82f)
-            val strokeWidth = (1.dp)
+            val backgroundColor = lightenColor(color, 0.82f)
+            val strokeWidth = 1.dp
             val drawable = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 12.dp.toFloat()
@@ -343,14 +351,27 @@ abstract class BaseConversationsAdapter(
                 setStroke(strokeWidth, color)
             }
             background = drawable
-            // Use a readable contrast color for the label
             setTextColor(color.getContrastColor())
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                rightMargin = marginEnd
-            }
+        }
+    }
+
+    private fun lightenColor(c: Int, factor: Float): Int {
+        val a = (c shr 24) and 0xff
+        val r = (c shr 16) and 0xff
+        val g = (c shr 8) and 0xff
+        val b = c and 0xff
+        val nr = (r + ((255 - r) * factor)).toInt().coerceIn(0, 255)
+        val ng = (g + ((255 - g) * factor)).toInt().coerceIn(0, 255)
+        val nb = (b + ((255 - b) * factor)).toInt().coerceIn(0, 255)
+        return (a shl 24) or (nr shl 16) or (ng shl 8) or nb
+    }
+
+    private fun createCategoryChip(textValue: String, color: Int): TextView {
+        // This method is now legacy but kept for reference if needed, 
+        // or can be removed if not used elsewhere.
+        return TextView(activity).apply {
+            setupChipFixedProperties()
+            updateCategoryChip(this, textValue, color)
         }
     }
 

@@ -513,17 +513,21 @@ class ThreadAdapter(
                 val contactLetterIcon = SimpleContactsHelper(activity).getContactLetterIcon(message.senderName)
                 val placeholder = contactLetterIcon.toDrawable(activity.resources)
 
-                val options = RequestOptions()
-                    .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-                    .error(placeholder)
-                    .centerCrop()
+                if (message.senderPhotoUri.isNotEmpty()) {
+                    val options = RequestOptions()
+                        .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                        .error(placeholder)
+                        .centerCrop()
 
-                Glide.with(activity)
-                    .load(message.senderPhotoUri)
-                    .placeholder(placeholder)
-                    .apply(options)
-                    .apply(RequestOptions.circleCropTransform())
-                    .into(threadMessageSenderPhoto)
+                    Glide.with(activity)
+                        .load(message.senderPhotoUri)
+                        .placeholder(placeholder)
+                        .apply(options)
+                        .apply(RequestOptions.circleCropTransform())
+                        .into(threadMessageSenderPhoto)
+                } else {
+                    threadMessageSenderPhoto.setImageDrawable(placeholder)
+                }
             }
         }
     }

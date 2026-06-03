@@ -4,12 +4,15 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.view.View
+import androidx.annotation.StringRes
 import androidx.recyclerview.widget.RecyclerView
 import org.fossify.commons.R as CommonsR
 import org.fossify.commons.extensions.getProperBackgroundColor
 import org.fossify.commons.extensions.getProperTextColor
+import org.fossify.messages.R
 import org.fossify.messages.activities.SimpleActivity
 import org.fossify.messages.models.Conversation
+import java.util.Calendar
 
 class ConversationAgeHeaderDecoration(
     private val activity: SimpleActivity,
@@ -24,6 +27,9 @@ class ConversationAgeHeaderDecoration(
     private val horizontalPadding = activity.resources.getDimensionPixelSize(CommonsR.dimen.activity_margin)
     private val verticalPadding = activity.resources.getDimensionPixelSize(CommonsR.dimen.small_margin)
     private val headerHeight = (textPaint.textSize + verticalPadding * 2).toInt()
+
+    private var cachedBoundaries: TimeBoundaries? = null
+    private var lastBoundariesUpdate: Long = 0L
 
     override fun getItemOffsets(
         outRect: Rect,
@@ -41,6 +47,9 @@ class ConversationAgeHeaderDecoration(
         super.onDraw(canvas, parent, state)
         backgroundPaint.color = activity.getProperBackgroundColor()
         textPaint.color = activity.getProperTextColor()
+
+        // Ensure boundaries are up to date (refresh at most once per minute)
+        getBoundaries()
 
         for (index in 0 until parent.childCount) {
             val child = parent.getChildAt(index)
@@ -87,6 +96,70 @@ class ConversationAgeHeaderDecoration(
     }
 
     private fun getBucket(timestampSeconds: Int): ConversationAgeBucket {
-        return getConversationAgeBucket(timestampSeconds)
+        val timestampMillis = timestampSeconds * 1000L
+        val boundaries = getBoundaries()
+
+        return when {
+            timestampMillis >= boundaries.startOfToday -> ConversationAgeBucket.TODAY
+            timestampMillis >= boundaries.startOfYesterday -> ConversationAgeBucket.YESTERDAY
+            timestampMillis >= boundaries.startOfWeek -> ConversationAgeBucket.THIS_WEEK
+            timestampMillis >= boundaries.startOfMonth -> ConversationAgeBucket.THIS_MONTH
+            else -> ConversationAgeBucket.OLDER
+        }
+    }
+
+    private fun getBoundaries(): TimeBoundaries {
+        val nowMillis = System.currentTimeMillis()
+        val cached = cachedBoundaries
+        if (cached != null && nowMillis - lastBoundariesUpdate < 60_000L) {
+            return cached
+        }
+
+        val now = Calendar.getInstance()
+        val startOfToday = (now.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val startOfYesterday = (startOfToday.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_YEAR, -1)
+        }
+
+        val startOfWeek = (startOfToday.clone() as Calendar).apply {
+            val dayOffset = (7 + get(Calendar.DAY_OF_WEEK) - firstDayOfWeek) % 7
+            add(Calendar.DAY_OF_YEAR, -dayOffset)
+        }
+
+        val startOfMonth = (startOfToday.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+
+        val newBoundaries = TimeBoundaries(
+            startOfToday = startOfToday.timeInMillis,
+            startOfYesterday = startOfYesterday.timeInMillis,
+            startOfWeek = startOfWeek.timeInMillis,
+            startOfMonth = startOfMonth.timeInMillis,
+        )
+
+        cachedBoundaries = newBoundaries
+        lastBoundariesUpdate = nowMillis
+        return newBoundaries
+    }
+
+    private data class TimeBoundaries(
+        val startOfToday: Long,
+        val startOfYesterday: Long,
+        val startOfWeek: Long,
+        val startOfMonth: Long,
+    )
+
+    private enum class ConversationAgeBucket(@StringRes val titleRes: Int) {
+        TODAY(R.string.inbox_group_today),
+        YESTERDAY(R.string.inbox_group_yesterday),
+        THIS_WEEK(R.string.inbox_group_this_week),
+        THIS_MONTH(R.string.inbox_group_this_month),
+        OLDER(R.string.inbox_group_older),
     }
 }

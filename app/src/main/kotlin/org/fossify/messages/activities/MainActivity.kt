@@ -124,6 +124,7 @@ class MainActivity : SimpleActivity() {
     private var inboxSwipeHelper: ItemTouchHelper? = null
     val savedViewsStore by lazy { SavedViewsStore(config) }
     private val savedViewMenuIdOffset = 20_000
+    private var conversationsCache = ArrayList<Conversation>()
 
     private val binding by viewBinding(ActivityMainBinding::inflate)
 
@@ -576,6 +577,11 @@ class MainActivity : SimpleActivity() {
     private fun initMessenger() {
         checkWhatsNewDialog()
         storeStateVariables()
+        
+        if (conversationsCache.isNotEmpty()) {
+            setupConversations(conversationsCache, cached = true)
+        }
+
         getCachedConversations()
         binding.noConversationsPlaceholder2.setOnClickListener {
             launchNewConversation()
@@ -588,17 +594,7 @@ class MainActivity : SimpleActivity() {
 
     private fun getCachedConversations() {
         ensureBackgroundThread {
-            var conversations = try {
-                conversationsDB.getNonArchived().toMutableList() as ArrayList<Conversation>
-            } catch (_: Exception) {
-                ArrayList()
-            }
-
-            conversations.forEach { conversation ->
-                refreshConversationCategoryLabel(conversation.threadId)
-            }
-
-            conversations = try {
+            val conversations = try {
                 conversationsDB.getNonArchived().toMutableList() as ArrayList<Conversation>
             } catch (_: Exception) {
                 ArrayList()
@@ -610,11 +606,12 @@ class MainActivity : SimpleActivity() {
                 listOf()
             }
 
+            val all = (conversations + archived).toMutableList() as ArrayList<Conversation>
+            conversationsCache = all
+
             runOnUiThread {
-                setupConversations(conversations, cached = true)
-                getNewConversations(
-                    (conversations + archived).toMutableList() as ArrayList<Conversation>
-                )
+                setupConversations(all, cached = true)
+                getNewConversations(all)
             }
             conversations.forEach {
                 clearExpiredScheduledMessages(it.threadId)
@@ -678,6 +675,7 @@ class MainActivity : SimpleActivity() {
             }
 
             val allConversations = conversationsDB.getNonArchived() as ArrayList<Conversation>
+            conversationsCache = allConversations
             runOnUiThread {
                 setupConversations(allConversations)
             }
@@ -813,35 +811,39 @@ class MainActivity : SimpleActivity() {
         conversations: ArrayList<Conversation>,
         cached: Boolean = false,
     ) {
-        val filteredConversations = conversations
-            .filter { conversationMatchesActiveView(it) }
-            .toMutableList() as ArrayList<Conversation>
+        ensureBackgroundThread {
+            val filteredConversations = conversations
+                .filter { conversationMatchesActiveView(it) }
+                .toMutableList() as ArrayList<Conversation>
 
-        val sortedConversations = filteredConversations
-            .sortedWith(
-                compareByDescending<Conversation> {
-                    config.pinnedConversations.contains(it.threadId.toString())
-                }.thenByDescending { it.date }
-            ).toMutableList() as ArrayList<Conversation>
+            val sortedConversations = filteredConversations
+                .sortedWith(
+                    compareByDescending<Conversation> {
+                        config.pinnedConversations.contains(it.threadId.toString())
+                    }.thenByDescending { it.date }
+                ).toMutableList() as ArrayList<Conversation>
 
-        if (cached && config.appRunCount == 1) {
-            // there are no cached conversations on the first run so we show the
-            // loading placeholder and progress until we are done loading from telephony
-            showOrHideProgress(conversations.isEmpty())
-        } else {
-            showOrHideProgress(false)
-            showOrHidePlaceholder(sortedConversations.isEmpty())
-        }
+            runOnUiThread {
+                if (cached && config.appRunCount == 1) {
+                    // there are no cached conversations on the first run so we show the
+                    // loading placeholder and progress until we are done loading from telephony
+                    showOrHideProgress(conversations.isEmpty())
+                } else {
+                    showOrHideProgress(false)
+                    showOrHidePlaceholder(sortedConversations.isEmpty())
+                }
 
-        try {
-            getOrCreateConversationsAdapter().apply {
-                updateConversations(sortedConversations) {
-                    if (!cached) {
-                        showOrHidePlaceholder(currentList.isEmpty())
+                try {
+                    getOrCreateConversationsAdapter().apply {
+                        updateConversations(sortedConversations) {
+                            if (!cached) {
+                                showOrHidePlaceholder(currentList.isEmpty())
+                            }
+                        }
                     }
+                } catch (_: Exception) {
                 }
             }
-        } catch (_: Exception) {
         }
     }
 
@@ -1090,13 +1092,18 @@ class MainActivity : SimpleActivity() {
     }
 
     private fun reloadConversationsForCurrentFilter() {
+        if (conversationsCache.isNotEmpty()) {
+            setupConversations(conversationsCache)
+            return
+        }
+
         ensureBackgroundThread {
             val nonArchived = try {
                 conversationsDB.getNonArchived()
             } catch (_: Exception) {
                 emptyList()
             }
-            
+
             val archived = try {
                 conversationsDB.getAllArchived()
             } catch (_: Exception) {
@@ -1104,6 +1111,7 @@ class MainActivity : SimpleActivity() {
             }
 
             val all = (nonArchived + archived).toMutableList() as ArrayList<Conversation>
+            conversationsCache = all
 
             runOnUiThread {
                 setupConversations(all)

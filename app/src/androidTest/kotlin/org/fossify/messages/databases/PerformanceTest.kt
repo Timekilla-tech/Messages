@@ -63,7 +63,11 @@ class PerformanceTest {
         }
 
         val startTime = System.currentTimeMillis()
-        context.messagesDB.insertMessages(*messages.toTypedArray())
+        val thread = Thread {
+            context.messagesDB.insertMessages(*messages.toTypedArray())
+        }
+        thread.start()
+        thread.join()
         val endTime = System.currentTimeMillis()
         
         val duration = endTime - startTime
