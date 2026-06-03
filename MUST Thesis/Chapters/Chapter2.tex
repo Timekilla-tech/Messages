@@ -6,9 +6,56 @@
 \section{Хөгжүүлэлтийн төлөвлөгөө}
 Хөгжүүлэлтийн ажлыг Iterative (Давталттай) аргачлалаар гүйцэтгэсэн бөгөөд доорх үе шатуудад хуваав:
 
+\begin{sidewaysfigure}
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{ganttchart}[
+        hgrid,
+        vgrid,
+        x unit=0.25cm,
+        y unit chart=0.8cm,
+        title/.style={fill=Chapter, draw=black},
+        title label font=\bfseries\small,
+        bar/.style={fill=CadetBlue!50, draw=black},
+        milestone/.style={fill=OliveGreen, draw=black},
+        bar label font=\footnotesize,
+        milestone label font=\itshape\scriptsize,
+        link/.style={-latex, line width=1pt, black}
+    ]{1}{92}
+        \gantttitle{2026 оны 3-р сар}{31}
+        \gantttitle{2026 оны 4-р сар}{30}
+        \gantttitle{2026 оны 5-р сар}{31} \\
+
+% I үе шат: 3-р сарын 4-өөс 3-р сарын 31 (1..31)
+        \ganttbar[name=phase1]{I үе шат: Суурь өгөгдлийн сангийн өргөтгөл, Ангиллалт}{4}{31} \\
+
+% II үе шат: 4-р сарын 1-ээс 4-р сарын 28 (32..59)
+        \ganttbar[name=phase2]{II үе шат: Хавтас удирдлагын систем ба UI}{20}{59} \\
+
+% III үе шат: 4-р сарын 29-өөс 5-р сарын 19 (60..80)
+        \ganttbar[name=phase3]{III үе шат: Нугалдаг дэлгэцийн оновчлол}{50}{80} \\
+
+% IV үе шат: 5-р сарын 20-оос 5-р сарын 31 (81..92)
+        \ganttbar[name=phase4]{IV үе шат: Тест ба чанарын баталгаажуулалт}{40}{92} \\
+
+
+
+        \ganttlink{phase1}{phase2}
+        \ganttlink{phase2}{phase3}
+        \ganttlink{phase3}{phase4}
+    \end{ganttchart}%
+    }
+    \caption{Төслийн үе шатуудын Гантт диаграм}
+    \label{fig:gantt_chart}
+\end{sidewaysfigure}
 
 Хөгжүүлэлтийн явцад Git-ийн ``Feature Branch'' стратегийг~\cite{vincent_git} ашиглаж, долоо хоног бүр явцын түүхийг баталгаажуулсан.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{Chart/Timekilla-techCommits.png}
+\caption{Төслийн коммитуудын график}
+\end{figure}
 % ============================================================
 % Section 2: Хэрэглээний тохиолдлын шинжилгээ
 % ============================================================
@@ -40,7 +87,7 @@
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.55\textwidth]{Diagrams/architecture}
+    \includegraphics[width=0.85\textwidth]{Diagrams/architecture}
     \caption{Системийн ерөнхий бүтэц (Architecture Diagram)}
     \label{fig:architecture}
 \end{figure}
@@ -53,18 +100,20 @@
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.55\textwidth]{Diagrams/erd}
+    \includegraphics[width=0.65\textwidth]{Diagrams/erd}
     \caption{Өгөгдлийн сангийн ерөнхий бүтэц (ER Diagram)}
     \label{fig:erd}
 \end{figure}
 
 \begin{itemize}
     \item \textbf{Categories}: Ангиллын нэр, өнгө, дүрмийн тохиргоо хадгална.
-    \item \textbf{Rules}: Түлхүүр үг болон тогтмол илэрхийллийн дүрэм, ангилалтай холбогдоно.
-    \item \textbf{Харилцан яриа}: Харилцан ярианы ерөнхий мэдээлэл, ангиллын холбоос.
-    \item \textbf{Messages}: Бодит зурвасын агуулга, илгээгч, огноо, харилцан ярианд хамаарал.
+    \item \textbf{Drafts}: Зурвас бичих хэсэгт бичигдсэн боловч илгээгдээгүй мэдээллийг хадгалдаг хэсэг.
+    \item \textbf{Conversations}: Харилцан ярианы ерөнхий мэдээлэл, харилцагч хоорондын зурвасууд.
+    \item \textbf{Messages}: Бодит зурвасын агуулга, илгээгч, огноо, харилцан ярианы хамаарал зэрэг хамгийн гол үндсэн их бие болсон өгөгдлийн сангийн бүрдэл.
+    \item \textbf{Attachments}: Зурваст хавсаргдсан файлуудын мэдээлэл, жишээ нь зураг, видео гэх мэт.
+    \item \texttt{recycle\_bin\_messages}: Устгасан зурвасуудыг түр хадгалах хэсэг, хэрэглэгч устгасан зурвасыг буцааж авах боломжтой.
 \end{itemize}
-
+Хамгийн дээд байрлах \texttt{Categories} хүснэгт нь энэхүү төслийн хүрээнд  шинээр нэмсэн бөгөөд үлдсэн хүснэгтүүд нь Fossify  Messages-ийн үндсэн өгөгдлийн сангийн бүрэлдэхүүн хэсэг юм.
 \subsection{Өгөгдлийн сангийн шинэчлэл}
 Төслийн хүрээнд \texttt{MessagesDatabase}-ийн хувилбарыг 10-аас 13 болгон ахиулж, дараах өөрчлөлтүүдийг хийсэн:
 \begin{itemize}
@@ -84,7 +133,7 @@
 % Section 5: Нарийвчилсан зохиомж ба логик дараалал
 % ============================================================
 \section{Нарийвчилсан зохиомж ба Логик дараалал}
-Системийн хамгийн чухал процесс болох ``Ангилал үүсгэх, түүний хэрэгжилт''-ийн логикийг UML Sequence диаграммаар (Зураг~\ref{fig:seq_diag}) харуулав. Диаграммд хэрэглэгчийн ангиллын нэр, өнгө болон түлхүүр үгсийг оруулах үйлдэл, өгөгдлийн сан руу хадгалах процесс, мөн тухайн ангиллын дагуу зурвасыг автоматаар ангилах үйл явцын урсгалыг харуулсан.
+Системийн хамгийн чухал процесс болох ``Ангилал үүсгэх, түүний хэрэгжилт''-ийн логикийг UML Sequence диаграммаар (Зураг~\ref{fig:seq_diag}) харуулав. Диаграммд хэрэглэгчийн ангиллын нэр, өнгө болон түлхүүр үгсийг оруулах үйлдэл, өгөгдлийн сан рүү хадгалах процесс, мөн тухайн ангиллын дагуу зурвасыг автоматаар ангилах үйл явцын урсгалыг харуулсан.
 
 \begin{figure}[H]
     \centering
@@ -102,17 +151,29 @@
     \label{fig:seq_category}
 \end{figure}
 
-Мөн харилцан яриан дээр удаан дарснаар гарч ирэх доод хэсгийн тохиргоо гарч ирж тэдгээрээс сонгох явцыг үйл ажиллагааны диаграммаар (Зураг~\ref{fig:act_diag}) дүрслэв. Хавтас оноохоос гадна бусад үндсэн үйлдлүүдийг (архивлах, устгах, уншсан төлөв солих) нэгтгэн харуулсан бөгөөд тэдгээр үйлдэлийг үр дүнг нарийн тайлбарлахгүйгээр үр дүнг төгсгөл хэсэг рүү шууд чиглүүлсэн.
+Мөн харилцан яриан дээр удаан дарснаар гарч ирэх доод хэсгийн тохиргоо гарч ирж тэдгээрээс сонгох явцыг үйл ажиллагааны диаграммаар (Зураг~\ref{fig:long_diag}) дүрслэв. Хавтас оноохоос гадна бусад үндсэн үйлдлүүдийг (архивлах, устгах, уншсан төлөв солих) нэгтгэн харуулсан бөгөөд тэдгээр үйлдэлийг үр дүнг нарийн тайлбарлахгүйгээр үр дүнг төгсгөл хэсэг рүү шууд чиглүүлсэн. Төлөвийн диаграммыг Зураг \ref{fig:long_act}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{Diagrams/sequence/long_press_sequence_diagram}
     \caption{Удаан дарж гарч ирэх туслах цэсний логик}
-    \label{fig:act_diag}
+    \label{fig:long_diag}
 \end{figure}
-
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{Diagrams/activity/Long_press}
+    \caption{Удаан дарж гарч ирэх туслах цэсний төлвийн диаграмм}
+    \label{fig:long_act}
+\end{figure}
 \section{Төслийн суурь бүтэц (Fossify Messages)}
-Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн сангуудын бүтэц нь Android хөгжүүлэлтийн стандарт болон Separation of Concerns (үүрэг хариуцлагыг тусгаарлах) зарчмыг баримталдаг. Үндсэн хавтаснуудын үүргийг доор дэлгэрэнгүй тайлбарлав.
+Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн сангуудын бүтэц нь Android хөгжүүлэлтийн стандарт болон Separation of Concerns (үүрэг хариуцлагыг тусгаарлах) зарчмыг баримталдаг. Үндсэн хавтаснуудын (Зураг \ref{fig:fossify_structure}) үүргийг доор дэлгэрэнгүй тайлбарлав. Төслийн хүрээнд хийгдэх гол өөрчлөлтүүд нь эдгээр хавтаснуудын дотор шинээр класс үүсгэх, эсвэл одоо байгаа классуудыг өргөтгөх хэлбэрээр явагдах бөгөөд сангуудын ерөнхий бүтэц хадгалагдана.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{Figures/project_file_structure}
+    \caption{Fossify Messages төслийн сангуудын бүтэц}
+    \label{fig:fossify_structure}
+\end{figure}
 
 \begin{itemize}
     \item \textbf{activities/ (Presentation Layer)}: Энэ санд аппликейшны бүх дэлгэцүүд (UI screens) байрлана. Жишээ нь: \texttt{MainActivity} (мессежийн жагсаалт), \texttt{ThreadActivity} (тухайн харилцагчтай харилцсан түүх), \texttt{SettingsActivity}. Android-ийн ажиллах үндсэн цэгүүд энд байна.
@@ -129,7 +190,7 @@ Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн санг
 
     \item \textbf{helpers/ (Utilities)}: Туслах функцүүд болон тогтмол утгууд (Constants) байрлана. Мөн Prefs буюу хэрэглэгчийн тохиргоог (\texttt{SharedPrefs}) удирдах классууд энд байна.
 
-    \item \textbf{interfaces/ (Abstraction)}: Классууд хоорондоо харилцах гүүр болох "Listener"-үүд байрлана. Жишээ нь: \texttt{RefreshMessagesListener} – өгөгдөл өөрчлөгдөхөд UI-г шинэчлэх үүрэгтэй.
+    \item \textbf{interfaces/ (Abstraction)}: Классууд хоорондоо харилцах гүүр болох "Listener" байрлана. Жишээ нь: \texttt{RefreshMessagesListener} – өгөгдөл өөрчлөгдөхөд UI-г шинэчлэх үүрэгтэй.
 
     \item \textbf{messaging/ (Core Logic)}: Мессеж илгээх, хүлээн авах, SMS/MMS-ийн төрлийг тодорхойлох зэрэг системийн хамгийн чухал логикууд энд байрладаг. Энэ бол апп-ын "зүрх" нь юм.
 
@@ -158,7 +219,7 @@ Fossify Messages (мөн өмнөх Simple Mobile Tools) төслийн санг
 
 \noindent \textbf{Гол классуудын үүрэг:}
 \begin{itemize}
-    \item \textbf{ManageCategoriesActivity}: Ангиллын жагсаалтыг шинэчлэх (\texttt{updateCategories}), засах цонх дуудах (\texttt{addOrEditCategory}) үйлдлүүдийг удирдана.
+    \item \textbf{ManageCategoriesActivity}: Ангиллын жагсаалт авах (\texttt{updateCategories}), засах цонх дуудах (\texttt{addOrEditCategory}) үйлдлүүдийг удирдана.
     \item \textbf{MainActivity}: Хадгалсан харагдацуудыг (SavedViewsStore), хугацааны бүлэглэлт (AgeHeaderDecoration), шудрах үйлдэл (inboxSwipeHelper) зэрэг шинэ боломжуудыг нэгтгэсэн.
     \item \textbf{ContextKt}: Системийн бизнес логикийн гол цөм бөгөөд \texttt{withAutoCategory()}, \texttt{refreshConversationCategoryLabel()}, \texttt{filterMessagesByKeywords()} зэрэг өргөтгөл функцүүдийг агуулна.
 \end{itemize}
