@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/detail_root_layout"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -30,28 +31,39 @@
         android:layout_height="1dp"
         android:background="?android:attr/dividerHorizontal" />
 
-    <!-- Messages list -->
-    <org.fossify.commons.views.MyRecyclerView
-        android:id="@+id/detail_messages_list"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:scrollbars="vertical"
-        app:layoutManager="org.fossify.commons.views.MyLinearLayoutManager" />
+        android:layout_weight="1">
 
-    <!-- Empty state -->
-    <org.fossify.commons.views.MyTextView
-        android:id="@+id/detail_no_messages"
+        <!-- Messages list -->
+        <org.fossify.commons.views.MyRecyclerView
+            android:id="@+id/detail_messages_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:scrollbars="vertical"
+            app:layoutManager="org.fossify.commons.views.MyLinearLayoutManager" />
+
+        <!-- Empty state -->
+        <org.fossify.commons.views.MyTextView
+            android:id="@+id/detail_no_messages"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0.8"
+            android:gravity="center"
+            android:paddingLeft="@dimen/activity_margin"
+            android:paddingRight="@dimen/activity_margin"
+            android:text="@string/no_items_found"
+            android:textSize="@dimen/bigger_text_size"
+            android:textStyle="italic"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <include
+        android:id="@+id/message_holder"
+        layout="@layout/layout_thread_send_message_holder"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0.8"
-        android:gravity="center"
-        android:paddingLeft="@dimen/activity_margin"
-        android:paddingRight="@dimen/activity_margin"
-        android:text="@string/no_items_found"
-        android:textSize="@dimen/bigger_text_size"
-        android:textStyle="italic"
-        android:visibility="gone" />
+        android:layout_height="wrap_content" />
 
 </LinearLayout>

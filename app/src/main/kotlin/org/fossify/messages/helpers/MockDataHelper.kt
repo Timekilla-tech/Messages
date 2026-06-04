@@ -26,11 +26,6 @@ object MockDataHelper {
             val conversationsDao = context.conversationsDB
             val messagesDao = context.messagesDB
 
-            // Detection for your spare test device (Galaxy Z Fold 3)
-            val currentModel = Build.MODEL
-            val isSpareDevice = currentModel.contains("SM-F926N", ignoreCase = true) || 
-                               currentModel.contains("Galaxy Z Fold3", ignoreCase = true)
-
             // 1. Create/Ensure Categories
             val categories = listOf(
                 Category(name = "Bank", color = 0xFF2196F3.toInt(), plainKeywords = "bank,transfer,payment,khan,golomt"),
@@ -48,7 +43,7 @@ object MockDataHelper {
 
             val updatedCategories = categoryDao.getAllCategories()
             val random = Random()
-            val threadCount = 1000
+            val threadCount = 100
             val messagesPerThread = 10
             val totalMessages = threadCount * messagesPerThread
             
@@ -134,7 +129,7 @@ object MockDataHelper {
                 ))
             }
 
-            // Perform Batch Insertion in chunks to handle the massive 40,000 message volume
+            // Perform Batch Insertion in chunks
             messagesToInsert.chunked(1000).forEach { chunk ->
                 messagesDao.insertMessages(*chunk.toTypedArray())
             }
@@ -143,21 +138,32 @@ object MockDataHelper {
             }
 
             val duration = System.currentTimeMillis() - startTime
-            context.toast("Injected $totalMessages messages in $duration ms")
+            context.toast("Injected $totalMessages messages in $duration ms (Persistent)")
             
             refreshConversations()
+        }
+    }
 
-            // 3. Vanishing Logic (only on non-spare devices)
-            if (!isSpareDevice) {
-                Thread.sleep(5000) // Stay visible for 5 seconds
-                messagesToInsert.forEach { messagesDao.delete(it.id) }
-                conversationsToInsert.forEach { conversationsDao.deleteThreadId(it.threadId) }
-                context.toast("Mock data vanished (Auto-cleanup)")
-                refreshConversations()
-            } else {
-                android.util.Log.d("MockDebug", "Device $currentModel detected - Data is now Persistent")
-                context.toast("Data persisted on $currentModel")
+    fun clearMockData(context: Context) {
+        ensureBackgroundThread {
+            val conversationsDao = context.conversationsDB
+            val messagesDao = context.messagesDB
+
+            // Delete everything in the mock range
+            messagesDao.getAll().filter { it.id >= MOCK_ID_START }.forEach {
+                messagesDao.delete(it.id)
             }
+            
+            conversationsDao.getNonArchived().filter { it.threadId >= MOCK_ID_START }.forEach {
+                conversationsDao.deleteThreadId(it.threadId)
+            }
+
+            conversationsDao.getAllArchived().filter { it.threadId >= MOCK_ID_START }.forEach {
+                conversationsDao.deleteThreadId(it.threadId)
+            }
+
+            context.toast("Mock data cleared")
+            refreshConversations()
         }
     }
 

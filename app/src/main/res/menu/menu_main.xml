@@ -45,4 +45,9 @@
         android:showAsAction="never"
         android:title="Inject 100 Regex (Stress Test)"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/clear_mock_data"
+        android:showAsAction="never"
+        android:title="Clear Mock Data"
+        app:showAsAction="never" />
 </menu>
