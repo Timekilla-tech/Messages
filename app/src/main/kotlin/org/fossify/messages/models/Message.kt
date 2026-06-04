@@ -27,7 +27,7 @@ data class Message(
     @ColumnInfo(name = "attachment") val attachment: MessageAttachment?,
     @ColumnInfo(name = "sender_phone_number") val senderPhoneNumber: String,
     @ColumnInfo(name = "sender_name") var senderName: String,
-    @ColumnInfo(name = "sender_photo_uri") val senderPhotoUri: String,
+    @ColumnInfo(name = "sender_photo_uri") var senderPhotoUri: String,
     @ColumnInfo(name = "subscription_id") var subscriptionId: Int,
     @ColumnInfo(name = "is_scheduled") var isScheduled: Boolean = false,
     @ColumnInfo(name = "category_name") var categoryName: String = "",
