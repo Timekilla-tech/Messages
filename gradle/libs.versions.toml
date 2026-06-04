@@ -5,7 +5,7 @@ kotlinxSerializationJson = "1.10.0"
 #Compose
 composeBom = "2024.06.00"
 #KSP
-ksp = "2.3.5"
+ksp = "2.3.6"
 #Detekt
 detekt = "1.23.8"
 detektCompose = "0.4.28"
