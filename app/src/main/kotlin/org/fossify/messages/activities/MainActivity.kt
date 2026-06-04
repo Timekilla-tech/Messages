@@ -19,6 +19,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.view.updatePadding
@@ -106,7 +108,6 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.util.Locale
-
 class MainActivity : SimpleActivity() {
     override var isSearchBarEnabled = true
 
@@ -120,7 +121,7 @@ class MainActivity : SimpleActivity() {
     private var activeSavedView = SavedView.mainView()
     private var conversationsBaseBottomPadding = 0
     private var bus: EventBus? = null
-    private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
+    // private var ageHeaderDecoration: ConversationAgeHeaderDecoration? = null
     private var inboxSwipeHelper: ItemTouchHelper? = null
     val savedViewsStore by lazy { SavedViewsStore(config) }
     private val savedViewMenuIdOffset = 20_000
@@ -222,6 +223,22 @@ class MainActivity : SimpleActivity() {
         } catch (_: Exception) {
             // Window manager may not be available on older platforms - ignore silently
         }
+
+        // Handle keyboard visibility for global UI elements (FAB and Bottom Bars)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.mainCoordinator) { _, insets ->
+            val imeHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val isKeyboardVisible = imeHeight > 0
+            
+            if (isKeyboardVisible) {
+                binding.conversationsFab.beGone()
+                binding.savedViewsBottomBar.beGone()
+                binding.selectionBottomBar?.beGone()
+            } else {
+                binding.conversationsFab.beVisible()
+                updateSelectionBottomBar(getOrCreateConversationsAdapter().getSelectedConversations().size)
+            }
+            insets
+        }
     }
 
     override fun onResume() {
@@ -301,6 +318,7 @@ class MainActivity : SimpleActivity() {
                 R.id.show_archived -> launchArchivedConversations()
                 R.id.inject_mock_data -> org.fossify.messages.helpers.MockDataHelper.injectMockData(this)
                 R.id.inject_regex_stress -> org.fossify.messages.helpers.MockDataHelper.injectStressTestRegex(this)
+                R.id.clear_mock_data -> org.fossify.messages.helpers.MockDataHelper.clearMockData(this)
                 R.id.settings -> launchSettings()
                 R.id.about -> launchAbout()
                 else -> return@setOnMenuItemClickListener false
@@ -703,12 +721,12 @@ class MainActivity : SimpleActivity() {
             )
 
             binding.conversationsList.adapter = conversationsAdapter
-            if (ageHeaderDecoration == null) {
+            /*if (ageHeaderDecoration == null) {
                 ageHeaderDecoration = ConversationAgeHeaderDecoration(this) {
                     conversationsAdapter.currentList
                 }
                 binding.conversationsList.addItemDecoration(ageHeaderDecoration!!)
-            }
+            }*/
 
             if (inboxSwipeHelper == null) {
                 val swipeBackground = ColorDrawable()
