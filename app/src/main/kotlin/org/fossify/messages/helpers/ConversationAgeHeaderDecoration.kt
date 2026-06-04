@@ -28,6 +28,9 @@ class ConversationAgeHeaderDecoration(
     private val verticalPadding = activity.resources.getDimensionPixelSize(CommonsR.dimen.small_margin)
     private val headerHeight = (textPaint.textSize + verticalPadding * 2).toInt()
 
+    private var cachedBoundaries: TimeBoundaries? = null
+    private var lastBoundariesUpdate: Long = 0L
+
     override fun getItemOffsets(
         outRect: Rect,
         view: View,
@@ -44,6 +47,9 @@ class ConversationAgeHeaderDecoration(
         super.onDraw(canvas, parent, state)
         backgroundPaint.color = activity.getProperBackgroundColor()
         textPaint.color = activity.getProperTextColor()
+
+        // Ensure boundaries are up to date (refresh at most once per minute)
+        getBoundaries()
 
         for (index in 0 until parent.childCount) {
             val child = parent.getChildAt(index)
@@ -103,8 +109,13 @@ class ConversationAgeHeaderDecoration(
     }
 
     private fun getBoundaries(): TimeBoundaries {
-        val now = Calendar.getInstance()
+        val nowMillis = System.currentTimeMillis()
+        val cached = cachedBoundaries
+        if (cached != null && nowMillis - lastBoundariesUpdate < 60_000L) {
+            return cached
+        }
 
+        val now = Calendar.getInstance()
         val startOfToday = (now.clone() as Calendar).apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -117,7 +128,6 @@ class ConversationAgeHeaderDecoration(
         }
 
         val startOfWeek = (startOfToday.clone() as Calendar).apply {
-            // Use locale-aware week start (for example Monday vs Sunday)
             val dayOffset = (7 + get(Calendar.DAY_OF_WEEK) - firstDayOfWeek) % 7
             add(Calendar.DAY_OF_YEAR, -dayOffset)
         }
@@ -126,12 +136,16 @@ class ConversationAgeHeaderDecoration(
             set(Calendar.DAY_OF_MONTH, 1)
         }
 
-        return TimeBoundaries(
+        val newBoundaries = TimeBoundaries(
             startOfToday = startOfToday.timeInMillis,
             startOfYesterday = startOfYesterday.timeInMillis,
             startOfWeek = startOfWeek.timeInMillis,
             startOfMonth = startOfMonth.timeInMillis,
         )
+
+        cachedBoundaries = newBoundaries
+        lastBoundariesUpdate = nowMillis
+        return newBoundaries
     }
 
     private data class TimeBoundaries(
