@@ -1,0 +1,55 @@
+% Spine text for the thesis cover
+\begin{tikzpicture}[remember picture,overlay]
+
+% DDC Code
+    \node[
+        anchor=north west,
+        align=center,
+        font=\small
+    ]
+    at ([xshift=3.9cm,yshift=-2.2cm]current page.north west)
+        {
+        DDC 005.3\\
+        Т 594
+    };
+
+% Author Name
+    \node[
+        rotate=90,
+        anchor=center,
+        font=\small
+    ]
+    at ([xshift=3.95cm,yshift=-7.4cm]current page.north west)
+        {
+        Гэрэлмаа ТӨРТҮШИГ
+    };
+
+% Title (Vertical)
+    \node[
+        rotate=90,
+        anchor=center,
+        align=center,
+        font=\bfseries\small
+    ]
+    at ([xshift=3.95cm,yshift=-16.0cm]current page.north west)
+        {
+        НЭЭЛТТЭЙ ЭХТЭЙ FOSSIFY MESSAGES\\
+        АППЛИКЕЙШНД СУУРИЛСАН\\
+        ЗУРВАС АНГИЛЛЫН УХААЛАГ СИСТЕМ\\
+        БА НУГАЛДАГ ДЭЛГЭЦИЙН\\
+        ОНОВЧЛОЛ
+    };
+
+% Year
+    \node[
+        anchor=north west,
+        font=\small
+    ]
+    at ([xshift=3.9cm,yshift=-24.7cm]current page.north west)
+        {
+        2026
+    };
+
+\end{tikzpicture}
+
+\newpage
